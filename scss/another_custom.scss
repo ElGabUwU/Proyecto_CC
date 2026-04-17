@@ -1,0 +1,31 @@
+// 1. Importa funciones de Bootstrap
+@import "../node_modules/bootstrap/scss/functions";
+
+// 2. Importa variables predeterminadas de Bootstrap
+@import "../node_modules/bootstrap/scss/variables";
+
+// 3. Importa mapas (incluye $theme-colors)
+@import "../node_modules/bootstrap/scss/maps";
+
+// 4. Define tus colores personalizados aquí directamente
+$theme-colors: map-merge($theme-colors, (
+  "my-background-color": #010029,
+  "my-text-purple":      #260e69,
+  "rojito":              #bd4646
+));
+
+// 5. Finalmente importa todo Bootstrap
+@import "../node_modules/bootstrap/scss/bootstrap";
+
+// 6. (Opcional) Genera utilidades personalizadas como .bg-mi-color
+@each $color, $value in $theme-colors {
+  .bg-#{$color} {
+    background-color: $value !important;
+  }
+  .text-#{$color} {
+    color: $value !important;
+  }
+  .border-#{$color} {
+    border-color: $value !important;
+  }
+}

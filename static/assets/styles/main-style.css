@@ -1,0 +1,278 @@
+.main-content {
+  transition: all 0.3s ease;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.sidebar {
+  width: 60px;
+  background-color: #212529;
+  transition: width 0.3s ease;
+}
+
+.sidebar:hover {
+  width: 180px;
+}
+
+.nav-link {
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: #922323;
+}
+
+.nav-text {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  white-space: nowrap;
+  margin-left: 10px;
+}
+
+.sidebar:hover .nav-text {
+  opacity: 1;
+}
+
+
+.aguila-trans {
+  opacity: 0.3;
+  width: 780px;
+  height: auto;
+
+}
+
+.degradado-sidebar {
+  background: linear-gradient(to bottom, #272872, #5776af);
+  /* Degradado de arriba hacia abajo */
+}
+
+
+
+
+
+
+
+
+
+
+
+.search-lens button {
+  
+  aspect-ratio: 1;
+  height: 80%;
+  right: 40px;
+
+}
+
+/* Oculta la flecha original del dropdown */
+.dropdown-toggle::after {
+  display: none;
+}
+
+/* Estilo opcional para los tres puntos */
+.dropdown-icon {
+  /* Centrado interno con Flexbox */
+  display: inline-flex;       
+  align-items: center;         /* centra verticalmente */
+  justify-content: center;     /* centra horizontalmente */
+  
+  width: 2rem;
+  height: 2rem;
+  background-color: transparent;
+  /* Fondo transparente */
+  border: none;
+  /* Sin borde */
+  color: #c62300;
+  /* Color del texto (⋮) */
+  font-size: 3.5rem;
+  
+
+
+}
+
+.btn-doble-borde {
+  box-shadow:
+    0 0 0 2px #c62300,
+    0 0 0 8px white;
+  border-radius: 0.50rem;
+  /* para que siga el borde del btn */
+}
+
+.gap-4_5 {
+  gap: 2.25rem;
+  /* Valor intermedio entre gap-4 (1.5rem) y gap-5 (3rem) */
+}
+
+
+
+
+.niveles_btn_size {
+  height: 60px;
+}
+
+/* cambiar a boostrap */
+
+.pagination-btn:hover {
+  opacity: 0.8;
+}
+
+/* Quitar borde blanco de botones deshabilitados */
+.pagination-btn[disabled],
+.pagination-btn:disabled {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Información de la página */
+.page-info {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+
+
+
+.custom-scroll {
+
+
+
+    scrollbar-color: #c44c4c #f8f9fa /* thumb y track (Firefox) */
+}
+
+.custom-checkbox {
+  /* Hace el checkbox más grande */
+  width: 1.9em;
+  height: 1.9em;
+  /* Cambia el color del "tick" y el fondo cuando está marcado */
+  accent-color: #0dfd19 !important;
+}
+
+/* MEDIA QUERIES */
+
+
+/* Estilo por defecto (pantallas < 576px, es decir, xs) */
+.cursos_btn_size {
+  height: 50px;
+}
+
+/* Desde sm (≥576px) en adelante */
+@media (min-width: 576px) {
+  .cursos_btn_size {
+    height: 80px; 
+  }
+}
+
+   
+@media (min-width: 768px) {
+  .sticky-subheader {
+    top: 0;
+  }
+}
+
+
+@media (max-width: 767.98px) {
+  .sticky-subheader {
+    top: 66px;
+  }
+}
+
+
+
+
+/* para la barra de busqueda de cursos */
+@media (min-width: 767.98px) { /* md+ */
+  .w-responsive { width: 25% !important; }
+}
+@media (max-width: 768px) {  /* xs y sm */
+  .w-responsive { width: 75% !important; }
+}
+
+/* .img-btn-xs-60 {
+  width: 60px !important;
+  height: 60px !important;
+}
+@media (min-width: 576px) {
+  .img-btn-xs-60 {
+    width: 70px !important;
+    height: 70px !important;
+  }
+} */
+
+
+
+/* alinear boton verticalmente con la barra? */
+
+/* revisar los !important */
+
+/* camavbiar el limite de sm a md? */
+
+.btn-add-course {
+  width: 60px !important;
+  height: 60px !important;
+  padding: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+@media (min-width: 576px) {
+  .btn-add-course {
+  width: 70px !important;
+  height: 70px !important;
+  padding: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+}
+
+/* meter los queries aca */
+ .btn-add-course img {
+  width: 60px !important;
+  height: 60px !important;
+  object-fit: contain;
+}
+@media (min-width: 576px) {
+  .btn-add-course img {
+    width: 70px !important;
+    height: 70px !important;
+  }
+}
+
+/* Opcional: si quieres mantener el efecto hover de Bootstrap */
+.btn-add-course:hover {
+  background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+
+/* Permite que el botón principal se encoja más allá de su contenido */
+.btn-group-truncate .btn:first-child {
+  flex-shrink: 1;
+  min-width: 0; /* ✅ CLAVE: permite que el texto se trunque antes */
+}
+
+/* Opcional: asegura que el dropdown no crezca */
+.btn-group-truncate .btn.dropdown-toggle {
+  flex-shrink: 0;
+}
+
+@media (max-width: 576px) {
+  .btn-group-truncate .dropdown-toggle {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    font-size: 1.1rem;
+  }
+  .dropdown-icon {
+    font-size: 1.2rem;
+  }
+}
+
+.list-btn-fixer-padding {
+  padding-left: 0.05rem;
+  padding-right: 0.05rem;
+}

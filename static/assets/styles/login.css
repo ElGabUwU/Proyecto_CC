@@ -1,0 +1,22 @@
+body,
+html {
+    height: 100%;
+    margin: 0;
+}
+
+.full-height {
+    min-height: 100vh;
+}
+
+
+.fade-white {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(to right, #f8f9fa, rgba(255, 255, 255, 0)),
+        url('../images/fondo_login2.png');
+    background-size: cover;
+    z-index: 0;
+}

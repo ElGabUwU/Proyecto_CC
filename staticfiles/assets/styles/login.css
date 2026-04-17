@@ -1,0 +1,35 @@
+body {
+    margin: 0;
+    background-image: url('/static/assets/images/imagen_academia.jpg');
+    background-size: 120% 140%;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    height: 100vh;
+
+    /* Overlay para aplicar transparencia */
+  .overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3); /* Negro con 50% de transparencia */
+  }
+
+  /* Contenido centrado dentro del overlay */
+  .content {
+    position: relative;
+    z-index: 2; /* Coloca el contenido encima del overlay */
+    color: white; /* Texto blanco sobre el overlay */
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  }
+
+  .custom-bg {
+background-color: rgba(108, 117, 125, 0.1); /* Gris secundario con 50% de transparencia */
+}

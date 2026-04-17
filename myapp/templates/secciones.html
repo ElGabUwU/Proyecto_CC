@@ -1,0 +1,469 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Nómina - The Professor</title>
+    <!-- Bootstrap CSS -->
+    <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+    <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+    <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+    
+    <!-- Control de sesión por inactividad -->
+    {% include 'partials/session_timeout.html' %}
+    
+    <!-- Estilo mínimo para el dropdown personalizado -->
+    <style>
+        .dropdown-custom {
+            display: block;
+        }
+
+        .dropdown-custom.d-none {
+            display: none;
+        }
+
+        .clickable-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            filter: brightness(0.90);
+
+        }
+    </style>
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+
+    <!-- TinyMCE -->
+    <!-- Place the first <script> tag in your HTML's <head> -->
+    <script src="https://cdn.tiny.cloud/1/kl3rg2rzyywb0pjih5yhwbsppelx9pefyera8gjlbhlz0asw/tinymce/8/tinymce.min.js"
+        referrerpolicy="origin" crossorigin="anonymous"></script>
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        // Prevent Bootstrap modal from trapping focus on TinyMCE dialogs
+        document.addEventListener('focusin', (e) => {
+            if (e.target.closest(".tox-tinymce-aux, .moxman-window, .tam-assetmanager-root") !== null) {
+                e.stopImmediatePropagation();
+            }
+        });
+    </script>
+  <!-- Control de sesión por inactividad -->
+  {% include 'partials/session_timeout.html' %}
+</head>
+
+<body class="m-0 p-0">
+    {% include 'partials/header.html' %}
+
+    <div class="bg-my-background-color d-flex text-white ">
+        <!-- SIDEBAR -->
+        {% include 'partials/sidebar.html' %}
+
+        <!-- Contenido principal -->
+        <main class="main-content vh-100  flex-grow-1 overflow-auto">
+            <!-- Encabezado y barra de búsqueda -->
+            <div class="mx-3">
+                <div class="container-fluid ">
+                    <div class="sticky-top bg-my-background-color pt-3 ">
+                        <div class="d-flex justify-content-between align-items-center ">
+                            <div class="d-flex flex-column flex-grow-1">
+                                <!-- Breadcrumb de navegación -->
+
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb p-2 mb-2 bg-light rounded">
+                                        <li class="breadcrumb-item">
+                                            <a href="{% url 'home' %}"
+                                                class="fw-bold text-dark text-decoration-none">Inicio</a>
+                                        </li>
+                                        <li class="breadcrumb-item">
+                                            <a href="{% url 'cursos' %}"
+                                                class="fw-bold text-dark text-decoration-none">Cursos</a>
+                                        </li>
+                                        <li class="breadcrumb-item">
+                                            <a href="{% url 'niveles' course.id %}"
+                                                class="fw-bold text-dark text-decoration-none">
+                                                {{ course.course_name }}</a>
+                                        </li>
+                                        <li class="breadcrumb-item active fw-bold text-primary" aria-current="page">
+                                            {{ level.level_name }}</li>
+                                    </ol>
+                                </nav>
+                                <div class="row align-items-center">
+                                    <!-- Título a la izquierda -->
+                                    <div class="col-auto">
+                                        <h2 class="fw-bold mb-0">{{ level.level_name }}</h2>
+                                    </div>
+
+                                    <!-- Los botones y textos a la derecha (empujados con ms-auto) -->
+                                    <div class="col mb-2">
+                                        <div class="d-flex justify-content-end align-items-center gap-4">
+                                            <!-- Primer botón con texto -->
+                                            <div class="text-center">
+                                                <a href="{% url 'grupos_level' level.id %}"
+                                                    class="btn rounded-circle mb-1">
+                                                    <img src="{% static 'assets/images/grupos.png' %}" alt="grupos"
+                                                        width="70" height="70">
+                                                </a>
+                                                <span class="text-white fw-bold d-block">Grupos</span>
+                                            </div>
+                                            <!-- Segundo botón con texto -->
+                                            <div class="text-center">
+                                                <a type="button" class="btn rounded-circle mb-1"
+                                                    href="{% url 'mis_notas' %}">
+                                                    <img src="{% static 'assets/images/notas4.png' %}" alt="notas"
+                                                        width="80" height="80">
+                                                </a>
+                                                <span class="text-white fw-bold d-block">Mis Notas</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="container-fluid">
+                <div class="row ms-1" style="height: 68vh;">
+                    <div class="col-10 ">
+                        <!-- Tarjeta principal -->
+                        <div class="card border-light shadow-sm">
+                            <div class="card-body overflow-auto" style="height: 69vh; padding: 0;">
+
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Sidebar derecho -->
+
+                    <div class="col-2  mx-0 p-0 d-flex flex-column">
+                        <div class="bg-light text-dark border border-red rounded-start custom-scroll"
+                            style="height: 69vh; overflow-y: auto; " id="sidebarScroll">
+
+                            <!-- Unidades -->
+                            <div id="unidades-list">
+                                {% comment %} {% for i in '123456789'|make_list %} {% endcomment %}
+                                {% for unit in units %}
+                                <div class="w-100 border-bottom position-relative" data-id="{{ unit.id }}"
+                                    id="unit-{{ unit.id }}">
+                                    <div class="d-flex">
+                                        <button type="button"
+                                            class="btn btn-light text-start d-flex align-items-center py-2 px-2 flex-grow-1"
+                                            style="font-size: 0.9rem; border-top-right-radius: 0; border-bottom-right-radius: 0;"
+                                            onclick="loadUnitContent({{ unit.id }})">
+                                            <span class="fs-6 text-dark fw-normal">{{ unit.title }}</span>
+                                        </button>
+                                        <button type="button"
+                                            class="btn btn-light  d-flex align-items-center fw-bold justify-content-center"
+                                            style="width: 40px; font-size: 1.3rem; border-top-left-radius: 0; border-bottom-left-radius: 0;"
+                                            onclick="toggleDropdown('dropdown-unidad-{{ unit.id }}', event)">
+                                            <span class="text-secondary">⋮</span>
+                                        </button>
+
+                                    </div>
+
+                                    <!-- Dropdown personalizado -->
+                                    <div id="dropdown-unidad-{{ unit.id }}"
+                                        class="dropdown-custom bg-white border border-secondary rounded mt-1 d-none position-absolute end-0"
+                                        style="z-index: 1000; min-width: 120px;">
+                                        <a href="{% url 'edit_unit' unit.id %}"
+                                            class="dropdown-item text-dark py-2 px-3"
+                                            style="font-size: 0.85rem;">Editar</a>
+                                        <hr class="dropdown-divider border-secondary m-0">
+                                        <button type="button" class="dropdown-item text-danger py-2 px-3"
+                                            data-bs-toggle="modal" data-bs-target="#deleteUnitModal"
+                                            data-url="{% url 'delete_unit' unit.id %}"
+                                            style="font-size: 0.85rem;">Eliminar</button>
+                                    </div>
+
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <!-- Botón fijo al final -->
+                            <div class="p-3 mt-auto d-flex flex-column align-items-center">
+                                <a href="{% url 'add_unit' level.id %}" class="btn rounded-circle mb-2">
+                                    <img src="{% static 'assets/images/redadd1.png' %}" alt="agregar" width="50"
+                                        height="50">
+                                </a>
+                                <span class="text-dark fw-bold text-center " style="font-size: 0.90rem;">Añadir
+                                    Sección</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+        </main>
+    </div>
+
+
+
+
+
+    <!-- Importar Bootstrap Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.js"></script>
+
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Importar Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Script para abrir/cerrar dropdowns -->
+    <script>
+        function loadUnitContent(unitId) {
+            fetch(`/secciones/unit/${unitId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const cardBody = document.querySelector('.card-body.overflow-auto');
+
+                    let contentHTML = `<h1>${data.name}</h1><div>${data.description}</div>`;
+                    if (data.pdf_material_url) {
+                        contentHTML += `
+                        
+                        <div class="mt-2 border rounded shadow-sm overflow-hidden bg-white clickable-card"
+                        onclick="window.open('${data.pdf_material_url}', '_blank');"
+                        style="cursor: pointer;">
+                        <div class="d-flex align-items-center p-3">
+                            <!-- Icono de PDF -->
+                            <div class="fs-1 text-danger me-3">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+
+                            <!-- Información del PDF -->
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 text-primary fw-semibold">Material en PDF disponible</h6>
+                                <p class="mb-1 small">
+                                    <strong>Nombre:</strong> 
+                                    <span class="text-dark">${data.pdf_filename}</span>
+                                </p>
+                                <small class="text-muted">Haz clic en cualquier parte para abrir el PDF</small>
+                            </div>
+
+                            <!-- Botón de descarga (no hereda el clic) -->
+                            <div onclick="event.stopPropagation();">
+                                <a 
+                                    href="${data.pdf_material_url}" 
+                                    class="btn btn-outline-primary btn-sm" 
+                                    target="_blank"
+                                    download
+                                >
+                                    <i class="fas fa-download me-1"></i> Descargar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                        `;
+
+                    }
+
+                    cardBody.innerHTML = contentHTML;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Cierra cualquier dropdown abierto al hacer clic fuera
+        document.addEventListener('click', function (e) {
+            const dropdowns = document.querySelectorAll('.dropdown-custom');
+            dropdowns.forEach(dropdown => {
+                const button = dropdown.previousElementSibling;
+                if (!dropdown.contains(e.target) && !button.contains(e.target)) {
+                    dropdown.classList.add('d-none');
+                }
+            });
+        });
+
+        // Alterna la visibilidad del dropdown
+        function toggleDropdown(id, event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById(id);
+            const allDropdowns = document.querySelectorAll('.dropdown-custom');
+
+            // Cierra todos los demás
+            allDropdowns.forEach(d => {
+                if (d.id !== id) d.classList.add('d-none');
+            });
+
+            // Alterna este
+            dropdown.classList.toggle('d-none');
+        }
+
+        const sortableList = document.getElementById('unidades-list');
+        if (sortableList) {
+            new Sortable(sortableList, {
+                animation: 150,
+                ghostClass: 'blue-background-class',
+                onEnd: function (evt) {
+                    const order = [];
+                    const items = sortableList.querySelectorAll('[data-id]');
+                    items.forEach((item, index) => {
+                        order.push({
+                            id: item.dataset.id,
+                            order: index + 1
+                        });
+                    });
+
+                    fetch("{% url 'update_unit_order' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ order: order })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                console.log('Order updated successfully');
+                            } else {
+                                console.error('Error updating order');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const deleteUnitModal = document.getElementById('deleteUnitModal');
+            if (deleteUnitModal) {
+                deleteUnitModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const url = button.getAttribute('data-url');
+                    const form = deleteUnitModal.querySelector('#deleteUnitForm');
+                    form.action = url;
+                });
+            }
+            {% if messages %}
+            {% for message in messages %}
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: '{{ message.tags }}',
+                title: '{{ message }}',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+            {% endfor %}
+            {% endif %}
+        });
+    </script>
+
+
+
+
+
+    <!-- ========= MODALS ========= -->
+
+    <!-- Modal para Agregar seccion -->
+    <div class="modal fade" id="addSectionModal" tabindex="-1" aria-labelledby="addSectionModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-center w-100" id="modalTitle">Agregar Seccion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="">
+
+                        <!-- contenido del formulario -->
+                        <div class="mb-3">
+                            <label for="section_name" class="form-label">Nombre:</label>
+                            <input type="text" class="form-control" id="section_name" name="section_name" required>
+                        </div>
+
+
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <div class="row w-100">
+                        <div class="col">
+                            <button type="submit" form="addSectionForm" class="btn btn-primary w-100">Guardar</button>
+                        </div>
+                        <div class="col">
+                            <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Sección -->
+    <div class="modal fade" id="editSectionModal" tabindex="-1" aria-labelledby="editSectionModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-center w-100" id="editSectionModalLabel">Editar Sección
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editSectionForm" method="POST">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="edit_section_name" class="form-label">Nombre De La
+                                Sección:</label>
+                            <input type="text" class="form-control" id="edit_section_name" name="section_name">
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <div class="row w-100">
+                        <div class="col">
+                            <button type="submit" form="editLevelForm" class="btn btn-primary w-100">Guardar
+                                Cambios</button>
+                        </div>
+                        <div class="col">
+                            <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Modal para Eliminar Sección (Unidad) -->
+    <div class="modal fade" id="deleteUnitModal" tabindex="-1" aria-labelledby="deleteUnitModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteUnitModalLabel">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    ¿Estás seguro de que deseas eliminar esta sección?
+                </div>
+                <div class="modal-footer">
+                    <form id="deleteUnitForm" method="POST" action="">
+                        {% csrf_token %}
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+</body>
+
+</html>

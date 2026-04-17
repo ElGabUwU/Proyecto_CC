@@ -1,0 +1,13 @@
+{% load static %}
+
+<!-- SweetAlert2 para notificaciones de sesión -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+<!-- Script de control de inactividad de sesión -->
+<script src="{% static 'assets/js/inactivity-timer.js' %}"></script>
+
+<!-- Metadatos para prevenir caché en páginas autenticadas -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">

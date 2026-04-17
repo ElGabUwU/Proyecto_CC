@@ -1,0 +1,596 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Control de Nómina - The Professor</title>
+    <!-- Bootstrap CSS -->
+    <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+    <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+    <!-- SweetAlert2 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css"
+      rel="stylesheet"
+    />
+    <!-- FullCalendar CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    />
+    <style>
+      .sticky-subheader {
+        /* ✅ Cubre fondo hasta el borde del contenido (no solo padding) */
+        background-clip: padding-box;
+
+        /* ✅ Evita gaps por subpixel rendering */
+        transform: translateZ(0); /* fuerza layer GPU sin desplazar */
+        /* Opcional: más robusto */
+        -webkit-transform: translateZ(0);
+        backface-visibility: hidden;
+
+        /* ✅ Borde sutil del mismo color (máscara visual) */
+        border-bottom: 1px solid #002152; /* mismo color que el fondo */
+      }
+    </style>
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="{% static 'assets/images/aguila.ico' %}"
+    />
+    <!-- Control de sesión por inactividad -->
+    {% include 'partials/session_timeout.html' %}
+  </head>
+
+  <body class="m-0 p-0">
+    <div class="bg-my-background-color d-flex text-white">
+      <!-- SIDEBAR -->
+      {% include 'partials/sidebar.html' %}
+
+      <!-- Contenido principal -->
+      <main class="main-content vh-100 flex-grow-1 overflow-auto">
+        {% include 'partials/header.html' %}
+        <!-- Encabezado y barra de búsqueda -->
+        <div class="mx-3">
+          <div class="container-fluid pb-3">
+            <div
+              class="sticky-top bg-my-background-color pt-3 sticky-subheader"
+            >
+              <div class="d-flex flex-column">
+                <!-- Breadcrumb (fuera del contenedor de alineación) -->
+                <nav aria-label="breadcrumb" class="mb-0">
+                  <ol class="breadcrumb p-2 bg-light rounded">
+                    <li class="breadcrumb-item">
+                      <a
+                        href="{% url 'home' %}"
+                        class="fw-bold text-dark text-decoration-none"
+                        >Inicio</a
+                      >
+                    </li>
+                    <li
+                      class="breadcrumb-item active fw-bold text-primary"
+                      aria-current="page"
+                    >
+                      Cursos
+                    </li>
+                  </ol>
+                </nav>
+
+                <!-- Contenedor principal: título + búsqueda a la izquierda, botón "Añadir" a la derecha -->
+                <div class="d-flex justify-content-between align-items-start">
+                  <!-- Izquierda: Título + Barra de búsqueda -->
+                  <div class="d-flex flex-column flex-grow-1">
+                    <h2 class="fw-bold mb-2">Cursos</h2>
+                    <form method="get" action="{% url 'cursos' %}">
+                      <div class="input-group mb-4 search-bar search-lens z-0">
+                        <input
+                          type="text"
+                          name="q"
+                          class="w-responsive bg-my-background-color text-white border rounded p-2 pe-5"
+                          aria-label="Buscar"
+                          value="{{ query|default_if_none:'' }}"
+                        />
+                        <button
+                          class="btn btn-sm rounded-circle mt-1 z-4 btn-primary"
+                          type="submit"
+                        >
+                          <i class="bi bi-search text-light"></i>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <!-- Derecha: Botón "Añadir" y texto, alineados con el título "Cursos" -->
+                  <div
+                    class="d-flex flex-column align-items-center justify-content-start"
+                  >
+                    <button
+                      type="button"
+                      class="btn btn-add-course rounded-circle mb-1"
+                      data-bs-toggle="modal"
+                      data-bs-target="#addCourseModal"
+                    >
+                      <img
+                        src="{% static 'assets/images/agregar.png' %}"
+                        alt="agregar"
+                        
+                      />
+                    </button>
+                    <span class="text-white text-center fw-bold mt-0"
+                      >Añadir</span
+                    >
+                  </div>
+                </div>
+                <!-- cierra div de justify -->
+              </div>
+              <!-- cierra este div: <div class="d-flex flex-column">-->
+            </div>
+            <!-- cierra sticky top -->
+
+            {% if messages %}
+            <div class="container">
+              {% for message in messages %}
+              <div
+                class="alert alert-{{ message.tags }} alert-dismissible fade show"
+                role="alert"
+              >
+                {{ message }}
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="alert"
+                  aria-label="Close"
+                ></button>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- el div de la lista de botones -->
+            <div class="list-group d-flex flex-column gap-4 w-100 mt-2 list-btn-fixer-padding">
+              {% for course in courses %}
+              <div class="btn-group cursos_btn_size btn-group-truncate">
+                <a
+                  class="btn btn-light btn-lg w-100 d-flex align-items-center justify-content-start py-1"
+                  href="{% url 'niveles' course.id %}"
+                  type="button"
+                >
+                  {% if course.image_course %}
+                  <img
+                    src="{{ course.image_course.url }}"
+                    alt="Imagen del curso"
+                    width="40"
+                    height="40"
+                    class="rounded-circle me-4"
+                  />
+                  {% else %}
+                  <img
+                    src="{% static 'assets/images/red_globe.png' %}"
+                    alt="Bandera"
+                    width="40"
+                    height="40"
+                    class="rounded-circle me-4"
+                  />
+                  {% endif %}
+                  <span
+                    class="fs-1 text-my-text-purple fw-bold text-truncate flex-grow-1 text-start"
+                  >
+                    {{ course.course_name }}
+                  </span>
+                </a>
+                <button
+                  type="button"
+                  class="btn btn-lg btn-light dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <span class="visually-hidden">Toggle Dropdown</span>
+                  <span class="dropdown-icon">⋮</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <button
+                      class="mb-2 dropdown-item"
+                      data-bs-toggle="modal"
+                      data-bs-target="#viewCourseNameModal"
+                      data-course-name="{{ course.course_name }}"
+                    >
+                      Descripción
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      class="dropdown-item text-primary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#editCourseModal"
+                      data-course-id="{{ course.id }}"
+                      data-course-name="{{ course.course_name }}"
+                      data-course-tutor="{{ course.tutor.id }}"
+                      data-course-action="{% url 'editar_curso' course.id %}"
+                    >
+                      Editar
+                    </button>
+                  </li>
+                  <li><hr class="dropdown-divider" /></li>
+                  <li>
+                    <button
+                      type="button"
+                      class="dropdown-item text-danger"
+                      data-bs-toggle="modal"
+                      data-bs-target="#deleteCourseModal"
+                      data-delete-url="{% url 'eliminar_curso' course.id %}"
+                    >
+                      Eliminar
+                    </button>
+                  </li>
+                </ul>
+              </div>
+              <!-- cierre de btn-group -->
+              {% empty %}
+              <p class="text-white text-center fs-3">
+                No hay cursos registrados. Agrege uno:
+              </p>
+              <div
+                class="d-flex flex-column align-items-center align-items-end"
+              >
+                <button
+                  type="button"
+                  class="btn rounded-circle"
+                  data-bs-toggle="modal"
+                  data-bs-target="#addCourseModal"
+                >
+                  <img
+                    src="{% static 'assets/images/agregar.png' %}"
+                    alt="agregar"
+                    width="70"
+                    height="70"
+                    class=""
+                  />
+                </button>
+                <span class="text-white fw-bold mt-2 mb-2">Añadir Curso</span>
+              </div>
+              {% endfor %}
+            </div>
+            <!-- cierra list group -->
+          </div>
+          <!-- cierra container-fluid -->
+        </div>
+        <!-- cierra mx3 -->
+      </main>
+    </div>
+    <!-- cierra bg color  -->
+    <!-- Modal para ver el nombre del curso -->
+    <div
+      class="modal fade"
+      id="viewCourseNameModal"
+      tabindex="-1"
+      aria-labelledby="viewCourseNameModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="viewCourseNameModalLabel">
+              Detalles
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Cerrar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-2">
+              <span class="fs-6 fw-bold">Nombre:</span>
+              <span id="courseNameText" class="ms-1"></span>
+            </div>
+          </div>
+          <!-- nombre del nivel --> <!-- solucionar error de espaciado con divs -->
+            
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var viewCourseNameModal = document.getElementById(
+          "viewCourseNameModal"
+        );
+        if (viewCourseNameModal) {
+          viewCourseNameModal.addEventListener(
+            "show.bs.modal",
+            function (event) {
+              var button = event.relatedTarget;
+              var courseName =
+                button.getAttribute("data-course-name") || "Sin nombre";
+              var nameText =
+                viewCourseNameModal.querySelector("#courseNameText");
+              nameText.textContent = courseName;
+            }
+          );
+        }
+      });
+    </script>
+    <!-- Modal para Agregar Curso -->
+    <div
+      class="modal fade"
+      id="addCourseModal"
+      tabindex="-1"
+      aria-labelledby="addCourseModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title text-center w-100" id="modalTitle">
+              Agregar Curso
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form
+              id="addCourseForm"
+              method="POST"
+              action="{% url 'cursos' %}"
+              enctype="multipart/form-data"
+            >
+              {% csrf_token %} {% if form.errors %}
+              <div class="alert alert-danger">
+                Por favor corrija los siguientes errores:
+                <ul>
+                  {% for field in form %} {% if field.errors %}
+                  <li>{{ field.label }}: {{ field.errors|striptags }}</li>
+                  {% endif %} {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+
+              <div class="mb-3">
+                <label
+                  for="{{ form.course_name.id_for_label }}"
+                  class="form-label"
+                  >Nombre Del Curso:</label
+                >
+                {{ form.course_name }}
+              </div>
+              <div class="mb-3">
+                <label for="{{ form.tutor.id_for_label }}" class="form-label"
+                  >Tutor:</label
+                >
+                {{ form.tutor }}
+              </div>
+              <div class="mb-3">
+                <label
+                  for="{{ form.image_course.id_for_label }}"
+                  class="form-label"
+                  >Imagen del Curso (opcional):</label
+                >
+                <input type="file" class="form-control" name="image_course" />
+                <small class="text-muted"
+                  >Formatos permitidos: JPG, PNG. Tamaño recomendado: 200x200
+                  px.</small
+                >
+              </div>
+            </form>
+          </div>
+          <!-- cierra modal body -->
+          <div class="modal-footer">
+            <div class="row w-100">
+              <div class="col">
+                <button
+                  type="submit"
+                  form="addCourseForm"
+                  class="btn btn-primary w-100"
+                >
+                  Guardar
+                </button>
+              </div>
+              <div class="col">
+                <button
+                  type="button"
+                  class="btn btn-danger w-100"
+                  data-bs-dismiss="modal"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- cierra modal footer -->
+        </div>
+        <!-- cierra modal content -->
+      </div>
+      <!-- cierra modal dialog -->
+    </div>
+    <!-- cierra modal fade -->
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Modal para Editar Curso -->
+    <div
+      class="modal fade"
+      id="editCourseModal"
+      tabindex="-1"
+      aria-labelledby="editCourseModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title text-center w-100" id="editCourseModalLabel">
+              Editar Curso
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form
+              id="editCourseForm"
+              method="POST"
+              enctype="multipart/form-data"
+            >
+              {% csrf_token %}
+              <div class="mb-3">
+                <label for="edit_course_name" class="form-label"
+                  >Nombre Del Curso:</label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="edit_course_name"
+                  name="course_name"
+                />
+              </div>
+              <div class="mb-3">
+                <label for="edit_tutor" class="form-label">Tutor:</label>
+                <select class="form-control" id="edit_tutor" name="tutor">
+                  {% for tutor in tutors %}
+                  <option value="{{ tutor.id }}">
+                    {{ tutor.person.name }} {{ tutor.person.surname }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="edit_image_course" class="form-label"
+                  >Imagen del Curso (opcional):</label
+                >
+                <input
+                  type="file"
+                  class="form-control"
+                  id="edit_image_course"
+                  name="image_course"
+                />
+                <small class="text-muted"
+                  >Formatos permitidos: JPG, PNG. Tamaño recomendado: 200x200
+                  px.</small
+                >
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <div class="row w-100">
+              <div class="col">
+                <button
+                  type="submit"
+                  form="editCourseForm"
+                  class="btn btn-primary w-100"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+              <div class="col">
+                <button
+                  type="button"
+                  class="btn btn-danger w-100"
+                  data-bs-dismiss="modal"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para Eliminar Curso -->
+    <div
+      class="modal fade"
+      id="deleteCourseModal"
+      tabindex="-1"
+      aria-labelledby="deleteCourseModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteCourseModalLabel">
+              Confirmar Eliminación
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            ¿Estás seguro de que deseas eliminar este curso? Esta acción no se
+            puede deshacer.
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
+            <form id="deleteCourseForm" method="POST">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">Eliminar</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Script para el modal de edición
+        var editModal = document.getElementById("editCourseModal");
+        editModal.addEventListener("show.bs.modal", function (event) {
+          var button = event.relatedTarget;
+          var courseId = button.getAttribute("data-course-id");
+          var courseName = button.getAttribute("data-course-name");
+          var courseTutorId = button.getAttribute("data-course-tutor");
+          var formAction = button.getAttribute("data-course-action");
+
+          var modalForm = editModal.querySelector("#editCourseForm");
+          modalForm.action = formAction;
+
+          var nameInput = editModal.querySelector("#edit_course_name");
+          var tutorSelect = editModal.querySelector("#edit_tutor");
+
+          nameInput.value = courseName;
+          tutorSelect.value = courseTutorId;
+        });
+
+        // Script para el modal de eliminación
+        var deleteModal = document.getElementById("deleteCourseModal");
+        deleteModal.addEventListener("show.bs.modal", function (event) {
+          var button = event.relatedTarget;
+          var deleteUrl = button.getAttribute("data-delete-url");
+          var deleteForm = deleteModal.querySelector("#deleteCourseForm");
+          deleteForm.action = deleteUrl;
+        });
+      });
+    </script>
+  </body>
+</html>

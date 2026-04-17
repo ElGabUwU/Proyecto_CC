@@ -1,0 +1,227 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calificar Evaluación - The Professor</title>
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+  <style>
+    .nota-input { width: 80px; text-align: center; }
+    .nota-input:focus { border-color: #3498db; box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25); }
+    .nota-input.is-valid { border-color: #28a745; }
+    .nota-input.is-invalid { border-color: #dc3545; }
+    .estudiante-row:hover { background-color: #f8f9fa; }
+    .progress-bar-custom { height: 25px; font-size: 14px; }
+    .badge-calificado { background-color: #28a745; }
+    .badge-pendiente { background-color: #6c757d; }
+    .info-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; border-radius: 10px; padding: 20px; margin-bottom: 20px;
+    }
+  </style>
+  {% include 'partials/session_timeout.html' %}
+</head>
+<body class="m-0 p-0">
+  <div class="bg-my-background-color d-flex text-white">
+    {% include 'partials/sidebar.html' %}
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb p-2 mb-2 bg-light rounded">
+          <li class="breadcrumb-item"><a href="{% url 'home' %}" class="fw-bold text-dark text-decoration-none">Inicio</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'cursos' %}" class="fw-bold text-dark text-decoration-none">Cursos</a></li>
+          {% if grupo %}
+          <li class="breadcrumb-item"><a href="{% url 'niveles' grupo.level.course.id %}" class="fw-bold text-dark text-decoration-none">{{ grupo.level.course.course_name }}</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'grupos_level' grupo.level.id %}" class="fw-bold text-dark text-decoration-none">Grupos</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'evaluaciones_grupo' grupo.id %}" class="fw-bold text-dark text-decoration-none">Evaluaciones</a></li>
+          {% endif %}
+          <li class="breadcrumb-item active fw-bold text-primary" aria-current="page">Calificar</li>
+        </ol>
+      </nav>
+      <!-- Información de la Evaluación (Simplificada) -->
+      <div class="alert alert-info mb-3">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h5 class="mb-1"><i class="fas fa-clipboard-check"></i> <strong>{{ evaluacion.name }}</strong></h5>
+            <small>{{ evaluacion.get_tipo_evaluacion_display }} | {{ evaluacion.date|date:"d/m/Y" }} | {{ evaluacion.percentage_grade }}% | {{ grupo.name_group_levels }}</small>
+          </div>
+          <div class="col-md-4 text-end">
+            <span class="badge bg-primary fs-6">{{ calificados }}/{{ total_estudiantes }} calificados</span>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Calificar Estudiantes</span>
+          <div>
+            <button type="button" class="btn btn-danger btn-sm me-2" disabled title="Próximamente"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+            <button type="button" class="btn btn-success btn-sm me-2" disabled title="Próximamente"><i class="fas fa-file-excel"></i> Exportar Excel</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <form class="d-flex align-items-center gap-2 mb-3" method="get">
+            <div class="input-group">
+              <input type="text" name="q" class="form-control" placeholder="Buscar estudiante..." value="{{ query|default_if_none:'' }}">
+            </div>
+            <button class="btn btn-secondary" type="submit"><i class="fas fa-search"></i> Buscar</button>
+            <a href="{% url 'calificar_evaluacion' evaluacion.id %}" class="btn btn-secondary"><i class="fas fa-sync"></i> Refrescar</a>
+          </form>
+          <form id="notasForm" method="POST" action="{% url 'calificar_evaluacion' evaluacion.id %}">
+            {% csrf_token %}
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover">
+                <thead class="table-primary">
+                  <tr>
+                    <th width="50">#</th>
+                    <th>Documento</th>
+                    <th>Estudiante</th>
+                    <th width="100">Nota Actual</th>
+                    <th width="120">Nueva Nota</th>
+                    <th width="200">Observaciones</th>
+                    <th width="80">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if estudiantes %}
+                  {% for item in estudiantes %}
+                  <tr class="estudiante-row">
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>
+                      <span class="badge bg-info">{{ item.estudiante.person.get_type_document_display }}</span> 
+                      {{ item.estudiante.person.document_number }}<br>
+                      <small class="text-muted">{{ item.estudiante.person.name }} {{ item.estudiante.person.surname }}</small>
+                    </td>
+                    <td><strong>{{ item.estudiante.person.name }} {{ item.estudiante.person.surname }}</strong></td>
+                    <td class="text-center">
+                      {% if item.nota_actual %}
+                        <span class="badge bg-success fs-6">{{ item.nota_actual }}</span>
+                      {% else %}
+                        <span class="badge bg-secondary">Sin nota</span>
+                      {% endif %}
+                    </td>
+                    <td><input type="number" name="nota_{{ item.estudiante.id }}" class="form-control nota-input" min="0" max="100" step="0.01" value="{{ item.nota_actual|default:'' }}" placeholder="0-100" data-estudiante-id="{{ item.estudiante.id }}"></td>
+                    <td><input type="text" name="observaciones_{{ item.estudiante.id }}" class="form-control form-control-sm" value="{{ item.observaciones|default:'' }}" placeholder="Opcional"></td>
+                    <td class="text-center">
+                      {% if item.tiene_nota %}
+                      <span class="badge badge-calificado"><i class="fas fa-check"></i></span>
+                      {% else %}
+                      <span class="badge badge-pendiente"><i class="fas fa-clock"></i></span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                  {% else %}
+                  <tr><td colspan="7" class="text-center text-muted py-4"><i class="fas fa-users-slash fa-3x mb-3"></i><br>No se encontraron estudiantes.</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+            {% if estudiantes %}
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <div><button type="button" class="btn btn-warning" onclick="limpiarNotas()"><i class="fas fa-eraser"></i> Limpiar Formulario</button></div>
+              <div>
+                <a href="{% url 'evaluaciones_grupo' grupo.id %}" class="btn btn-secondary me-2"><i class="fas fa-arrow-left"></i> Volver</a>
+                <button type="submit" class="btn btn-success btn-lg"><i class="fas fa-save"></i> Guardar Todas las Notas</button>
+              </div>
+            </div>
+            {% endif %}
+          </form>
+        </div>
+      </div>
+      {% if estudiantes.paginator.num_pages > 1 %}
+      <div class="pagination-container d-flex justify-content-center align-items-center my-4">
+        <button id="prev-page" class="btn pagination-btn" {% if not estudiantes.has_previous %}disabled{% endif %}>
+          <img src="{% static 'assets/images/flecha_izq.png' %}" alt="Anterior" width="40" height="30">
+        </button>
+        <span id="page-info" class="page-info text-white mx-3">{{ estudiantes.number }} / {{ estudiantes.paginator.num_pages }}</span>
+        <button id="next-page" class="btn pagination-btn" {% if not estudiantes.has_next %}disabled{% endif %}>
+          <img src="{% static 'assets/images/flecha_der.png' %}" alt="Siguiente" width="40" height="30">
+        </button>
+      </div>
+      {% endif %}
+    </main>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+  <script>
+    $(document).ready(function () {
+      {% if messages %}{% for message in messages %}
+      Swal.fire({
+        icon: '{{ message.tags }}',
+        title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% elif message.tags == "warning" %}Advertencia{% else %}Notificación{% endif %}',
+        text: '{{ message }}',
+        confirmButtonText: 'Aceptar'
+      });
+      {% endfor %}{% endif %}
+    });
+    document.querySelectorAll('.nota-input').forEach(input => {
+      input.addEventListener('input', function() {
+        const valor = parseFloat(this.value);
+        this.classList.remove('is-valid', 'is-invalid');
+        if (this.value === '') return;
+        if (isNaN(valor) || valor < 0 || valor > 100) { this.classList.add('is-invalid'); } 
+        else { this.classList.add('is-valid'); }
+      });
+    });
+    function limpiarNotas() {
+      Swal.fire({
+        title: '¿Limpiar formulario?', text: 'Se borrarán todas las notas ingresadas (no guardadas)', icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, limpiar', cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          document.querySelectorAll('.nota-input').forEach(input => { input.value = ''; input.classList.remove('is-valid', 'is-invalid'); });
+          document.querySelectorAll('input[name^="observaciones_"]').forEach(input => { input.value = ''; });
+          Swal.fire('Limpiado', 'El formulario ha sido limpiado', 'success');
+        }
+      });
+    }
+    document.getElementById('notasForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      let notasIngresadas = 0;
+      document.querySelectorAll('.nota-input').forEach(input => { if (input.value.trim() !== '') notasIngresadas++; });
+      if (notasIngresadas === 0) { Swal.fire('Sin cambios', 'No hay notas para guardar', 'info'); return; }
+      Swal.fire({
+        title: 'Confirmar guardado', text: `¿Guardar ${notasIngresadas} nota(s)?`, icon: 'question',
+        showCancelButton: true, confirmButtonColor: '#28a745', cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, guardar', cancelButtonText: 'Cancelar'
+      }).then((result) => { if (result.isConfirmed) this.submit(); });
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+      const prevButton = document.getElementById('prev-page');
+      const nextButton = document.getElementById('next-page');
+      const currentPage = {{ estudiantes.number|default:1 }};
+      const totalPages = {{ estudiantes.paginator.num_pages|default:1 }};
+      const query = "{{ query|default:'' }}";
+      function buildURL(page) {
+        const url = new URL(window.location.href.split('?')[0], window.location.origin);
+        if (page > 1) url.searchParams.append('page', page);
+        if (query && query.trim() !== '') url.searchParams.append('q', query);
+        return url.toString();
+      }
+      if (prevButton && !prevButton.disabled) {
+        prevButton.addEventListener('click', function () { if (currentPage > 1) window.location.href = buildURL(currentPage - 1); });
+      }
+      if (nextButton && !nextButton.disabled) {
+        nextButton.addEventListener('click', function () { if (currentPage < totalPages) window.location.href = buildURL(currentPage + 1); });
+      }
+    });
+    const isAuthenticated = "{{ request.user.is_authenticated|yesno:'true,false' }}";
+    window.onpageshow = function (event) {
+      if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+        if (isAuthenticated === 'false') window.location.href = "{% url 'login' %}";
+      }
+    };
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        document.getElementById('notasForm').dispatchEvent(new Event('submit'));
+      }
+    });
+  </script>
+</body>
+</html>

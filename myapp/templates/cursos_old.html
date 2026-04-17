@@ -1,0 +1,436 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Nómina - The Professor</title>
+  <!-- Bootstrap CSS -->
+
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+
+
+  <!-- SweetAlert2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <!-- FullCalendar CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+  <style>
+
+  </style>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+</head>
+
+<body class="m-0 p-0">
+  <div class="bg-my-background-color d-flex text-white ">
+    <!-- Barra lateral izquierda -->
+    <div class="sidebar degradado-sidebar d-flex flex-column text-white min-vh-100 overflow-hidden">
+      <!-- Sidebar -->
+      <a class="mt-3 nav-link " href="{% url 'welcome' %}" id="welcome-btn">
+        <img src="../../static/assets/images/main.png" height="26" width="30">
+        <span class="nav-text">Inicio</span>
+      </a>
+      <hr class="">
+      <a class="mt-2 nav-link" href="{% url 'cedulas' %}" id="control-nomina-btn">
+        <img src="../../static/assets/images/estudiantes.png" width="28" height="28">
+        <span class="nav-text">Estudiantes</span>
+      </a>
+      <a class="nav-link" href="#">
+        <img src="../../static/assets/images/usuarios.png" width="28" height="28">
+        <span class="nav-text">Usuarios</span>
+      </a>
+      <a class="nav-link" href="#" style="background-color: #922323">
+        <img src="../../static/assets/images/cursos.png" width="28" height="28">
+        <span class="nav-text">Cursos</span>
+      </a>
+      <a class="nav-link" href="#">
+        <img src="../../static/assets/images/mipefil.png" width="28" height="28">
+        <span class="nav-text">Mi Perfil</span>
+      </a>
+      <a class="nav-link" href="{% url 'calendario' %}" id="calendario-btn">
+        <span class="nav-text">Calendario</span>
+      </a>
+      <a class="nav-link mt-auto" href="{% url 'logout' %}">
+        <img src="../../static/assets/images/logout1.png" width="28" height="28">
+        <span class="nav-text">Cerrar Sesión</span>
+      </a>
+
+
+    </div>
+
+
+
+    <!-- Contenido principal -->
+
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto">
+      <!-- Encabezado y barra de búsqueda -->
+      <div class="container-fluid ">
+        <div class="d-flex justify-content-between align-items-center ">
+          <!-- Título "Cursos" a la izquierda -->
+
+          <!-- Barra de búsqueda -->
+          <div class="d-flex flex-column flex-grow-1">
+            <h2 class="fw-bold">Cursos</h2>
+            <div class="input-group mb-4  search-bar search-lens z-0">
+              <input type="text" class="w-25  bg-my-background-color text-white border rounded p-2 pe-5"
+                aria-label="Buscar">
+              <button class="btn btn-sm rounded-circle mt-1 z-4" type="button">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Botón "+" y texto "Añadir Curso" a la derecha -->
+          <div class="d-flex flex-column align-items-center align-items-end">
+            <button type="button" class="btn rounded-circle" data-bs-toggle="modal"
+              data-bs-target="#controlNominaModal">
+              <img src="../../static/assets/images/agregar.png" alt="agregar" width="70" height="70" class="">
+            </button>
+            <span class="text-white fw-bold mt-2 mb-2">Añadir Curso</span>
+          </div>
+        </div>
+
+
+
+
+
+        <div class="list-group d-flex flex-column gap-4 w-100 mt-2 ">
+          <!-- Botón 1 -->
+
+          <div class="btn-group cursos_btn_size">
+            <a class="btn btn-light btn-lg w-100 d-flex align-items-center justify-content-start py-1"
+              href="{% url 'niveles' %}" type="button">
+
+              <img src="../../static/assets/images/flag.png" alt="Bandera" width="40" height="40"
+                class="rounded-circle me-4">
+              <span class="fs-1 text-my-text-purple fw-bold">English</span>
+            </a>
+            <!-- el boton flecha -->
+
+            <button type="button" class="btn btn-lg btn-light dropdown-toggle" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <span class="visually-hidden">Toggle Dropdown</span>
+              <span class="dropdown-icon">⋮</span>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#">Editar</a></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li><a class="dropdown-item text-danger" href="#">Eliminar</a></li>
+            </ul>
+          </div>
+
+
+          <!-- Botón 2 -->
+
+          <div class="btn-group cursos_btn_size">
+            <a class="btn btn-light btn-lg w-100 d-flex align-items-center justify-content-start py-1" type="button"
+              href="{% url 'niveles' %}">
+              <img src="../../static/assets/images/flag.png" alt="Bandera" width="40" height="40"
+                class="rounded-circle me-4">
+              <span class="fs-1 text-my-text-purple fw-bold">English</span>
+            </a>
+            <!-- el boton flecha -->
+
+            <button type="button" class="btn btn-lg btn-light dropdown-toggle" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <span class="visually-hidden">Toggle Dropdown</span>
+              <span class="dropdown-icon">⋮</span>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#">Editar</a></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li><a class="dropdown-item text-danger" href="#">Eliminar</a></li>
+            </ul>
+          </div>
+
+          <!-- Botón 3 -->
+
+          <div class="btn-group cursos_btn_size">
+            <a class="btn btn-light btn-lg w-100 d-flex align-items-center justify-content-start py-1" type="button"
+              href="{% url 'niveles' %}">
+              <img src="../../static/assets/images/flag.png" alt="Bandera" width="40" height="40"
+                class="rounded-circle me-4">
+              <span class="fs-1 text-my-text-purple fw-bold">English</span>
+            </a>
+            <!-- el boton flecha -->
+
+            <button type="button" class="btn btn-lg btn-light dropdown-toggle" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <span class="visually-hidden">Toggle Dropdown</span>
+              <span class="dropdown-icon">⋮</span>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#">Editar</a></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li><a class="dropdown-item text-danger" href="#">Eliminar</a></li>
+            </ul>
+          </div>
+
+          <!-- Botón 4 -->
+
+          <div class="btn-group cursos_btn_size">
+            <a class="btn btn-light btn-lg w-100 d-flex align-items-center justify-content-start py-1" type="button"
+              href="{% url 'niveles' %}">
+              <img src="../../static/assets/images/flag.png" alt="Bandera" width="40" height="40"
+                class="rounded-circle me-4">
+              <span class="fs-1 text-my-text-purple fw-bold">English</span>
+            </a>
+            <!-- el boton flecha -->
+
+            <button type="button" class="btn btn-lg btn-light dropdown-toggle" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <span class="visually-hidden">Toggle Dropdown</span>
+              <span class="dropdown-icon">⋮</span>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#">Editar</a></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li><a class="dropdown-item text-danger" href="#">Eliminar</a></li>
+            </ul>
+          </div>
+
+
+
+
+          <!-- Botón 5 -->
+
+          <div class="btn-group cursos_btn_size">
+            <a class="btn btn-light btn-lg w-100 d-flex align-items-center justify-content-start py-1" type="button"
+              href="{% url 'niveles' %}">
+              <img src="../../static/assets/images/flag.png" alt="Bandera" width="40" height="40"
+                class="rounded-circle me-4">
+              <span class="fs-1 text-my-text-purple fw-bold">English</span>
+            </a>
+            <!-- el boton flecha -->
+
+            <button type="button" class="btn btn-lg btn-light dropdown-toggle" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <span class="visually-hidden">Toggle Dropdown</span>
+              <span class="dropdown-icon">⋮</span>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#">Editar</a></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li><a class="dropdown-item text-danger" href="#">Eliminar</a></li>
+            </ul>
+          </div>
+
+
+
+          <div class="pagination-container d-flex justify-content-center align-items-center ">
+            <button id="prev-page" class="btn pagination-btn">
+              <img src="../../static/assets/images/flecha_izq.png" alt="Anterior" width="40" height="30">
+            </button>
+            <span id="page-info" class="page-info text-white mx-3">1/1</span>
+            <button id="next-page" class="btn pagination-btn">
+              <img src="../../static/assets/images/flecha_der.png" alt="Siguiente" width="40" height="30">
+            </button>
+          </div>
+
+
+          <!--  -->
+        </div>
+      </div>
+      <!-- Ventana Modal -->
+      <div class="modal fade" id="controlNominaModal" tabindex="-1" aria-labelledby="controlNominaModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content ">
+            <!-- Encabezado del Modal -->
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title text-center w-100" id="modalTitle">Agregar Curso</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Cuerpo del Modal -->
+            <div class="modal-body">
+              <!-- Formulario -->
+              <form id="nominaForm" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="id" id="cedulaIdInput" value="">
+
+
+
+
+
+                <!-- Nombre -->
+                <div class="mb-3">
+                  <label for="nombre" class="form-label">Nombre Del Curso:</label>
+                  <input type="text" class="form-control" id="nombre" name="nombre" required maxlength="50">
+                </div>
+
+                <!-- Descripción -->
+                <div class="mb-3">
+                  <label for="descripcion" class="form-label">Descripción del Curso (opcional):</label>
+                  <textarea class="form-control" id="descripcion" name="descripcion" rows="3" maxlength="200"
+                    oninput="updateCharCount()"></textarea>
+
+                  <!-- Contador de caracteres -->
+                  <div class="form-text text-end" id="charCount">0/200</div>
+                </div>
+
+                <!-- Campo de imagen -->
+                <div class="mb-3">
+                  <label for="imagen" class="form-label">Imagen del Curso (opcional):</label>
+                  <input type="file" class="form-control" id="imagen" name="imagen" accept="image/*"
+                    onchange="previewImage(event)">
+
+                  <div class="mt-2">
+                    <img id="imagenPreview" src="#" alt="Vista previa" class="img-fluid rounded"
+                      style="max-height: 150px; display: none;">
+                  </div>
+                  <small class="text-muted">Formatos permitidos: JPG, PNG. Tamaño recomendado: 200x200 px.</small>
+                </div>
+              </form>
+            </div>
+
+            <!-- Pie del Modal -->
+            <div class="modal-footer">
+              <div class="row w-100">
+                <div class="col">
+                  <button type="submit" form="nominaForm" class="btn btn-primary w-100">Guardar</button>
+                </div>
+                <div class="col">
+                  <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const itemsPerPage = 4;
+    const items = document.querySelectorAll('.list-group .btn-group');
+    const totalPages = Math.ceil(items.length / itemsPerPage);
+    let currentPage = 1;
+
+    function showPage(page) {
+      // Validar rango
+      if (page < 1 || page > totalPages) return;
+
+      // Ocultar todos los elementos
+      items.forEach(item => {
+        item.style.display = 'none';
+      });
+
+      // Mostrar solo los de la página actual
+      const start = (page - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      for (let i = start; i < end && i < items.length; i++) {
+        items[i].style.display = 'inline-flex'; // o 'flex', dependiendo del diseño
+      }
+
+      // Actualizar estado
+      currentPage = page;
+      updatePaginationInfo();
+    }
+
+    function updatePaginationInfo() {
+      const prevBtn = document.getElementById('prev-page');
+      const nextBtn = document.getElementById('next-page');
+      const pageInfo = document.getElementById('page-info');
+
+      // Actualizar texto de página
+      pageInfo.textContent = `${currentPage}/${totalPages}`;
+
+      // Mostrar u ocultar botones según la página actual
+      if (currentPage === 1) {
+        prevBtn.style.display = 'none';  // Ocultar botón "Anterior"
+      } else {
+        prevBtn.style.display = '';      // Mostrar (restaurar valor por defecto)
+      }
+
+      if (currentPage === totalPages) {
+        nextBtn.style.display = 'none';  // Ocultar botón "Siguiente"
+      } else {
+        nextBtn.style.display = '';      // Mostrar (restaurar valor por defecto)
+      }
+    }
+    // Eventos para los botones
+    document.getElementById('prev-page').addEventListener('click', () => {
+      if (currentPage > 1) {
+        showPage(currentPage - 1);
+      }
+    });
+
+    document.getElementById('next-page').addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        showPage(currentPage + 1);
+      }
+    });
+
+    // Inicializar
+    showPage(1);
+
+
+  </script>
+
+  <script>
+    function previewImage(event) {
+      const preview = document.getElementById('imagenPreview');
+      const file = event.target.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        preview.src = '#';
+        preview.style.display = 'none';
+      }
+    }
+  </script>
+
+  <script>
+    function updateCharCount() {
+      const textarea = document.getElementById('descripcion');
+      const charCount = document.getElementById('charCount');
+      const currentLength = textarea.value.length;
+      const maxLength = textarea.getAttribute('maxlength');
+
+      charCount.textContent = `${currentLength}/${maxLength}`;
+
+      // Cambiar color cuando se acerca al límite
+      if (currentLength > maxLength * 0.9) {
+        charCount.className = 'form-text text-end text-danger';
+      } else {
+        charCount.className = 'form-text text-end';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', updateCharCount);
+  </script>
+  <!-- <script src="../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script> -->
+
+</body>
+
+</html>

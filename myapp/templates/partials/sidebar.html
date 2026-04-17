@@ -1,0 +1,153 @@
+{% load static %}
+
+ <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+<!-- Barra lateral izquierda -->
+  
+  <!-- Botón para abrir el sidebar en móviles -->
+    
+  <div class="d-none d-md-block z-3">
+  <div class="sidebar degradado-sidebar d-flex flex-column text-white min-vh-100 overflow-hidden">
+      <!-- Sidebar -->
+      
+      {# Inicio - Todos los roles #}
+      <a class="mt-3 nav-link " href="{% url 'welcome' %}" id="welcome-btn">
+        <i class="fa fa-home" aria-hidden="true" style="height: 26px; width: 30px; font-size: 1.7rem;"></i> 
+        <span class="nav-text">Inicio</span>
+      </a>
+      <hr class="">
+      
+      {# Docentes - Solo Admin #}
+      {% if is_admin %}
+      <a class="mt-2 nav-link" href="{% url 'docentes' %}"
+      {% if request.resolver_match.url_name == 'docentes' %}style="background-color: #922323"{% endif %} id="docentes-btn">
+        <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28">
+        <span class="nav-text">Docentes</span>
+      </a>
+      {% endif %}
+      
+      {# Estudiantes - Solo Admin #}
+      {% if is_admin %}
+      <a class="mt-2 nav-link" href="{% url 'cedulas' %}"
+      {% if request.resolver_match.url_name == 'cedulas' %}style="background-color: #922323"{% endif %} id="control-nomina-btn">
+        <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28">
+        <span class="nav-text">Estudiantes</span>
+      </a>
+      {% endif %}
+      
+      {# Usuarios - Solo Admin #}
+      {% if is_admin %}
+      <a class="nav-link" href="{% url 'usuarios' %}"
+      {% if request.resolver_match.url_name == 'usuarios' %}style="background-color: #922323"{% endif %} id="usuarios-btn">
+        <img src="{% static 'assets/images/usuarios.png' %}" width="28" height="28">
+        <span class="nav-text">Usuarios</span>
+      </a>
+      {% endif %}
+      
+      {# Cursos - Todos los roles #}
+      <a class="nav-link" href="{% url 'cursos' %}"
+      {% if request.resolver_match.url_name == 'cursos' %}style="background-color: #922323"{% endif %} id="cursos-btn">
+        <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28">
+        <span class="nav-text">Cursos</span>
+      </a>
+      
+      {# Mis Notas - Solo Estudiantes #}
+      {% if is_student %}
+      <a class="nav-link" href="{% url 'mis_notas' %}"
+      {% if request.resolver_match.url_name == 'mis_notas' %}style="background-color: #922323"{% endif %}>
+        <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28">
+        <span class="nav-text">Mis Notas</span>
+      </a>
+      {% endif %}
+      
+      {# Mi Perfil - Todos los roles #}
+      <a class="nav-link" href="{% url 'perfil' %}"
+      {% if request.resolver_match.url_name == 'mi_perfil' %}style="background-color: #922323"{% endif %}>
+        <img src="{% static 'assets/images/mipefil.png' %}" width="28" height="28">
+        <span class="nav-text">Mi Perfil</span>
+      </a>
+      
+      {# To-Do List - Solo Admin #}
+      {% if is_admin %}
+      <a class="nav-link" href="{% url 'todolist' %}"
+       {% if request.resolver_match.url_name == 'todolist' %}style="background-color: #922323"{% endif %}>
+        <span class="nav-text">To-Do List</span>
+      </a>
+      {% endif %}
+      
+      {# Test Zone - Solo Admin #}
+      {% if is_admin %}
+      <a class="nav-link" href="{% url 'test_zone' %}"
+      {% if request.resolver_match.url_name == 'test_zone' %}style="background-color: #922323"{% endif %} id="test_zone-btn">
+        <span class="nav-text">test_zone</span>
+      </a>
+      {% endif %}
+      
+      {# Cerrar Sesión - Todos los roles #}
+      <a class="nav-link mt-auto" href="{% url 'logout' %}">
+        <img src="{% static 'assets/images/logout1.png' %}" width="28" height="28">
+        <span class="nav-text">Cerrar Sesión</span>
+      </a>
+
+    </div>
+
+</div>
+
+<div class="offcanvas offcanvas-start d-md-none text-white h-100 w-100"
+     tabindex="-1"
+     id="mobileSidebar"
+     aria-labelledby="mobileSidebarLabel"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false"
+     style="background-color: #002152">
+  <div class="offcanvas-header border-bottom border-secondary">
+    <h5 class="offcanvas-title ps-2" id="mobileSidebarLabel">Menú</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body p-0">
+    <div class="d-flex flex-column h-100 py-4" style="background-color: #002763">
+      <!-- Tus enlaces (optimizados para móvil) -->
+      <a class=" nav-link align-items-center  px-4 py-3 rounded" href="{% url 'welcome' %}">
+        <i class="fa fa-home me-3" style="font-size: 1.5rem;"></i> Inicio
+      </a>
+      
+      <a class="nav-link align-items-center px-4  py-3 rounded" href="{% url 'docentes' %}"
+        {% if request.resolver_match.url_name == 'docentes' %}style="background-color: #922323;"{% endif %}>
+        <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28" class="me-3"> Docentes
+      </a>
+      <!-- Estudiantes -->
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'cedulas' %}"
+        {% if request.resolver_match.url_name == 'cedulas' %}style="background-color: #922323;"{% endif %}>
+        <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28" class="me-3"> Estudiantes
+      </a>
+
+      <!-- Usuarios -->
+      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'usuarios' %}"
+        {% if request.resolver_match.url_name == 'usuarios' %}style="background-color: #922323;"{% endif %}>
+        <img src="{% static 'assets/images/usuarios.png' %}" width="28" height="28" class="me-3"> Usuarios
+      </a>
+
+      <!-- Cursos -->
+      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'cursos' %}"
+        {% if request.resolver_match.url_name == 'cursos' %}style="background-color: #922323;"{% endif %}>
+        <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28" class="me-3"> Cursos
+      </a>
+
+      <!-- Mi Perfil -->
+      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'perfil' %}"
+        {% if request.resolver_match.url_name == 'mi_perfil' %}style="background-color: #922323;"{% endif %}>
+        <img src="{% static 'assets/images/mipefil.png' %}" width="28" height="28" class="me-3"> Mi Perfil
+      </a>
+
+
+      <!-- Cerrar Sesión: pegado al fondo -->
+      <a class=" nav-link align-items-center  px-4 py-3 rounded mt-auto" href="{% url 'logout' %}">
+        <img src="{% static 'assets/images/logout1.png' %}" width="28" height="28" class="me-3"> Cerrar Sesión
+      </a>
+    </div>
+  </div>
+</div>
+
+
+

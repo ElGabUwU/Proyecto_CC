@@ -1,0 +1,151 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Notas - The Professor</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+
+  <!-- SweetAlert2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+
+  <style>
+    .nota-card {
+      transition: transform 0.2s;
+    }
+    .nota-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .nota-valor {
+      font-size: 2rem;
+      font-weight: bold;
+    }
+    .nota-aprobada {
+      color: #28a745;
+    }
+    .nota-reprobada {
+      color: #dc3545;
+    }
+  </style>
+
+  {% include 'partials/session_timeout.html' %}
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white">
+    <!-- SIDEBAR -->
+    {% include 'partials/sidebar.html' %}
+
+    <!-- Contenido principal -->
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      
+      <!-- Breadcrumb de navegación -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb p-2 mb-2 bg-light rounded">
+          <li class="breadcrumb-item">
+            <a href="{% url 'home' %}" class="fw-bold text-dark text-decoration-none">Inicio</a>
+          </li>
+          <li class="breadcrumb-item active fw-bold text-primary" aria-current="page">
+            Mis Notas
+          </li>
+        </ol>
+      </nav>
+
+      <div class="card shadow">
+        <div class="card-header">
+          <h4 class="mb-0">
+            <i class="fas fa-graduation-cap"></i> Mis Notas
+          </h4>
+        </div>
+        
+        <div class="card-body">
+          <!-- Mensaje de error si aplica -->
+            {% if error %}
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> {{ error }}
+              </div>
+            {% endif %}
+
+            {% if notas %}
+              <div class="alert alert-success mb-4">
+                <i class="fas fa-check-circle"></i> Tienes <strong>{{ total_notas }}</strong> nota(s) registrada(s).
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                  <thead class="table-primary">
+                    <tr>
+                      <th>#</th>
+                      <th>Evaluación</th>
+                      <th>Tipo</th>
+                      <th>Fecha</th>
+                      <th>Nota</th>
+                      <th>Peso (%)</th>
+                      <th>Observaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for item in notas %}
+                    <tr class="nota-card">
+                      <td class="text-center">{{ forloop.counter }}</td>
+                      <td>
+                        <strong>{{ item.evaluacion.name }}</strong>
+                      </td>
+                      <td>{{ item.evaluacion.get_tipo_evaluacion_display }}</td>
+                      <td>{{ item.evaluacion.date|date:"d/m/Y" }}</td>
+                      <td class="text-center">
+                        {% if item.grades >= 60 %}
+                          <span class="nota-valor nota-aprobada">{{ item.grades }}</span>
+                        {% else %}
+                          <span class="nota-valor nota-reprobada">{{ item.grades }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-center">{{ item.evaluacion.percentage_grade }}%</td>
+                      <td>{{ item.observations|default:"Sin observaciones" }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+            {% else %}
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> 
+                <strong>Aún no tienes notas.</strong> 
+                Las notas aparecerán aquí después de que tu profesor las cargue.
+              </div>
+            {% endif %}
+          </div> <!-- Cierra card-body -->
+        </div> <!-- Cierra card -->
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+
+  <script>
+    // Protección contra navegación del historial sin autenticación
+    const isAuthenticated = "{{ request.user.is_authenticated|yesno:'true,false' }}";
+    window.onpageshow = function (event) {
+      if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+        if (isAuthenticated === 'false') {
+          window.location.href = "{% url 'login' %}";
+        }
+      }
+    };
+  </script>
+</body>
+
+</html>

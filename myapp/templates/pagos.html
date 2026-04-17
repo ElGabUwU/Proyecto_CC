@@ -1,0 +1,439 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Docentes - The Professor</title>
+  <!-- Bootstrap CSS -->
+
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+
+
+  <!-- SweetAlert2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <!-- FullCalendar CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- Control de sesión por inactividad -->
+  {% include 'partials/session_timeout.html' %}
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white ">
+    <!-- SIDEBAR -->
+    {% include 'partials/sidebar.html' %}
+
+    <!-- Contenido principal -->
+
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      <div class="card shadow">
+        <div class="card-header">Lista de Pagos del estudiante {{ student.name }} {{ student.surname }}</div>
+        
+          <div class="card-body">
+            <div class="mb-3">
+
+              <!-- Formulario de Búsqueda -->
+              <form method="get" action="{% url 'docentes' %}" class="mb-3">
+                <div class="row g-2 align-items-end">
+
+                  <!-- Campo de búsqueda -->
+                  <div class="col-12 col-md">
+                    <label class="visually-hidden" for="q">Buscar</label>
+                    
+                    <div class="input-group">
+                      <input type="text" name="q" id="q" class="form-control"
+                        placeholder="Buscar..." value="{{ query|default_if_none:'' }}">
+                    </div>
+                  </div>
+
+                  <!-- Selector de campo -->
+                  <div class="col-12 col-md-auto">
+                    <label class="visually-hidden" for="campo">Campo</label>
+                    <select name="campo" id="campo" class="form-select">
+                      <option value="todos" {% if campo == "todos" %}selected{% endif %}>Todos los campos</option>
+                      <option value="curso" {% if campo == "curso" %}selected{% endif %}>Curso</option>
+                      <option value="fecha" {% if campo == "fecha" %}selected{% endif %}>Fecha</option>
+                     
+                      
+                    </select>
+                  </div>
+
+                  <!-- Botones -->
+                  <div class="col-12 col-md-auto d-flex flex-wrap gap-2">
+                    <button class="btn btn-secondary flex-grow-1 flex-md-grow-0" type="submit">
+                      <i class="fa fa-search me-1"></i>Buscar
+                    </button>
+                    <a href="{% url 'docentes' %}" class="btn btn-secondary flex-grow-1 flex-md-grow-0">
+                      <i class="fa fa-undo me-1"></i>Refrescar
+                    </a>
+                    <button type="button" class="btn btn-primary flex-grow-1 flex-md-grow-0"
+                      data-bs-toggle="modal" data-bs-target="#añadirPagoModal">
+                      <i class="fas fa-plus me-1"></i>Añadir
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <hr class="d-block d-md-none mx-n3 my-3">
+            <!-- Botón de exportar -->
+            <form method="get" action="{% url 'export_tutors' %}" class="mb-3">
+              <div class="row g-2 align-items-end">
+                
+              <!-- Botón de descarga -->
+              <div class="col-12 col-md-auto">
+                <button type="submit" class="btn btn-success w-100 w-md-auto">
+                  <i class="fa fa-download me-1"></i>Descargar Reporte en PDF
+                </button>
+              </div>
+              </div>
+            </form>
+
+            <!-- Tabla de Resultados -->
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead>
+                  <tr class="align-top">
+                    <th style="min-width: 101px; width: 101px;">Acciones</th>
+                    <th>Curso</th>
+                    <th>Fecha</th>
+                    
+                    <th>Monto</th>
+                    
+                    
+                  </tr>
+                </thead>
+                <tbody id="tabla-resultados">
+                  {% if pago %}
+                  {% for pago in pagos %}
+                  <tr>
+                    <td>
+                      <button type="button" class="btn btn-warning btn-sm mb-2" data-bs-toggle="modal"
+                        data-bs-target="#editPagoModal" data-tutor-id="{{ tutor.id }}" style="padding-inline: 0.87rem;"><i class="fas fa-edit me-1"></i>Editar</button>
+                      <form action="{% url 'eliminar_docente' tutor.id %}" method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash me-1"></i>Eliminar</button>
+                      </form>
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    
+                    
+                  </tr>
+                  {% endfor %}
+                  {% else %}
+                  <tr>
+                    <td colspan="11" class="text-center text-muted">No se encontraron registros.</td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+            
+          </div>
+          
+        </div>
+        <!-- Paginación con flechas personalizadas -->
+            <div class="pagination-container d-flex justify-content-center align-items-center my-4">
+              <button 
+                id="prev-page" 
+                class="btn pagination-btn" 
+                {% if not tutors.has_previous %}disabled{% endif %}
+              >
+                <img src="{% static 'assets/images/flecha_izq.png' %}" alt="Anterior" width="40" height="30">
+              </button>
+              <span id="page-info" class="page-info text-white mx-3">
+                {{ tutors.number }} / {{ tutors.paginator.num_pages }}
+              </span>
+              <button 
+                id="next-page" 
+                class="btn pagination-btn" 
+                {% if not tutors.has_next %}disabled{% endif %}
+              >
+                <img src="{% static 'assets/images/flecha_der.png' %}" alt="Siguiente" width="40" height="30">
+              </button>
+            </div>
+      </div>
+      
+    <!-- Modal para añadir pago -->
+        <div class="modal fade" id="añadirPagoModal" tabindex="-1" aria-labelledby="addPagoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title text-center w-100">Añadir Pago</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="añadirPagoForm" method="POST">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                            <label for="añadir_monto" class="form-label">Curso:</label>
+                            <input type="text" class="form-control" id="add_curso" name="curso" required>
+                            </div>
+                            <div class="mb-3">
+                            <label for="add_mes" class="form-label">Fecha:</label>
+                            <input type="month" class="form-control" id="add_mes" name="mes" required>
+                            </div>
+                            <div class="mb-3">
+                            <label for="edit_password" class="form-label">Monto:</label>
+                            <input type="text" class="form-control" id="add_monto" name="monto" required>
+                            </div>
+                            <div class="mb-3">
+                        </form>
+                    </div>
+                    <!-- Pie del Modal -->
+                    <div class="modal-footer">
+                    <div class="row w-100">
+                        <div class="col">
+                        <button type="submit" form="añadirPagoForm" class="btn btn-primary w-100">Guardar</button>
+                        </div>
+                        <div class="col">
+                        <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </div>
+                    </div>
+
+
+
+                </div>
+            </div>
+      
+
+
+            
+
+          </div>
+        </div>      
+
+
+
+
+      <!-- Modal para Editar pago -->
+        <div class="modal fade" id="editPagoModal" tabindex="-1" aria-labelledby="editPagoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title text-center w-100">Editar Pago</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editPagoForm" method="POST">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                            <label for="edit_monto" class="form-label">Monto:</label>
+                            <input type="text" class="form-control" id="edit_monto" name="monto" required>
+                            </div>
+                            
+                        </form>
+                    </div>
+                    
+                    <!-- Pie del Modal -->
+                    <div class="modal-footer">
+                    <div class="row w-100">
+                        <div class="col">
+                        <button type="submit" form="editPagoForm" class="btn btn-primary w-100">Guardar</button>
+                        </div>
+                        <div class="col">
+                        <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </div>
+                    </div>
+
+
+
+                </div>
+            </div>
+      
+
+
+            <!-- Pie del Modal -->
+            <div class="modal-footer">
+              <div class="row w-100">
+                <div class="col">
+                  <button type="submit" form="nominaForm" class="btn btn-primary w-100">Guardar</button>
+                </div>
+                <div class="col">
+                  <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+      <!-- Bootstrap JS Bundle -->
+      <script src="../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    </main>
+    
+  </div>
+
+  <!-- Scripts -->
+  <!-- Script para manejar el comportamiento del modal -->
+
+  <script>
+    // Capturar el evento de apertura del modal
+    const modal = document.getElementById('controlNominaModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const tutorIdInput = document.getElementById('tutorIdInput');
+    const nominaForm = document.getElementById('nominaForm');
+
+
+    // Escuchar el evento 'show.bs.modal' para detectar cuándo se abre el modal
+    modal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      const tutorId = button.getAttribute('data-tutor-id');
+
+      if (tutorId) {
+        modalTitle.textContent = 'Editar Datos';
+        nominaForm.action = `/docentes/editar/${tutorId}/`;
+
+        // AJAX para obtener los datos del tutor y llenar el formulario
+        fetch(`/docentes/api/${tutorId}/`)
+          .then(response => response.json())
+          .then(data => {
+            for (const [key, value] of Object.entries(data)) {
+              const input = nominaForm.querySelector(`[name="${key}"]`);
+              if (input) {
+                input.value = value !== null ? value : '';
+              }
+            }
+          });
+      } else {
+        modalTitle.textContent = 'Ingresar Datos';
+        nominaForm.action = "{% url 'docentes' %}";
+        nominaForm.reset();
+      }
+    });
+
+    // Escuchar el evento 'hidden.bs.modal' para restablecer el estado al cerrar el modal
+    modal.addEventListener('hidden.bs.modal', function () {
+      modalTitle.textContent = 'Ingresar Datos';
+      tutorIdInput.value = '';
+      nominaForm.reset();
+      nominaForm.action = "{% url 'docentes' %}";
+    });
+  </script>
+
+
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+
+
+  <script>
+    window.onpageshow = function (event) {
+      if (event.persisted || performance.navigation.type === PerformanceNavigation.TYPE_BACK_FORWARD) {
+        // Si viene del historial → redirigir al login
+        window.location.href = "{% url 'login' %}";
+      }
+    };
+  </script>
+  <script>
+    // Verifica si el usuario está autenticado (usando una variable de contexto)
+    const isAuthenticated = "{{ request.user.is_authenticated|yesno:'true,false' }}";
+
+    window.onpageshow = function (event) {
+      if (event.persisted || performance.navigation.type === PerformanceNavigation.TYPE_BACK_FORWARD) {
+        // Si viene del historial y no está autenticado → redirigir
+        if (!isAuthenticated) {
+          window.location.href = "{% url 'login' %}";
+        }
+      }
+    };
+  </script>
+  <script>
+
+
+    // Función para capitalizar y validar caracteres en nombre y apellido
+    function capitalizarYValidar(input) {
+      input.value = input.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, '');
+      input.value = input.value
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+    // Función para validar la cédula según el tipo de documento
+    function validarCedula(input) {
+      const tipoDocumento = document.getElementById('id_type_document').value;
+      let longitudMaxima = tipoDocumento === 'V' ? 8 : 10;
+      input.value = input.value.replace(/\D/g, '');
+      if (input.value.length > longitudMaxima) {
+        input.value = input.value.slice(0, longitudMaxima);
+      }
+    }
+    $(document).ready(function () {
+      {% if messages %}
+      {% for message in messages %}
+      Swal.fire({
+        icon: '{{ message.tags }}',
+        title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error en los Datos{% else %}Notificación{% endif %}',
+        html: '{{ message.message|safe }}',
+        showConfirmButton: true
+      });
+      {% endfor %}
+      {% endif %}
+    });
+  </script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const prevButton = document.getElementById('prev-page');
+    const nextButton = document.getElementById('next-page');
+    const currentPage = {{ tutors.number }};
+    const totalPages = {{ tutors.paginator.num_pages }};
+    const query = "{{ query|default:'' }}";
+    const campo = "{{ campo|default:'' }}";
+
+    function buildURL(page) {
+      const url = new URL(window.location.href.split('?')[0], window.location.origin);
+      if (page > 1) {
+        url.searchParams.append('page', page);
+      }
+      if (query && query !== 'None' && query.trim() !== '') {
+        url.searchParams.append('q', query);
+      }
+      if (campo && campo !== 'None' && campo !== 'todos' && campo.trim() !== '') {
+        url.searchParams.append('campo', campo);
+      }
+      return url.toString();
+    }
+
+    // Botón Anterior
+    if (prevButton && !prevButton.disabled) {
+      prevButton.addEventListener('click', function () {
+        if (currentPage > 1) {
+          window.location.href = buildURL(currentPage - 1);
+        }
+      });
+    }
+
+    // Botón Siguiente
+    if (nextButton && !nextButton.disabled) {
+      nextButton.addEventListener('click', function () {
+        if (currentPage < totalPages) {
+          window.location.href = buildURL(currentPage + 1);
+        }
+      });
+    }
+  });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
