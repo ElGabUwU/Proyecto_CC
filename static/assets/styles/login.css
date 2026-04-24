@@ -9,14 +9,31 @@ html {
 }
 
 
+
 .fade-white {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: linear-gradient(to right, #f8f9fa, rgba(255, 255, 255, 0)),
-        url('../images/fondo_login2.png');
+    
+    background-image: 
+        linear-gradient(to right, #f8f9fa, #da4f4fd7);
+    
+    /* background-image: 
+        linear-gradient(to right, #f8f9fa, rgba(255, 255, 255, 0)),
+        url('../images/Flag_of_Venezuela.svg'); */
+    
     background-size: cover;
+    
+    /* 
+       'center center' centra la imagen.
+       
+       '30% center' moverá el punto focal horizontal al 30%.
+       'left center' es el default (0%).
+       'right center' mostraría la parte derecha.
+    */
+    background-position: center center; 
+    
     z-index: 0;
 }
