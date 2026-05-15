@@ -3,6 +3,10 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+#ARCHIVOS EXTRA
+DOCUMENTACION_CAMBIOS_FRONTEND.md
+RESUMEN_IMPLEMENTACION_COMUNITARIA.md
+
 # C extensions
 *.so
 

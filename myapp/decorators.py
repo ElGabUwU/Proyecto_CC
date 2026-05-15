@@ -293,3 +293,283 @@ def log_unauthorized_access(user, view_name, required_roles):
         f"Acceso no autorizado: {user_info} intentó acceder a {view_name}. "
         f"Roles requeridos: {required_roles}"
     )
+
+
+# ============================================
+# 🆕 NUEVO: Decoradores para Gestión Comunitaria
+# ============================================
+
+def vocero_finanzas_required(view_func):
+    """
+    Decorador para vistas que solo pueden acceder el vocero de finanzas y administradores.
+    
+    Uso:
+    @vocero_finanzas_required
+    def vista_finanzas(request):
+        pass
+    """
+    return role_required(['admin', 'vocero_finanzas'])(view_func)
+
+
+def vocero_secretaria_required(view_func):
+    """
+    Decorador para vistas que solo pueden acceder el vocero de secretaría y administradores.
+    
+    Uso:
+    @vocero_secretaria_required
+    def vista_documentacion(request):
+        pass
+    """
+    return role_required(['admin', 'vocero_secretaria'])(view_func)
+
+
+def vocero_salud_required(view_func):
+    """
+    Decorador para vistas que solo pueden acceder el vocero de salud y administradores.
+    
+    Uso:
+    @vocero_salud_required
+    def vista_salud(request):
+        pass
+    """
+    return role_required(['admin', 'vocero_salud'])(view_func)
+
+
+def vocero_educacion_required(view_func):
+    """
+    Decorador para vistas que solo pueden acceder el vocero de educación y administradores.
+    
+    Uso:
+    @vocero_educacion_required
+    def vista_educacion(request):
+        pass
+    """
+    return role_required(['admin', 'vocero_educacion'])(view_func)
+
+
+def comunitario_required(view_func):
+    """
+    Decorador para vistas que pueden acceder todos los voceros y administradores.
+    
+    Uso:
+    @comunitario_required
+    def vista_comunitaria(request):
+        pass
+    """
+    return role_required([
+        'admin', 
+        'vocero_finanzas', 
+        'vocero_secretaria', 
+        'vocero_salud', 
+        'vocero_educacion'
+    ])(view_func)
+
+
+def habitante_required(view_func):
+    """
+    Decorador para vistas específicas de habitantes.
+    
+    Uso:
+    @habitante_required
+    def vista_habitante(request):
+        pass
+    """
+    return role_required(['habitante'])(view_func)
+
+
+def comunitario_or_habitante_required(view_func):
+    """
+    Decorador para vistas que pueden acceder voceros, admin y habitantes.
+    
+    Uso:
+    @comunitario_or_habitante_required
+    def vista_general(request):
+        pass
+    """
+    return role_required([
+        'admin', 
+        'vocero_finanzas', 
+        'vocero_secretaria', 
+        'vocero_salud', 
+        'vocero_educacion',
+        'habitante'
+    ])(view_func)
+
+
+def comunitario_export_required(view_func):
+    """
+    Decorador para exportaciones comunitarias (solo voceros y admin).
+    
+    Uso:
+    @comunitario_export_required
+    def exportar_finanzas(request):
+        pass
+    """
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        user_role = getattr(request.user, 'role', None)
+        
+        # Solo voceros y admin pueden exportar datos comunitarios
+        allowed_roles = [
+            'admin', 
+            'vocero_finanzas', 
+            'vocero_secretaria', 
+            'vocero_salud', 
+            'vocero_educacion'
+        ]
+        
+        if user_role not in allowed_roles:
+            messages.error(
+                request,
+                'No tienes permisos para exportar datos comunitarios. '
+                'Solo voceros y administradores pueden realizar esta acción.'
+            )
+            return redirect('dashboard_comunitario')
+        
+        return view_func(request, *args, **kwargs)
+    
+    return wrapper
+
+
+def finanzas_write_required(view_func):
+    """
+    Decorador específico para operaciones de escritura en finanzas.
+    Solo vocero de finanzas y admin pueden escribir.
+    Otros voceros solo pueden leer.
+    
+    Uso:
+    @finanzas_write_required
+    def crear_ingreso(request):
+        pass
+    """
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        user_role = getattr(request.user, 'role', None)
+        
+        # Solo vocero_finanzas y admin pueden escribir en finanzas
+        if user_role not in ['admin', 'vocero_finanzas']:
+            messages.error(
+                request,
+                'No tienes permisos para modificar datos financieros. '
+                'Solo el vocero de finanzas y administradores pueden realizar esta acción.'
+            )
+            return redirect('finanzas')
+        
+        return view_func(request, *args, **kwargs)
+    
+    return wrapper
+
+
+def documentacion_write_required(view_func):
+    """
+    Decorador específico para operaciones de escritura en documentación.
+    Solo vocero de secretaría y admin pueden escribir.
+    
+    Uso:
+    @documentacion_write_required
+    def generar_constancia(request):
+        pass
+    """
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        user_role = getattr(request.user, 'role', None)
+        
+        # Solo vocero_secretaria y admin pueden generar documentos
+        if user_role not in ['admin', 'vocero_secretaria']:
+            messages.error(
+                request,
+                'No tienes permisos para generar documentos. '
+                'Solo el vocero de secretaría y administradores pueden realizar esta acción.'
+            )
+            return redirect('documentacion')
+        
+        return view_func(request, *args, **kwargs)
+    
+    return wrapper
+
+
+# Función helper para verificar permisos comunitarios en templates
+def user_can_access_comunitario(user, area=None):
+    """
+    Función helper para verificar permisos comunitarios en templates.
+    
+    Args:
+        user: Usuario de Django
+        area (str, optional): Área específica a verificar
+            - 'finanzas': Permisos de finanzas
+            - 'documentacion': Permisos de documentación
+            - 'salud': Permisos de salud
+            - 'educacion': Permisos de educación
+            - 'general': Permisos generales comunitarios
+    
+    Returns:
+        bool: True si el usuario puede acceder al área especificada
+    
+    Uso en template:
+    {% load custom_tags %}
+    {% if user|can_access_comunitario:'finanzas' %}
+        <a href="{% url 'finanzas' %}">Finanzas</a>
+    {% endif %}
+    """
+    if not user.is_authenticated:
+        return False
+    
+    user_role = getattr(user, 'role', None)
+    
+    # Roles comunitarios
+    roles_comunitarios = [
+        'admin', 
+        'vocero_finanzas', 
+        'vocero_secretaria', 
+        'vocero_salud', 
+        'vocero_educacion'
+    ]
+    
+    # Si no se especifica área, verificar si es comunitario en general
+    if area is None:
+        return user_role in roles_comunitarios
+    
+    # Verificar por área específica
+    if area == 'finanzas':
+        return user_role in ['admin', 'vocero_finanzas']
+    elif area == 'documentacion':
+        return user_role in ['admin', 'vocero_secretaria']
+    elif area == 'salud':
+        return user_role in ['admin', 'vocero_salud']
+    elif area == 'educacion':
+        return user_role in ['admin', 'vocero_educacion']
+    elif area == 'general':
+        return user_role in roles_comunitarios
+    elif area == 'habitante':
+        return user_role == 'habitante'
+    else:
+        # Área no reconocida
+        return False
+
+
+def log_acceso_comunitario(user, view_name, area=None):
+    """
+    Registra accesos a áreas comunitarias para auditoría.
+    
+    Args:
+        user: Usuario que accedió
+        view_name (str): Nombre de la vista
+        area (str, optional): Área comunitaria
+    """
+    import logging
+    
+    logger = logging.getLogger('comunidad')
+    
+    user_info = f"{user.username} ({getattr(user, 'role', 'sin_rol')})" if user.is_authenticated else "Anónimo"
+    
+    if area:
+        logger.info(
+            f"Acceso comunitario: {user_info} accedió a {view_name} (área: {area})"
+        )
+    else:
+        logger.info(
+            f"Acceso comunitario: {user_info} accedió a {view_name}"
+        )

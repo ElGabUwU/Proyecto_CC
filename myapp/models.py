@@ -20,6 +20,16 @@ ROLE_LIST_PREDIFINED = [
     ("tutor", "Tutor"), 
     ("admin", "Administrador")
 ]
+
+# 🆕 NUEVO: Roles para gestión comunitaria
+ROLES_COMUNITARIOS = [
+    ('admin', 'Administrador del Sistema'),
+    ('vocero_finanzas', 'Vocero de Finanzas'),
+    ('vocero_secretaria', 'Vocero de Secretaría'),
+    ('vocero_salud', 'Vocero de Salud'),
+    ('vocero_educacion', 'Vocero de Educación'),
+    ('habitante', 'Habitante de la Comunidad'),
+]
 COURSE_MODALITY_LIST_PREDIFINED = [
     ("virtual", "Virtual"),
     ("presencial", "Presencial")
@@ -500,3 +510,288 @@ class TodoItem(models.Model):
 
     def __str__(self):
         return self.task
+
+
+# ============================================
+# 🆕 NUEVO: Modelos para Gestión Comunitaria
+# ============================================
+
+class Familia(SoftDeleteModel):
+    """
+    Modelo que representa una familia en la comunidad.
+    Una familia tiene un jefe de familia y puede tener múltiples habitantes.
+    """
+    jefe_familia = models.ForeignKey(Person, on_delete=models.PROTECT, verbose_name="Jefe de Familia")
+    direccion = models.TextField(verbose_name="Dirección Completa")
+    numero_vivienda = models.CharField(max_length=10, blank=True, verbose_name="Número de Vivienda")
+    telefono_contacto = models.CharField(max_length=15, verbose_name="Teléfono de Contacto")
+    fecha_registro = models.DateField(auto_now_add=True, verbose_name="Fecha de Registro")
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+    
+    class Meta:
+        db_table = 'familias'
+        verbose_name = 'Familia'
+        verbose_name_plural = 'Familias'
+        ordering = ['-fecha_registro']
+    
+    def __str__(self):
+        return f"Familia {self.jefe_familia.name} - {self.direccion}"
+    
+    def cantidad_habitantes(self):
+        """Retorna la cantidad de habitantes en la familia"""
+        return self.habitante_set.count()
+
+
+class Habitante(SoftDeleteModel):
+    """
+    Modelo que representa a un habitante de la comunidad.
+    Relaciona una Persona con una Familia y datos comunitarios.
+    """
+    PARENTESCO_CHOICES = [
+        ('Jefe', 'Jefe de Familia'),
+        ('Esposa/Esposo', 'Esposa/Esposo'),
+        ('Hijo/Hija', 'Hijo/Hija'),
+        ('Nieto/Nieta', 'Nieto/Nieta'),
+        ('Padre/Madre', 'Padre/Madre'),
+        ('Hermano/Hermana', 'Hermano/Hermana'),
+        ('Otro', 'Otro Parentesco'),
+    ]
+    
+    NIVEL_EDUCATIVO_CHOICES = [
+        ('ninguno', 'Ninguno'),
+        ('primaria', 'Primaria'),
+        ('secundaria', 'Secundaria'),
+        ('tecnico', 'Técnico Medio'),
+        ('universitario', 'Universitario'),
+        ('postgrado', 'Postgrado'),
+    ]
+    
+    persona = models.ForeignKey(Person, on_delete=models.CASCADE, verbose_name="Persona")
+    familia = models.ForeignKey(Familia, on_delete=models.CASCADE, verbose_name="Familia")
+    parentesco_jefe = models.CharField(
+        max_length=50, 
+        choices=PARENTESCO_CHOICES, 
+        default='Jefe',
+        verbose_name="Parentesco con Jefe de Familia"
+    )
+    nivel_educativo = models.CharField(
+        max_length=100, 
+        choices=NIVEL_EDUCATIVO_CHOICES, 
+        blank=True,
+        verbose_name="Nivel Educativo"
+    )
+    ocupacion = models.CharField(max_length=100, blank=True, verbose_name="Ocupación")
+    ingresos_mensuales = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        null=True, 
+        blank=True,
+        verbose_name="Ingresos Mensuales (Bs.)"
+    )
+    condiciones_salud = models.TextField(blank=True, verbose_name="Condiciones de Salud")
+    fecha_registro_comunitario = models.DateField(auto_now_add=True, verbose_name="Fecha Registro Comunitario")
+    
+    class Meta:
+        db_table = 'habitantes'
+        verbose_name = 'Habitante'
+        verbose_name_plural = 'Habitantes'
+        ordering = ['familia', 'parentesco_jefe', 'persona__name']
+        unique_together = ['persona', 'familia']  # Una persona solo puede ser habitante de una familia
+    
+    def __str__(self):
+        return f"{self.persona.name} {self.persona.surname} - {self.get_parentesco_jefe_display()}"
+    
+    # Propiedades para acceder a los datos de la persona fácilmente
+    @property
+    def name(self):
+        return self.persona.name
+    
+    @property
+    def surname(self):
+        return self.persona.surname
+    
+    @property
+    def document_number(self):
+        return self.persona.document_number
+    
+    @property
+    def telephone_number(self):
+        return self.persona.telephone_number
+    
+    @property
+    def email(self):
+        return self.persona.email
+    
+    @property
+    def date_of_birth(self):
+        return self.persona.date_of_birth
+    
+    @property
+    def gender(self):
+        return self.persona.gender
+    
+    @property
+    def pais_origen(self):
+        return self.persona.pais_origen
+
+
+class IngresoComunal(models.Model):
+    """
+    Modelo para registrar ingresos de la caja comunal.
+    """
+    TIPO_INGRESO_CHOICES = [
+        ('aportes', 'Aportes de Familias'),
+        ('donaciones', 'Donaciones'),
+        ('actividades', 'Actividades Comunitarias'),
+        ('subvenciones', 'Subvenciones'),
+        ('otros', 'Otros Ingresos'),
+    ]
+    
+    fecha = models.DateField(verbose_name="Fecha del Ingreso")
+    tipo_ingreso = models.CharField(
+        max_length=50, 
+        choices=TIPO_INGRESO_CHOICES, 
+        default='aportes',
+        verbose_name="Tipo de Ingreso"
+    )
+    concepto = models.CharField(max_length=200, verbose_name="Concepto")
+    monto = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Monto (Bs.)")
+    responsable = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.PROTECT, 
+        related_name='ingresos_registrados',
+        verbose_name="Responsable"
+    )
+    soporte_digital = models.FileField(
+        upload_to='soportes/ingresos/', 
+        blank=True, 
+        null=True,
+        verbose_name="Soporte Digital"
+    )
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    
+    class Meta:
+        db_table = 'ingresos_comunales'
+        verbose_name = 'Ingreso Comunal'
+        verbose_name_plural = 'Ingresos Comunales'
+        ordering = ['-fecha', '-fecha_registro']
+    
+    def __str__(self):
+        return f"{self.fecha} - {self.concepto} - Bs. {self.monto}"
+
+
+class EgresoComunal(models.Model):
+    """
+    Modelo para registrar egresos de la caja comunal.
+    """
+    TIPO_EGRESO_CHOICES = [
+        ('mantenimiento', 'Mantenimiento Comunitario'),
+        ('servicios', 'Servicios Públicos'),
+        ('actividades', 'Actividades Comunitarias'),
+        ('emergencias', 'Emergencias'),
+        ('administrativos', 'Gastos Administrativos'),
+        ('otros', 'Otros Egresos'),
+    ]
+    
+    fecha = models.DateField(verbose_name="Fecha del Egreso")
+    tipo_egreso = models.CharField(
+        max_length=50, 
+        choices=TIPO_EGRESO_CHOICES, 
+        default='mantenimiento',
+        verbose_name="Tipo de Egreso"
+    )
+    concepto = models.CharField(max_length=200, verbose_name="Concepto")
+    monto = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Monto (Bs.)")
+    beneficiario = models.CharField(max_length=200, blank=True, verbose_name="Beneficiario")
+    responsable = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.PROTECT, 
+        related_name='egresos_registrados',
+        verbose_name="Responsable"
+    )
+    soporte = models.FileField(
+        upload_to='soportes/egresos/', 
+        blank=True, 
+        null=True,
+        verbose_name="Soporte"
+    )
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    
+    class Meta:
+        db_table = 'egresos_comunales'
+        verbose_name = 'Egreso Comunal'
+        verbose_name_plural = 'Egresos Comunales'
+        ordering = ['-fecha', '-fecha_registro']
+    
+    def __str__(self):
+        return f"{self.fecha} - {self.concepto} - Bs. {self.monto}"
+
+
+class ConstanciaResidencia(models.Model):
+    """
+    Modelo para registrar constancias de residencia generadas.
+    """
+    familia = models.ForeignKey(Familia, on_delete=models.CASCADE, verbose_name="Familia")
+    fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Generación")
+    fecha_documento = models.DateField(verbose_name="Fecha del Documento")
+    finalidad = models.TextField(verbose_name="Finalidad de la Constancia")
+    contenido = models.TextField(verbose_name="Contenido de la Constancia")
+    generado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.PROTECT, 
+        verbose_name="Generado por"
+    )
+    archivo_pdf = models.FileField(
+        upload_to='constancias/', 
+        blank=True, 
+        null=True,
+        verbose_name="Archivo PDF"
+    )
+    
+    class Meta:
+        db_table = 'constancias_residencia'
+        verbose_name = 'Constancia de Residencia'
+        verbose_name_plural = 'Constancias de Residencia'
+        ordering = ['-fecha_generacion']
+    
+    def __str__(self):
+        return f"Constancia {self.familia} - {self.fecha_documento}"
+
+
+class ActaReunion(models.Model):
+    """
+    Modelo para registrar actas de reuniones comunitarias.
+    """
+    titulo = models.CharField(max_length=200, verbose_name="Título del Acta")
+    fecha_reunion = models.DateTimeField(verbose_name="Fecha y Hora de la Reunión")
+    lugar = models.CharField(max_length=200, verbose_name="Lugar de la Reunión")
+    asistentes = models.TextField(verbose_name="Lista de Asistentes")
+    contenido = models.TextField(verbose_name="Contenido del Acta")
+    acuerdos = models.TextField(blank=True, verbose_name="Acuerdos Tomados")
+    generado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.PROTECT, 
+        verbose_name="Generado por"
+    )
+    fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Generación")
+    archivo_pdf = models.FileField(
+        upload_to='actas/', 
+        blank=True, 
+        null=True,
+        verbose_name="Archivo PDF"
+    )
+    
+    class Meta:
+        db_table = 'actas_reunion'
+        verbose_name = 'Acta de Reunión'
+        verbose_name_plural = 'Actas de Reunión'
+        ordering = ['-fecha_reunion']
+    
+    def __str__(self):
+        return f"{self.titulo} - {self.fecha_reunion}"
+    
+    def asistentes_count(self):
+        """Retorna la cantidad de asistentes"""
+        return len(self.asistentes.split(',')) if self.asistentes else 0

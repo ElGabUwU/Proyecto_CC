@@ -396,3 +396,639 @@ class EvaluacionForm(forms.ModelForm):
                 raise forms.ValidationError(f'Ya existe una evaluación con el título "{name}" en este grupo.')
         
         return True
+
+
+# ============================================
+# 🆕 NUEVO: Formularios para Gestión Comunitaria
+# ============================================
+
+from .models import Familia, Habitante, IngresoComunal, EgresoComunal, ConstanciaResidencia, ActaReunion
+import re
+from django.core.exceptions import ValidationError
+
+class FamiliaForm(forms.ModelForm):
+    """
+    Formulario para crear y editar familias.
+    """
+    jefe_familia = forms.ModelChoiceField(
+        queryset=Person.objects.filter(is_deleted=False),
+        label="Jefe de Familia",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione la persona que será el jefe de familia"
+    )
+    
+    direccion = forms.CharField(
+        label="Dirección Completa",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Calle, avenida, sector, urbanización...'
+        }),
+        help_text="Dirección completa de la vivienda"
+    )
+    
+    telefono_contacto = forms.CharField(
+        label="Teléfono de Contacto",
+        max_length=15,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: +584121234567'
+        }),
+        help_text="Teléfono principal de contacto"
+    )
+    
+    numero_vivienda = forms.CharField(
+        label="Número de Vivienda",
+        max_length=10,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: 23-A'
+        }),
+        help_text="Número o identificación de la vivienda (opcional)"
+    )
+    
+    observaciones = forms.CharField(
+        label="Observaciones",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Observaciones adicionales...'
+        }),
+        help_text="Observaciones adicionales sobre la familia"
+    )
+    
+    class Meta:
+        model = Familia
+        fields = ['jefe_familia', 'direccion', 'numero_vivienda', 'telefono_contacto', 'observaciones']
+    
+    def clean_telefono_contacto(self):
+        """Validar formato de teléfono venezolano"""
+        telefono = self.cleaned_data.get('telefono_contacto')
+        if telefono:
+            # Formato: +58 412 1234567 o 0412-1234567
+            pattern = r'^(\+58\s?\d{3}\s?\d{7}|04\d{2}[-.]?\d{7})$'
+            if not re.match(pattern, telefono.replace(' ', '').replace('-', '').replace('.', '')):
+                raise ValidationError(
+                    "Formato de teléfono inválido. Use: +584121234567 o 0412-1234567"
+                )
+        return telefono
+    
+    def clean_jefe_familia(self):
+        """Validar que el jefe de familia no sea ya jefe de otra familia"""
+        jefe_familia = self.cleaned_data.get('jefe_familia')
+        if jefe_familia:
+            # Verificar si ya es jefe de otra familia (excluyendo esta si estamos editando)
+            familias_existentes = Familia.objects.filter(jefe_familia=jefe_familia)
+            if self.instance and self.instance.pk:
+                familias_existentes = familias_existentes.exclude(pk=self.instance.pk)
+            
+            if familias_existentes.exists():
+                raise ValidationError(
+                    f"{jefe_familia.name} {jefe_familia.surname} ya es jefe de otra familia."
+                )
+        return jefe_familia
+
+
+class HabitanteForm(forms.ModelForm):
+    """
+    Formulario para crear y editar habitantes.
+    """
+    persona = forms.ModelChoiceField(
+        queryset=Person.objects.filter(is_deleted=False),
+        label="Persona",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione la persona que será habitante"
+    )
+    
+    familia = forms.ModelChoiceField(
+        queryset=Familia.objects.filter(is_deleted=False),
+        label="Familia",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione la familia a la que pertenece el habitante"
+    )
+    
+    parentesco_jefe = forms.ChoiceField(
+        choices=Habitante.PARENTESCO_CHOICES,
+        label="Parentesco con Jefe de Familia",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Parentesco con el jefe de familia"
+    )
+    
+    nivel_educativo = forms.ChoiceField(
+        choices=Habitante.NIVEL_EDUCATIVO_CHOICES,
+        required=False,
+        label="Nivel Educativo",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Último nivel educativo alcanzado"
+    )
+    
+    ocupacion = forms.CharField(
+        max_length=100,
+        required=False,
+        label="Ocupación",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Estudiante, Empleado, Ama de casa...'
+        }),
+        help_text="Ocupación principal"
+    )
+    
+    ingresos_mensuales = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        label="Ingresos Mensuales (Bs.)",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '0.00',
+            'step': '0.01'
+        }),
+        help_text="Ingresos mensuales aproximados (opcional)"
+    )
+    
+    condiciones_salud = forms.CharField(
+        required=False,
+        label="Condiciones de Salud",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Condiciones de salud relevantes...'
+        }),
+        help_text="Condiciones de salud importantes (opcional)"
+    )
+    
+    class Meta:
+        model = Habitante
+        fields = [
+            'persona', 'familia', 'parentesco_jefe', 'nivel_educativo',
+            'ocupacion', 'ingresos_mensuales', 'condiciones_salud'
+        ]
+            'date_of_birth': 'Fecha de Nacimiento',
+            'gender': 'Sexo',
+            'pais_origen': 'País de Origen',
+        }
+        widgets = {
+            'type_document': forms.Select(attrs={'class': 'form-control'}),
+            'gender': forms.Select(attrs={'class': 'form-control'}),
+            'pais_origen': forms.Select(attrs={'class': 'form-control'}),
+        }
+    
+    def clean_document_number(self):
+        """Validar formato de cédula venezolana"""
+        document_number = self.cleaned_data.get('document_number')
+        type_document = self.cleaned_data.get('type_document')
+        
+        if document_number and type_document:
+            # Para cédula venezolana: V-12345678 o E-12345678
+            if type_document == 'V':
+                pattern = r'^[VE]-\d{6,8}$'
+                if not re.match(pattern, document_number):
+                    raise ValidationError(
+                        "Formato de cédula venezolana inválido. Use: V-12345678 o E-12345678"
+                    )
+        return document_number
+
+
+class IngresoComunalForm(forms.ModelForm):
+    """
+    Formulario para registrar ingresos de la caja comunal.
+    """
+    fecha = forms.DateField(
+        label="Fecha del Ingreso",
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha en que se recibió el ingreso"
+    )
+    
+    concepto = forms.CharField(
+        label="Concepto",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Aporte mensual familia Pérez'
+        }),
+        help_text="Descripción del ingreso"
+    )
+    
+    monto = forms.DecimalField(
+        label="Monto (Bs.)",
+        max_digits=10,
+        decimal_places=2,
+        min_value=0.01,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '0.00',
+            'step': '0.01'
+        }),
+        help_text="Monto del ingreso en bolívares"
+    )
+    
+    soporte_digital = forms.FileField(
+        required=False,
+        label="Soporte Digital",
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': '.pdf,.jpg,.jpeg,.png'
+        }),
+        help_text="Comprobante o soporte del ingreso (PDF, imagen)"
+    )
+    
+    observaciones = forms.CharField(
+        required=False,
+        label="Observaciones",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Observaciones adicionales...'
+        }),
+        help_text="Observaciones adicionales"
+    )
+    
+    class Meta:
+        model = IngresoComunal
+        fields = ['fecha', 'tipo_ingreso', 'concepto', 'monto', 'soporte_digital', 'observaciones']
+        widgets = {
+            'tipo_ingreso': forms.Select(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'tipo_ingreso': 'Tipo de Ingreso',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        """Inicializar con el usuario actual como responsable"""
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def save(self, commit=True):
+        """Guardar con el usuario como responsable"""
+        instance = super().save(commit=False)
+        if self.user:
+            instance.responsable = self.user
+        if commit:
+            instance.save()
+        return instance
+    
+    def clean_fecha(self):
+        """Validar que la fecha no sea futura"""
+        fecha = self.cleaned_data.get('fecha')
+        if fecha and fecha > datetime.date.today():
+            raise ValidationError("La fecha del ingreso no puede ser futura.")
+        return fecha
+    
+    def clean_monto(self):
+        """Validar que el monto sea positivo"""
+        monto = self.cleaned_data.get('monto')
+        if monto and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        return monto
+
+
+class EgresoComunalForm(forms.ModelForm):
+    """
+    Formulario para registrar egresos de la caja comunal.
+    """
+    fecha = forms.DateField(
+        label="Fecha del Egreso",
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha en que se realizó el egreso"
+    )
+    
+    concepto = forms.CharField(
+        label="Concepto",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Compra materiales limpieza'
+        }),
+        help_text="Descripción del egreso"
+    )
+    
+    monto = forms.DecimalField(
+        label="Monto (Bs.)",
+        max_digits=10,
+        decimal_places=2,
+        min_value=0.01,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '0.00',
+            'step': '0.01'
+        }),
+        help_text="Monto del egreso en bolívares"
+    )
+    
+    beneficiario = forms.CharField(
+        required=False,
+        label="Beneficiario",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Juan Pérez o Empresa XYZ'
+        }),
+        help_text="Persona o empresa que recibió el pago (opcional)"
+    )
+    
+    soporte = forms.FileField(
+        required=False,
+        label="Soporte",
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': '.pdf,.jpg,.jpeg,.png'
+        }),
+        help_text="Factura, recibo o comprobante del egreso"
+    )
+    
+    observaciones = forms.CharField(
+        required=False,
+        label="Observaciones",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Observaciones adicionales...'
+        }),
+        help_text="Observaciones adicionales"
+    )
+    
+    class Meta:
+        model = EgresoComunal
+        fields = ['fecha', 'tipo_egreso', 'concepto', 'monto', 'beneficiario', 'soporte', 'observaciones']
+        widgets = {
+            'tipo_egreso': forms.Select(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'tipo_egreso': 'Tipo de Egreso',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        """Inicializar con el usuario actual como responsable"""
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def save(self, commit=True):
+        """Guardar con el usuario como responsable"""
+        instance = super().save(commit=False)
+        if self.user:
+            instance.responsable = self.user
+        if commit:
+            instance.save()
+        return instance
+    
+    def clean_fecha(self):
+        """Validar que la fecha no sea futura"""
+        fecha = self.cleaned_data.get('fecha')
+        if fecha and fecha > datetime.date.today():
+            raise ValidationError("La fecha del egreso no puede ser futura.")
+        return fecha
+    
+    def clean_monto(self):
+        """Validar que el monto sea positivo"""
+        monto = self.cleaned_data.get('monto')
+        if monto and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        return monto
+
+
+class ConstanciaResidenciaForm(forms.ModelForm):
+    """
+    Formulario para generar constancias de residencia.
+    """
+    familia = forms.ModelChoiceField(
+        queryset=Familia.objects.filter(is_deleted=False),
+        label="Familia",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione la familia para la constancia"
+    )
+    
+    fecha_documento = forms.DateField(
+        label="Fecha del Documento",
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha que aparecerá en la constancia"
+    )
+    
+    finalidad = forms.CharField(
+        label="Finalidad",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Especifique la finalidad de la constancia...'
+        }),
+        help_text="Finalidad o motivo de la constancia"
+    )
+    
+    class Meta:
+        model = ConstanciaResidencia
+        fields = ['familia', 'fecha_documento', 'finalidad']
+    
+    def __init__(self, *args, **kwargs):
+        """Inicializar con el usuario actual"""
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def save(self, commit=True):
+        """Guardar con el usuario y contenido generado"""
+        instance = super().save(commit=False)
+        if self.user:
+            instance.generado_por = self.user
+        
+        # Generar contenido automático de la constancia
+        instance.contenido = self.generar_contenido_constancia(instance)
+        
+        if commit:
+            instance.save()
+        return instance
+    
+    def generar_contenido_constancia(self, constancia):
+        """Generar el contenido HTML/PDF de la constancia"""
+        familia = constancia.familia
+        jefe = familia.jefe_familia
+        
+        contenido = f"""
+        <div style="font-family: 'Times New Roman', serif; line-height: 1.6;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="margin-bottom: 5px;">CONSTANCIA DE RESIDENCIA</h2>
+                <p style="margin-top: 0;">N° {constancia.id}</p>
+            </div>
+            
+            <div style="text-align: right; margin-bottom: 20px;">
+                <p>Caracas, {constancia.fecha_documento.strftime('%d de %B de %Y')}</p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <p>Quien suscribe, <strong>Consejo Comunal de la Urbanización Manuel Pulido Méndez</strong>, hace constar que:</p>
+            </div>
+            
+            <div style="margin-left: 40px; margin-bottom: 20px;">
+                <p><strong>CIUDADANO(A):</strong> {jefe.name} {jefe.surname}</p>
+                <p><strong>CÉDULA DE IDENTIDAD:</strong> {jefe.document_number}</p>
+                <p><strong>DOMICILIADO EN:</strong> {familia.direccion}</p>
+                <p><strong>TELÉFONO:</strong> {familia.telefono_contacto}</p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <p>Reside en esta comunidad junto a su grupo familiar, integrado por {familia.cantidad_habitantes()} personas, 
+                y se encuentra debidamente registrado en nuestro sistema de gestión comunitaria.</p>
+            </div>
+            
+            <div style="margin-bottom: 30px;">
+                <p><strong>FINALIDAD:</strong> {constancia.finalidad}</p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 50px;">
+                <p>_________________________</p>
+                <p><strong>Vocero(a) de Secretaría</strong></p>
+                <p>Consejo Comunal</p>
+                <p>Urbanización Manuel Pulido Méndez</p>
+            </div>
+            
+            <div style="margin-top: 30px; font-size: 0.9em; color: #666;">
+                <p><em>Nota: Esta constancia es válida por 30 días a partir de su emisión.</em></p>
+            </div>
+        </div>
+        """
+        
+        return contenido
+
+
+class ActaReunionForm(forms.ModelForm):
+    """
+    Formulario para generar actas de reuniones.
+    """
+    titulo = forms.CharField(
+        label="Título del Acta",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Acta de Asamblea General Ordinaria'
+        }),
+        help_text="Título descriptivo del acta"
+    )
+    
+    fecha_reunion = forms.DateTimeField(
+        label="Fecha y Hora de la Reunión",
+        widget=forms.DateTimeInput(attrs={
+            'class': 'form-control',
+            'type': 'datetime-local'
+        }),
+        help_text="Fecha y hora en que se realizó la reunión"
+    )
+    
+    lugar = forms.CharField(
+        label="Lugar de la Reunión",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Salón Comunal, Casa de la Familia Pérez'
+        }),
+        help_text="Lugar donde se realizó la reunión"
+    )
+    
+    asistentes = forms.CharField(
+        label="Lista de Asistentes",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Nombre y apellido de los asistentes, separados por comas...'
+        }),
+        help_text="Lista completa de asistentes a la reunión"
+    )
+    
+    contenido = forms.CharField(
+        label="Contenido del Acta",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 6,
+            'placeholder': 'Describa los puntos tratados en la reunión...'
+        }),
+        help_text="Contenido detallado de lo tratado en la reunión"
+    )
+    
+    acuerdos = forms.CharField(
+        required=False,
+        label="Acuerdos Tomados",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Lista de acuerdos tomados en la reunión...'
+        }),
+        help_text="Acuerdos y decisiones tomadas (opcional)"
+    )
+    
+    class Meta:
+        model = ActaReunion
+        fields = ['titulo', 'fecha_reunion', 'lugar', 'asistentes', 'contenido', 'acuerdos']
+    
+    def __init__(self, *args, **kwargs):
+        """Inicializar con el usuario actual"""
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def save(self, commit=True):
+        """Guardar con el usuario y contenido formateado"""
+        instance = super().save(commit=False)
+        if self.user:
+            instance.generado_por = self.user
+        
+        # Formatear contenido del acta
+        instance.contenido = self.formatear_contenido_acta(instance)
+        
+        if commit:
+            instance.save()
+        return instance
+    
+    def formatear_contenido_acta(self, acta):
+        """Formatear el contenido del acta para PDF/HTML"""
+        contenido = f"""
+        <div style="font-family: 'Times New Roman', serif; line-height: 1.6;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="margin-bottom: 5px;">ACTA DE REUNIÓN</h2>
+                <h3 style="margin-top: 0; color: #555;">{acta.titulo}</h3>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <p><strong>Fecha y Hora:</strong> {acta.fecha_reunion.strftime('%d de %B de %Y, %I:%M %p')}</p>
+                <p><strong>Lugar:</strong> {acta.lugar}</p>
+                <p><strong>Asistentes ({acta.asistentes_count()} personas):</strong> {acta.asistentes}</p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4 style="border-bottom: 1px solid #ccc; padding-bottom: 5px;">CONTENIDO DE LA REUNIÓN</h4>
+                <div style="white-space: pre-line; margin-left: 20px;">
+                    {acta.contenido}
+                </div>
+            </div>
+        """
+        
+        if acta.acuerdos:
+            contenido += f"""
+            <div style="margin-bottom: 20px;">
+                <h4 style="border-bottom: 1px solid #ccc; padding-bottom: 5px;">ACUERDOS TOMADOS</h4>
+                <div style="white-space: pre-line; margin-left: 20px;">
+                    {acta.acuerdos}
+                </div>
+            </div>
+            """
+        
+        contenido += f"""
+            <div style="text-align: center; margin-top: 50px;">
+                <p>_________________________</p>
+                <p><strong>Secretario(a) de Actas</strong></p>
+                <p>Consejo Comunal</p>
+                <p>Urbanización Manuel Pulido Méndez</p>
+            </div>
+            
+            <div style="margin-top: 30px; font-size: 0.9em; color: #666;">
+                <p><em>Acta generada el {acta.fecha_generacion.strftime('%d/%m/%Y %I:%M %p')}</em></p>
+            </div>
+        </div>
+        """
+        
+        return contenido
