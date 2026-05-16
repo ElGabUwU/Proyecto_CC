@@ -565,6 +565,7 @@ class HabitanteForm(forms.ModelForm):
             'persona', 'familia', 'parentesco_jefe', 'nivel_educativo',
             'ocupacion', 'ingresos_mensuales', 'condiciones_salud'
         ]
+        labels = {  # 👈 Faltaba el nombre del atributo y la llave
             'date_of_birth': 'Fecha de Nacimiento',
             'gender': 'Sexo',
             'pais_origen': 'País de Origen',
