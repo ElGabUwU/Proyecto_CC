@@ -149,7 +149,7 @@ def get_database_config():
 DATABASES = get_database_config()
 
 # Router de bases de datos
-DATABASE_ROUTERS = ['routers_db.db_routers.AuthRouter']
+#DATABASE_ROUTERS = ['routers_db.db_routers.AuthRouter']
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

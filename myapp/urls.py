@@ -4,6 +4,7 @@ from django.conf.urls.static import static
 
 from . import views
 from . import views_export
+from . import views_comunidad
 from .views import PersonApiView, DocenteApiView
 from .views import change_password
 
@@ -100,19 +101,7 @@ urlpatterns = [
     # path('calendario/guardar/', views.guardar_evento, name='guardar_evento'),
     # path('calendario/modificar/<int:evento_id>/', views.modificar_evento, name='modificar_evento'),
     # path('calendario/eliminar/<int:evento_id>/', views.eliminar_evento, name='eliminar_evento'),
-]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-
-# ============================================
-# 🆕 NUEVO: URLs para Gestión Comunitaria
-# ============================================
-
-from . import views_comunidad
-
-urlpatterns += [
     # Familias
     path('familias/', views_comunidad.familias, name='familias'),
     path('familias/crear/', views_comunidad.crear_familia, name='crear_familia'),
@@ -152,4 +141,8 @@ urlpatterns += [
     
     # Dashboard Comunitario
     path('dashboard-comunitario/', views_comunidad.dashboard_comunitario, name='dashboard_comunitario'),
+
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
