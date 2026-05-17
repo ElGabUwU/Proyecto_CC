@@ -1,5 +1,6 @@
 """
 Vistas para la gestión comunitaria del Consejo Comunal.
+ARQUITECTURA NUEVA: Vista unificada maestro-detalle para Familias y Habitantes.
 """
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
@@ -10,6 +11,9 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
 from django.db import transaction
+from django.views.decorators.csrf import csrf_exempt
+from django.views import View
+from django.utils.decorators import method_decorator
 import json
 from datetime import datetime, timedelta
 import csv
@@ -23,33 +27,201 @@ from .forms import (
     EgresoComunalForm, ConstanciaResidenciaForm, ActaReunionForm
 )
 from .decorators import admin_required, vocero_finanzas_required, vocero_secretaria_required
+from .serializers import (
+    FamiliaListSerializer, FamiliaDetalleSerializer, 
+    FamiliaConHabitantesSerializer, HabitanteSerializer
+)
+
 
 # ============================================
-# Vistas para Familias
+# API REST para Familias (Maestro-Detalle)
+# ============================================
+
+@method_decorator(csrf_exempt, name='dispatch')
+class FamiliaAPIView(View):
+    """
+    API REST para gestión de Familias con Habitantes (Maestro-Detalle).
+    
+    GET /api/familias/ - Lista todas las familias
+    POST /api/familias/ - Crea familia con habitantes
+    GET /api/familias/{id}/ - Obtiene familia con habitantes
+    PUT /api/familias/{id}/ - Actualiza familia y habitantes
+    DELETE /api/familias/{id}/ - Soft delete de familia
+    """
+    
+    def get(self, request, familia_id=None):
+        """Obtiene lista de familias o detalle de una familia."""
+        if familia_id:
+            # Obtener detalle de una familia
+            try:
+                familia = Familia.objects.get(pk=familia_id, is_deleted=False)
+                serializer = FamiliaDetalleSerializer(familia)
+                return JsonResponse(serializer.data, safe=False, status=200)
+            except Familia.DoesNotExist:
+                return JsonResponse(
+                    {'error': 'Familia no encontrada'}, 
+                    status=404
+                )
+        else:
+            # Listar todas las familias
+            familias = Familia.objects.filter(is_deleted=False).order_by('-fecha_registro')
+            
+            # Filtros de búsqueda
+            query = request.GET.get('q', '')
+            if query:
+                familias = familias.filter(
+                    Q(nombre_familia__icontains=query) |
+                    Q(direccion__icontains=query) |
+                    Q(vivienda__icontains=query) |
+                    Q(catastro__icontains=query)
+                )
+            
+            # Paginación
+            page = int(request.GET.get('page', 1))
+            per_page = int(request.GET.get('per_page', 20))
+            paginator = Paginator(familias, per_page)
+            familias_page = paginator.get_page(page)
+            
+            serializer = FamiliaListSerializer(familias_page, many=True)
+            
+            return JsonResponse({
+                'results': serializer.data,
+                'count': paginator.count,
+                'page': page,
+                'total_pages': paginator.num_pages
+            }, safe=False, status=200)
+    
+    def post(self, request, familia_id=None):
+        """Crea una nueva familia con habitantes."""
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {'error': 'Datos JSON inválidos'}, 
+                status=400
+            )
+        
+        serializer = FamiliaConHabitantesSerializer(data=data)
+        
+        if serializer.is_valid():
+            try:
+                familia = serializer.save()
+                return JsonResponse(
+                    FamiliaDetalleSerializer(familia).data,
+                    status=201
+                )
+            except Exception as e:
+                return JsonResponse(
+                    {'error': str(e)}, 
+                    status=500
+                )
+        else:
+            return JsonResponse(
+                {'errors': serializer.errors}, 
+                status=400
+            )
+    
+    def put(self, request, familia_id=None):
+        """Actualiza una familia existente y sus habitantes."""
+        if not familia_id:
+            return JsonResponse(
+                {'error': 'ID de familia requerido'}, 
+                status=400
+            )
+        
+        try:
+            familia = Familia.objects.get(pk=familia_id, is_deleted=False)
+        except Familia.DoesNotExist:
+            return JsonResponse(
+                {'error': 'Familia no encontrada'}, 
+                status=404
+            )
+        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {'error': 'Datos JSON inválidos'}, 
+                status=400
+            )
+        
+        serializer = FamiliaConHabitantesSerializer(
+            familia, 
+            data=data, 
+            partial=False
+        )
+        
+        if serializer.is_valid():
+            try:
+                familia = serializer.save()
+                return JsonResponse(
+                    FamiliaDetalleSerializer(familia).data,
+                    status=200
+                )
+            except Exception as e:
+                return JsonResponse(
+                    {'error': str(e)}, 
+                    status=500
+                )
+        else:
+            return JsonResponse(
+                {'errors': serializer.errors}, 
+                status=400
+            )
+    
+    def delete(self, request, familia_id=None):
+        """Elimina (soft delete) una familia y sus habitantes."""
+        if not familia_id:
+            return JsonResponse(
+                {'error': 'ID de familia requerido'}, 
+                status=400
+            )
+        
+        try:
+            familia = Familia.objects.get(pk=familia_id, is_deleted=False)
+        except Familia.DoesNotExist:
+            return JsonResponse(
+                {'error': 'Familia no encontrada'}, 
+                status=404
+            )
+        
+        # Soft delete de la familia y sus habitantes
+        with transaction.atomic():
+            familia.is_deleted = True
+            familia.save()
+            familia.habitantes.filter(is_deleted=False).update(is_deleted=True)
+        
+        return JsonResponse(
+            {'message': f'Familia {familia.nombre_familia} eliminada correctamente'},
+            status=200
+        )
+
+
+# ============================================
+# Vistas de Template para Familias (Nueva Arquitectura)
 # ============================================
 
 @login_required
 def familias(request):
     """
-    Vista para listar y buscar familias.
+    Vista para listar y buscar familias (Template tradicional).
     """
     query = request.GET.get('q', '')
     campo = request.GET.get('campo', 'todos')
     
-    familias_list = Familia.objects.filter(is_deleted=False)
+    familias_list = Familia.objects.filter(is_deleted=False).prefetch_related('habitantes')
     
     if query:
-        if campo == 'todos' or campo == 'jefe_familia__name':
-            familias_list = familias_list.filter(
-                Q(jefe_familia__name__icontains=query) |
-                Q(jefe_familia__surname__icontains=query)
-            )
-        elif campo == 'direccion':
-            familias_list = familias_list.filter(direccion__icontains=query)
-        elif campo == 'telefono_contacto':
-            familias_list = familias_list.filter(telefono_contacto__icontains=query)
-        elif campo == 'numero_vivienda':
-            familias_list = familias_list.filter(numero_vivienda__icontains=query)
+        # Búsqueda por nombre de familia, dirección, vivienda o jefe de familia
+        familias_list = familias_list.filter(
+            Q(nombre_familia__icontains=query) |
+            Q(direccion__icontains=query) |
+            Q(vivienda__icontains=query) |
+            Q(catastro__icontains=query) |
+            Q(habitantes__nombre__icontains=query) |
+            Q(habitantes__apellido__icontains=query) |
+            Q(habitantes__cedula__icontains=query)
+        ).distinct()
     
     # Ordenar por fecha de registro (más recientes primero)
     familias_list = familias_list.order_by('-fecha_registro')
@@ -63,10 +235,60 @@ def familias(request):
         'familias': familias_page,
         'query': query,
         'campo': campo,
-        'familia_form': FamiliaForm(),
     }
     
     return render(request, 'familias.html', context)
+
+
+@login_required
+@admin_required
+def familia_unificada(request, familia_id=None):
+    """
+    Vista unificada maestro-detalle para crear/editar familia con habitantes.
+    
+    GET: Muestra el formulario para crear nueva familia
+    GET /{id}: Muestra el formulario para editar familia existente
+    POST: Crea nueva familia con habitantes
+    POST /{id}: Actualiza familia existente con habitantes
+    """
+    if familia_id:
+        # Modo edición
+        familia = get_object_or_404(Familia, pk=familia_id, is_deleted=False)
+    else:
+        # Modo creación
+        familia = None
+    
+    if request.method == 'POST':
+        # Procesar datos JSON del formulario
+        try:
+            data = json.loads(request.body) if request.content_type == 'application/json' else request.POST.dict()
+        except:
+            data = request.POST.dict()
+        
+        # Validar y guardar usando el serializer
+        if familia:
+            serializer = FamiliaConHabitantesSerializer(familia, data=data)
+        else:
+            serializer = FamiliaConHabitantesSerializer(data=data)
+        
+        if serializer.is_valid():
+            try:
+                familia_guardada = serializer.save()
+                messages.success(request, f'Familia "{familia_guardada.nombre_familia}" guardada exitosamente.')
+                return redirect('familias')
+            except Exception as e:
+                messages.error(request, f'Error al guardar: {str(e)}')
+        else:
+            for field, errors in serializer.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
+    
+    # GET: Mostrar formulario
+    context = {
+        'familia': familia,
+    }
+    
+    return render(request, 'familia_unificada.html', context)
 
 
 @login_required
@@ -168,14 +390,14 @@ def habitantes(request):
     query = request.GET.get('q', '')
     familia_id = request.GET.get('familia', '')
     
-    habitantes_list = Habitante.objects.filter(is_deleted=False)
+    habitantes_list = Habitante.objects.filter(is_deleted=False).select_related('familia')
     
     if query:
         habitantes_list = habitantes_list.filter(
-            Q(name__icontains=query) |
-            Q(surname__icontains=query) |
-            Q(document_number__icontains=query) |
-            Q(telephone_number__icontains=query)
+            Q(cedula__icontains=query) |
+            Q(nombre__icontains=query) |
+            Q(apellido__icontains=query) |
+            Q(ocupacion__icontains=query)
         )
     
     if familia_id and familia_id != 'todos':
@@ -194,123 +416,9 @@ def habitantes(request):
         'familias': familias,
         'query': query,
         'familia_id': familia_id,
-        'habitante_form': HabitanteForm(),
     }
     
     return render(request, 'habitantes.html', context)
-
-
-@login_required
-@admin_required
-def crear_habitante(request):
-    """
-    Vista para crear un nuevo habitante.
-    """
-    if request.method == 'POST':
-        form = HabitanteForm(request.POST)
-        if form.is_valid():
-            habitante = form.save()
-            messages.success(request, f'Habitante {habitante.name} {habitante.surname} creado exitosamente.')
-            return redirect('habitantes')
-        else:
-            messages.error(request, 'Por favor corrija los errores en el formulario.')
-    else:
-        form = HabitanteForm()
-    
-    context = {'form': form}
-    return render(request, 'habitantes.html', context)
-
-
-@login_required
-@admin_required
-def editar_habitante(request, id):
-    """
-    Vista para editar un habitante existente.
-    """
-    habitante = get_object_or_404(Habitante, id=id, is_deleted=False)
-    
-    if request.method == 'POST':
-        form = HabitanteForm(request.POST, instance=habitante)
-        if form.is_valid():
-            habitante = form.save()
-            messages.success(request, f'Habitante {habitante.name} {habitante.surname} actualizado exitosamente.')
-            return redirect('habitantes')
-        else:
-            messages.error(request, 'Por favor corrija los errores en el formulario.')
-    else:
-        form = HabitanteForm(instance=habitante)
-    
-    context = {
-        'form': form,
-        'habitante': habitante,
-    }
-    return render(request, 'habitantes.html', context)
-
-
-@login_required
-@admin_required
-@require_POST
-def eliminar_habitante(request, id):
-    """
-    Vista para eliminar (soft delete) un habitante.
-    """
-    habitante = get_object_or_404(Habitante, id=id, is_deleted=False)
-    
-    # Si es jefe de familia, no permitir eliminación
-    if habitante.parentesco_jefe == 'Jefe':
-        messages.error(request, 'No se puede eliminar al jefe de familia. Elimine la familia completa.')
-        return redirect('habitantes')
-    
-    habitante.delete()  # Soft delete
-    messages.success(request, f'Habitante {habitante.name} {habitante.surname} eliminado exitosamente.')
-    return redirect('habitantes')
-
-
-@login_required
-@require_GET
-def api_habitante(request, id):
-    """
-    API para obtener datos de un habitante en formato JSON (para AJAX).
-    """
-    habitante = get_object_or_404(Habitante, id=id, is_deleted=False)
-    
-    data = {
-        'id': habitante.id,
-        'persona': habitante.persona.id,
-        'type_document': habitante.persona.type_document,
-        'document_number': habitante.persona.document_number,
-        'name': habitante.persona.name,
-        'surname': habitante.persona.surname,
-        'telephone_number': habitante.persona.telephone_number or '',
-        'email': habitante.persona.email or '',
-        'date_of_birth': habitante.persona.date_of_birth.strftime('%Y-%m-%d') if habitante.persona.date_of_birth else '',
-        'gender': habitante.persona.gender,
-        'pais_origen': habitante.persona.pais_origen or '',
-        'familia': habitante.familia.id,
-        'parentesco_jefe': habitante.parentesco_jefe,
-        'nivel_educativo': habitante.nivel_educativo or '',
-        'ocupacion': habitante.ocupacion or '',
-        'ingresos_mensuales': str(habitante.ingresos_mensuales) if habitante.ingresos_mensuales else '',
-        'condiciones_salud': habitante.condiciones_salud or '',
-    }
-    
-    return JsonResponse(data)
-
-
-@login_required
-def habitantes_familia(request, familia_id):
-    """
-    Vista para listar habitantes de una familia específica.
-    """
-    familia = get_object_or_404(Familia, id=familia_id, is_deleted=False)
-    habitantes = Habitante.objects.filter(familia=familia, is_deleted=False)
-    
-    context = {
-        'familia': familia,
-        'habitantes': habitantes,
-    }
-    
-    return render(request, 'habitantes_familia.html', context)
 
 
 @login_required
