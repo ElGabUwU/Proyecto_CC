@@ -4,14 +4,8 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
 <!-- Barra lateral izquierda -->
-  
-  <!-- Botón para abrir el sidebar en móviles -->
-    
-  <div class="d-none d-md-block z-3">
-  <div class="sidebar degradado-sidebar d-flex flex-column text-white min-vh-100 overflow-hidden">
-      <!-- Sidebar -->
       
-      {# Inicio - Todos los roles #}
+      <!-- {# Inicio - Todos los roles #}
       <a class="mt-3 nav-link " href="{% url 'welcome' %}" id="welcome-btn">
         <i class="fa fa-home" aria-hidden="true" style="height: 26px; width: 30px; font-size: 1.7rem;"></i> 
         <span class="nav-text">Inicio</span>
@@ -19,31 +13,31 @@
       <hr class="">
       
       {# Docentes - Solo Admin #}
-      {% if is_admin %}
+      {# % if is_admin % #}
       <a class="mt-2 nav-link" href="{% url 'docentes' %}"
       {% if request.resolver_match.url_name == 'docentes' %}style="background-color: #922323"{% endif %} id="docentes-btn">
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28">
         <span class="nav-text">Docentes</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Estudiantes - Solo Admin #}
-      {% if is_admin %}
+      {# % if is_admin % #}
       <a class="mt-2 nav-link" href="{% url 'cedulas' %}"
       {% if request.resolver_match.url_name == 'cedulas' %}style="background-color: #922323"{% endif %} id="control-nomina-btn">
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28">
         <span class="nav-text">Estudiantes</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Usuarios - Solo Admin #}
-      {% if is_admin %}
+      {# % if is_admin % #}
       <a class="nav-link" href="{% url 'usuarios' %}"
       {% if request.resolver_match.url_name == 'usuarios' %}style="background-color: #922323"{% endif %} id="usuarios-btn">
         <img src="{% static 'assets/images/usuarios.png' %}" width="28" height="28">
         <span class="nav-text">Usuarios</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Cursos - Todos los roles #}
       <a class="nav-link" href="{% url 'cursos' %}"
@@ -53,13 +47,13 @@
       </a>
       
       {# Mis Notas - Solo Estudiantes #}
-      {% if is_student %}
+      {# % if is_student % #}
       <a class="nav-link" href="{% url 'mis_notas' %}"
       {% if request.resolver_match.url_name == 'mis_notas' %}style="background-color: #922323"{% endif %}>
         <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28">
         <span class="nav-text">Mis Notas</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Mi Perfil - Todos los roles #}
       <a class="nav-link" href="{% url 'perfil' %}"
@@ -69,43 +63,58 @@
       </a>
       
       {# To-Do List - Solo Admin #}
-      {% if is_admin %}
+      {# % if is_admin % #}
       <a class="nav-link" href="{% url 'todolist' %}"
        {% if request.resolver_match.url_name == 'todolist' %}style="background-color: #922323"{% endif %}>
         <span class="nav-text">To-Do List</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Test Zone - Solo Admin #}
-      {% if is_admin %}
+      {# % if is_admin % #}
       <a class="nav-link" href="{% url 'test_zone' %}"
       {% if request.resolver_match.url_name == 'test_zone' %}style="background-color: #922323"{% endif %} id="test_zone-btn">
         <span class="nav-text">test_zone</span>
       </a>
-      {% endif %}
+      {# % endif % #} -->
+  <!-- Botón para abrir el sidebar en móviles -->
+    
+<div class="d-none d-md-block z-3">
+  <div class="sidebar degradado-sidebar d-flex flex-column text-white min-vh-100 overflow-hidden">
+      <!-- Sidebar -->      
+    {# 1. SECCIÓN PÚBLICA: Inicio (Para TODOS los roles) #}
+      <a class="mt-3 nav-link" href="{% url 'welcome' %}" id="welcome-btn">
+        <i class="fa fa-home" aria-hidden="true" style="height: 26px; width: 30px; font-size: 1.7rem;"></i> 
+        <span class="nav-text">Inicio</span>
+      </a>
       
-      {# 🆕 NUEVO: Gestión Comunitaria - Solo Admin y Voceros #}
+      <hr class="border-secondary">
+
+      {# 2. SECCIÓN RESTRINGIDA: Gestión Comunitaria (Solo Admin y Voceros) #}
       {% if is_admin or user.role in 'vocero_finanzas,vocero_secretaria,vocero_salud,vocero_educacion' %}
-      <hr class="">
       <div class="sidebar-section">
-        <h6 class="sidebar-section-title text-uppercase text-muted small mb-2">
-          <i class="fas fa-users me-1"></i>Gestión Comunitaria
-        </h6>
+        <h5 class="sidebar-section-title text-uppercase text-muted small mb-2 ps-2">
+          <i class="fas fa-users me-1"></i>G. Comunitaria
+        </h5>
+        
         <a class="nav-link" href="{% url 'familias' %}"
           {% if request.resolver_match.url_name == 'familias' %}style="background-color: #922323"{% endif %}>
           <i class="fas fa-home me-2"></i>
           <span class="nav-text">Familias</span>
         </a>
+        
         <a class="nav-link" href="{% url 'habitantes' %}"
           {% if request.resolver_match.url_name == 'habitantes' %}style="background-color: #922323"{% endif %}>
           <i class="fas fa-user-friends me-2"></i>
           <span class="nav-text">Habitantes</span>
         </a>
+        
         <a class="nav-link" href="{% url 'finanzas' %}"
           {% if request.resolver_match.url_name == 'finanzas' %}style="background-color: #922323"{% endif %}>
           <i class="fas fa-money-bill-wave me-2"></i>
           <span class="nav-text">Finanzas</span>
         </a>
+        
         <a class="nav-link" href="{% url 'documentacion' %}"
           {% if request.resolver_match.url_name == 'documentacion' %}style="background-color: #922323"{% endif %}>
           <i class="fas fa-file-contract me-2"></i>
@@ -114,14 +123,12 @@
       </div>
       {% endif %}
 
-      {# Cerrar Sesión - Todos los roles #}
+      {# 3. SECCIÓN PÚBLICA: Cerrar Sesión (Pegado al fondo con mt-auto) #}
       <a class="nav-link mt-auto" href="{% url 'logout' %}">
         <img src="{% static 'assets/images/logout1.png' %}" width="28" height="28">
         <span class="nav-text">Cerrar Sesión</span>
       </a>
-
-    </div>
-
+  </div> 
 </div>
 
 <div class="offcanvas offcanvas-start d-md-none text-white h-100 w-100"

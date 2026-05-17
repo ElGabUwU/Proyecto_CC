@@ -4,67 +4,60 @@ from django.db import connections, OperationalError
 
 class AuthRouter:
     """
-    Router de bases de datos personalizado para Django que maneja múltiples bases de datos:
-    - Apps internas de Django (auth, admin, sessions) van a 'local_db' (SQLite)
-    - Apps personalizadas (myapp) van a 'default' (PostgreSQL Railway) o 'local_db' según disponibilidad
+    Router de bases de datos optimizado:
+    Garantiza que todas las aplicaciones (internas y personalizadas) coexistan 
+    en la misma base de datos activa para permitir relaciones (ForeignKeys).
     """
 
-    # Apps internas de Django que siempre van a local_db
-    internal_app_labels = {'admin', 'contenttypes', 'sessions', 'auth', 'messages', 'staticfiles'}
+    # Agrupamos todas las apps conocidas del proyecto
+    project_app_labels = {'admin', 'contenttypes', 'sessions', 'auth', 'messages', 'staticfiles', 'myapp', 'nomina'}
     
-    # Apps personalizadas que pueden ir a cualquier base de datos
-    custom_app_labels = {'myapp'}
-    
-    def _get_available_db_for_custom_apps(self):
+    def _get_active_db(self):
         """
-        Determina qué base de datos usar para apps personalizadas.
+        Determina dinámicamente cuál es la base de datos principal activa.
         Prioridad: default (PostgreSQL) -> local_db (SQLite)
         """
-        # Verificar si se fuerza el uso de SQLite
+        # Verificar si se fuerza el uso de SQLite desde el entorno
         if os.getenv('USE_SQLITE', 'False').lower() == 'true':
             return 'local_db'
             
-        # Intentar usar PostgreSQL primero
+        # Intentar conectar a PostgreSQL
         try:
             connections['default'].ensure_connection()
             return 'default'
         except (OperationalError, Exception):
-            logging.warning("PostgreSQL no disponible, usando SQLite local")
+            logging.warning("PostgreSQL no disponible localmente. Desviando flujo a SQLite de respaldo.")
             return 'local_db'
     
     def db_for_read(self, model, **hints):
-        """Determina qué base de datos usar para operaciones de lectura"""
-        if model._meta.app_label in self.internal_app_labels:
-            return 'local_db'
-        elif model._meta.app_label in self.custom_app_labels:
-            return self._get_available_db_for_custom_apps()
+        """Redirige las lecturas a la base de datos activa"""
+        if model._meta.app_label in self.project_app_labels:
+            return self._get_active_db()
         return None
 
     def db_for_write(self, model, **hints):
-        """Determina qué base de datos usar para operaciones de escritura"""
-        if model._meta.app_label in self.internal_app_labels:
-            return 'local_db'
-        elif model._meta.app_label in self.custom_app_labels:
-            return self._get_available_db_for_custom_apps()
+        """Redirige las escrituras a la base de datos activa"""
+        if model._meta.app_label in self.project_app_labels:
+            return self._get_active_db()
         return None
 
     def allow_relation(self, obj1, obj2, **hints):
         """
-        Permite relaciones entre objetos de la misma base de datos
+        Permite relaciones únicamente si ambos objetos están 
+        en la misma base de datos física.
         """
-        db_set = {'default', 'local_db'}
-        if obj1._state.db in db_set and obj2._state.db in db_set:
+        if obj1._state.db == obj2._state.db:
             return True
-        return None
+        return False
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         """
-        Controla en qué base de datos se aplican las migraciones
+        Controla de forma segura dónde se deben aplicar las migraciones.
         """
-        if app_label in self.internal_app_labels:
-            # Apps internas solo en local_db
-            return db == 'local_db'
-        elif app_label in self.custom_app_labels:
-            # Apps personalizadas pueden ir a cualquier base de datos
-            return True
+        active_db = self._get_active_db()
+        
+        # Obliga a que las migraciones se ejecuten en la base de datos que está activa en ese momento
+        if app_label in self.project_app_labels:
+            return db == active_db
+            
         return None
