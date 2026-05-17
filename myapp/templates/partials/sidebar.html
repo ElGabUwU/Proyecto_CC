@@ -14,7 +14,7 @@
       
       {# Docentes - Solo Admin #}
       {# % if is_admin % #}
-      <a class="mt-2 nav-link" href="{% url 'docentes' %}"
+      <a class="mt-2 nav-link" href="{# % url 'docentes' % #}"
       {% if request.resolver_match.url_name == 'docentes' %}style="background-color: #922323"{% endif %} id="docentes-btn">
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28">
         <span class="nav-text">Docentes</span>
@@ -23,7 +23,7 @@
       
       {# Estudiantes - Solo Admin #}
       {# % if is_admin % #}
-      <a class="mt-2 nav-link" href="{% url 'cedulas' %}"
+      <a class="mt-2 nav-link" href="{# % url 'cedulas' % #}"
       {% if request.resolver_match.url_name == 'cedulas' %}style="background-color: #922323"{% endif %} id="control-nomina-btn">
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28">
         <span class="nav-text">Estudiantes</span>
@@ -32,7 +32,7 @@
       
       {# Usuarios - Solo Admin #}
       {# % if is_admin % #}
-      <a class="nav-link" href="{% url 'usuarios' %}"
+      <a class="nav-link" href="{# % url 'usuarios' % #}"
       {% if request.resolver_match.url_name == 'usuarios' %}style="background-color: #922323"{% endif %} id="usuarios-btn">
         <img src="{% static 'assets/images/usuarios.png' %}" width="28" height="28">
         <span class="nav-text">Usuarios</span>
@@ -40,7 +40,7 @@
       {# % endif % #}
       
       {# Cursos - Todos los roles #}
-      <a class="nav-link" href="{% url 'cursos' %}"
+      <a class="nav-link" href="{# % url 'cursos' % #}"
       {% if request.resolver_match.url_name == 'cursos' %}style="background-color: #922323"{% endif %} id="cursos-btn">
         <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28">
         <span class="nav-text">Cursos</span>
@@ -48,7 +48,7 @@
       
       {# Mis Notas - Solo Estudiantes #}
       {# % if is_student % #}
-      <a class="nav-link" href="{% url 'mis_notas' %}"
+      <a class="nav-link" href="{# % url 'mis_notas' % #}"
       {% if request.resolver_match.url_name == 'mis_notas' %}style="background-color: #922323"{% endif %}>
         <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28">
         <span class="nav-text">Mis Notas</span>
@@ -56,7 +56,7 @@
       {# % endif % #}
       
       {# Mi Perfil - Todos los roles #}
-      <a class="nav-link" href="{% url 'perfil' %}"
+      <a class="nav-link" href="{# % url 'perfil' % #}"
       {% if request.resolver_match.url_name == 'mi_perfil' %}style="background-color: #922323"{% endif %}>
         <img src="{% static 'assets/images/mipefil.png' %}" width="28" height="28">
         <span class="nav-text">Mi Perfil</span>
@@ -64,7 +64,7 @@
       
       {# To-Do List - Solo Admin #}
       {# % if is_admin % #}
-      <a class="nav-link" href="{% url 'todolist' %}"
+      <a class="nav-link" href="{# % url 'todolist' % #}"
        {% if request.resolver_match.url_name == 'todolist' %}style="background-color: #922323"{% endif %}>
         <span class="nav-text">To-Do List</span>
       </a>
@@ -72,7 +72,7 @@
       
       {# Test Zone - Solo Admin #}
       {# % if is_admin % #}
-      <a class="nav-link" href="{% url 'test_zone' %}"
+      <a class="nav-link" href="{# % url 'test_zone' % #}"
       {% if request.resolver_match.url_name == 'test_zone' %}style="background-color: #922323"{% endif %} id="test_zone-btn">
         <span class="nav-text">test_zone</span>
       </a>
@@ -149,30 +149,30 @@
         <i class="fa fa-home me-3" style="font-size: 1.5rem;"></i> Inicio
       </a>
       
-      <a class="nav-link align-items-center px-4  py-3 rounded" href="{% url 'docentes' %}"
+      <a class="nav-link align-items-center px-4  py-3 rounded" href="{# % url 'docentes' % #}"
         {% if request.resolver_match.url_name == 'docentes' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28" class="me-3"> Docentes
       </a>
       <!-- Estudiantes -->
-      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'cedulas' %}"
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{# % url 'cedulas' % #}"
         {% if request.resolver_match.url_name == 'cedulas' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28" class="me-3"> Estudiantes
       </a>
 
       <!-- Usuarios -->
-      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'usuarios' %}"
+      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{# % url 'usuarios' % #}"
         {% if request.resolver_match.url_name == 'usuarios' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/usuarios.png' %}" width="28" height="28" class="me-3"> Usuarios
       </a>
 
       <!-- Cursos -->
-      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'cursos' %}"
+      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{# % url 'cursos' % #}"
         {% if request.resolver_match.url_name == 'cursos' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28" class="me-3"> Cursos
       </a>
 
       <!-- Mi Perfil -->
-      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'perfil' %}"
+      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{# % url 'perfil' % #}"
         {% if request.resolver_match.url_name == 'mi_perfil' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/mipefil.png' %}" width="28" height="28" class="me-3"> Mi Perfil
       </a>
