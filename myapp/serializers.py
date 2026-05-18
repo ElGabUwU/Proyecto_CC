@@ -270,6 +270,10 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
             )
         
         # Validar cédulas únicas en el sistema
+        # Obtener la familia actual si estamos editando
+        instance = self.instance
+        familia_id = instance.id if instance else None
+        
         for habitante_data in habitantes:
             cedula = habitante_data.get('cedula')
             if cedula:
@@ -278,7 +282,18 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
                 habitante_data['cedula'] = cedula_normalizada
                 
                 # Verificar unicidad en BD
-                if Habitante.objects.filter(cedula=cedula_normalizada, is_deleted=False).exists():
+                queryset = Habitante.objects.filter(cedula=cedula_normalizada, is_deleted=False)
+                
+                # Si estamos editando una familia, excluir habitantes de esta familia
+                if familia_id:
+                    queryset = queryset.exclude(familia_id=familia_id)
+                
+                # Si el habitante tiene ID (está siendo editado), excluirlo también
+                habitante_id = habitante_data.get('id')
+                if habitante_id:
+                    queryset = queryset.exclude(pk=habitante_id)
+                
+                if queryset.exists():
                     raise serializers.ValidationError(
                         f"La cédula {cedula_normalizada} ya está registrada en el sistema."
                     )
@@ -305,7 +320,7 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """
         Actualiza Familia y sus Habitantes en una transacción atómica.
-        Estrategia: Eliminar habitantes existentes y crear nuevos.
+        Estrategia: Actualizar habitantes existentes, crear nuevos, eliminar los que no están en la lista.
         """
         habitantes_data = validated_data.pop('habitantes', None)
         
@@ -316,12 +331,45 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
         
         # Si se proporcionaron habitantes, actualizar
         if habitantes_data is not None:
-            # Soft delete de habitantes existentes
-            instance.habitantes.filter(is_deleted=False).update(is_deleted=True)
+            # Obtener IDs de habitantes existentes
+            habitantes_existentes = instance.habitantes.filter(is_deleted=False)
+            ids_existentes = set(habitantes_existentes.values_list('id', flat=True))
+            ids_enviados = set()
             
-            # Crear nuevos habitantes
+            # Procesar cada habitante en los datos enviados
             for habitante_data in habitantes_data:
-                Habitante.objects.create(familia=instance, **habitante_data)
+                habitante_id = habitante_data.get('id')
+                
+                if habitante_id and habitante_id in ids_existentes:
+                    # Actualizar habitante existente
+                    try:
+                        habitante = Habitante.objects.get(
+                            pk=habitante_id, 
+                            familia=instance, 
+                            is_deleted=False
+                        )
+                        for attr, value in habitante_data.items():
+                            if attr != 'id':  # No actualizar el ID
+                                setattr(habitante, attr, value)
+                        habitante.save()
+                        ids_enviados.add(habitante_id)
+                    except Habitante.DoesNotExist:
+                        # Si no existe, crear nuevo
+                        habitante_data.pop('id', None)  # Remover ID inválido
+                        Habitante.objects.create(familia=instance, **habitante_data)
+                else:
+                    # Crear nuevo habitante
+                    habitante_data.pop('id', None)  # Remover ID si existe pero no es válido
+                    Habitante.objects.create(familia=instance, **habitante_data)
+            
+            # Soft delete de habitantes que no fueron enviados en la lista
+            ids_a_eliminar = ids_existentes - ids_enviados
+            if ids_a_eliminar:
+                Habitante.objects.filter(
+                    pk__in=ids_a_eliminar, 
+                    familia=instance, 
+                    is_deleted=False
+                ).update(is_deleted=True)
         
         return instance
     
