@@ -734,15 +734,15 @@ class EgresoComunalForm(forms.ModelForm):
         }),
         help_text="Persona o empresa que recibió el pago (opcional)"
     )
-    
-    soporte = forms.FileField(
+
+    soporte_digital = forms.FileField(
         required=False,
-        label="Soporte",
+        label="Soporte Digital",
         widget=forms.ClearableFileInput(attrs={
             'class': 'form-control',
             'accept': '.pdf,.jpg,.jpeg,.png'
         }),
-        help_text="Factura, recibo o comprobante del egreso"
+        help_text="Comprobante o soporte del ingreso (PDF, imagen)"
     )
     
     observaciones = forms.CharField(
