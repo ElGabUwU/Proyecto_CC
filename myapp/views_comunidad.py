@@ -20,7 +20,7 @@ import csv
 
 from .models import (
     Familia, Habitante, IngresoComunal, EgresoComunal, 
-    ConstanciaResidencia, ActaReunion, Person, User
+    ConstanciaResidencia, ActaReunion
 )
 from .forms import (
     FamiliaForm, HabitanteForm, IngresoComunalForm, 
@@ -241,7 +241,7 @@ def familias(request):
 
 
 @login_required
-@admin_required
+# @admin_required
 def familia_unificada(request, familia_id=None):
     """
     Vista unificada maestro-detalle para crear/editar familia con habitantes.
@@ -292,7 +292,7 @@ def familia_unificada(request, familia_id=None):
 
 
 @login_required
-@admin_required
+# @admin_required
 def crear_familia(request):
     """
     Vista para crear una nueva familia.
@@ -313,7 +313,7 @@ def crear_familia(request):
 
 
 @login_required
-@admin_required
+# @admin_required
 def editar_familia(request, id):
     """
     Vista para editar una familia existente.
@@ -340,7 +340,7 @@ def editar_familia(request, id):
 
 
 @login_required
-@admin_required
+# @admin_required
 @require_POST
 def eliminar_familia(request, id):
     """

@@ -5,39 +5,39 @@ from django.contrib.auth.admin import UserAdmin
 from .models import *
 
 # Register your models here.
-admin.site.register(Students) #Registro para estudiantes
-admin.site.register(Units) #Registro para unidades
-admin.site.register(Courses) #Registro para cursos
-admin.site.register(Levels) #Registro para niveles
-admin.site.register(Group_Levels) #Registro para grupos de niveles
-admin.site.register(Grade_Students) #Registro para calificaciones de estudiantes
-admin.site.register(Testing) #Registro para evaluaciones
-admin.site.register(Tutors) #Registro para tutores
+# admin.site.register(Students) #Registro para estudiantes
+# admin.site.register(Units) #Registro para unidades
+# admin.site.register(Courses) #Registro para cursos
+# admin.site.register(Levels) #Registro para niveles
+# admin.site.register(Group_Levels) #Registro para grupos de niveles
+# admin.site.register(Grade_Students) #Registro para calificaciones de estudiantes
+# admin.site.register(Testing) #Registro para evaluaciones
+# admin.site.register(Tutors) #Registro para tutores
 
-class PersonResource(resources.ModelResource):
-    fields = ('id', 'name', 'surname', 'type_document', 'document_number', 'telephone_number',
-              'progenitor_name', 'progenitor_document_number', 'email', 'date_of_birth',
-              'gender', 'pais_origen')
+# class PersonResource(resources.ModelResource):
+#     fields = ('id', 'name', 'surname', 'type_document', 'document_number', 'telephone_number',
+#               'progenitor_name', 'progenitor_document_number', 'email', 'date_of_birth',
+#               'gender', 'pais_origen')
 
-    class Meta:
-        model = Person
-@admin.register(Person)
-class PersonAdmin(ImportExportModelAdmin):
-    resource_class = PersonResource
-    list_display= ('id', 'name', 'surname','type_document', 
-                   'document_number','telephone_number','progenitor_name',
-                   'progenitor_document_number','email', 'date_of_birth', 
-                   'gender', 'pais_origen')
-    search_fields= ('name', 'surname', 'document_number', 'email')
-    list_editable=('email', 'telephone_number', 'date_of_birth',)
-    list_per_page= 20
-    exclude = ('id',)
+#     class Meta:
+#         model = Person
+# @admin.register(Person)
+# class PersonAdmin(ImportExportModelAdmin):
+#     resource_class = PersonResource
+#     list_display= ('id', 'name', 'surname','type_document', 
+#                    'document_number','telephone_number','progenitor_name',
+#                    'progenitor_document_number','email', 'date_of_birth', 
+#                    'gender', 'pais_origen')
+#     search_fields= ('name', 'surname', 'document_number', 'email')
+#     list_editable=('email', 'telephone_number', 'date_of_birth',)
+#     list_per_page= 20
+#     exclude = ('id',)
 
-@admin.register(User)
-class UserAdmin(admin.ModelAdmin):
-    list_display= ('id', 'username', 'email', 'role')
-    list_editable=('username', 'email', 'role',)
-    list_per_page= 15
+# @admin.register(User)
+# class UserAdmin(admin.ModelAdmin):
+#     list_display= ('id', 'username', 'email', 'role')
+#     list_editable=('username', 'email', 'role',)
+#     list_per_page= 15
 
 
 # ============================================
@@ -46,87 +46,64 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Familia)
 class FamiliaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'jefe_familia', 'direccion', 'telefono_contacto', 'fecha_registro', 'cantidad_habitantes')
-    list_filter = ('fecha_registro', 'is_deleted')
-    search_fields = ('jefe_familia__name', 'jefe_familia__surname', 'direccion', 'telefono_contacto')
-    raw_id_fields = ('jefe_familia',)
-    list_per_page = 20
+    # 'telefono_contacto' eliminado de list_display porque ya no existe en el modelo
+    list_display = ('nombre_familia', 'vivienda', 'catastro', 'get_jefe_familia', 'fecha_registro', 'is_deleted')
+    list_filter = ('is_deleted', 'fecha_registro')
+    search_fields = ('nombre_familia', 'vivienda', 'catastro', 'direccion')
     
-    def cantidad_habitantes(self, obj):
-        return obj.habitante_set.count()
-    cantidad_habitantes.short_description = 'Habitantes'
+    # SOLUCIÓN E002: Se eliminó 'jefe_familia' de raw_id_fields porque ya no es una columna física FK
+    raw_id_fields = () 
+
+    # Método personalizado para mostrar el jefe de familia de forma dinámica en la lista
+    def get_jefe_familia(self, obj):
+        jefe = obj.jefe_familia
+        return f"{jefe.nombre} {jefe.apellido}" if jefe else "Sin Jefe Asignado"
+    get_jefe_familia.short_description = 'Jefe de Familia'
 
 
 @admin.register(Habitante)
 class HabitanteAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'surname', 'document_number', 'familia', 'parentesco_jefe', 'nivel_educativo', 'ocupacion')
-    list_filter = ('parentesco_jefe', 'nivel_educativo', 'familia', 'is_deleted')
-    search_fields = ('name', 'surname', 'document_number', 'familia__jefe_familia__name')
+    # SOLUCIÓN E108: Se cambiaron 'name', 'surname' y 'document_number' por 'nombre', 'apellido' y 'cedula'
+    # SOLUCIÓN E108/E116: Se cambió 'parentesco_jefe' por 'es_jefe_familia'
+    list_display = ('cedula', 'nombre', 'apellido', 'familia', 'es_jefe_familia', 'genero', 'is_deleted')
+    list_filter = ('es_jefe_familia', 'genero', 'nivel_educativo', 'is_deleted')
+    search_fields = ('cedula', 'nombre', 'apellido', 'ocupacion')
     raw_id_fields = ('familia',)
-    list_per_page = 25
-    
-    fieldsets = (
-        ('Información Personal', {
-            'fields': ('type_document', 'document_number', 'name', 'surname', 
-                      'telephone_number', 'email', 'date_of_birth', 'gender', 'pais_origen')
-        }),
-        ('Información Comunitaria', {
-            'fields': ('familia', 'parentesco_jefe', 'nivel_educativo', 'ocupacion',
-                      'ingresos_mensuales', 'condiciones_salud', 'fecha_registro_comunitario')
-        }),
-        ('Estado', {
-            'fields': ('is_deleted', 'deleted_at')
-        }),
-    )
-
-
-@admin.register(IngresoComunal)
-class IngresoComunalAdmin(admin.ModelAdmin):
-    list_display = ('id', 'fecha', 'tipo_ingreso', 'concepto', 'monto', 'responsable', 'fecha_registro')
-    list_filter = ('tipo_ingreso', 'fecha', 'responsable')
-    search_fields = ('concepto', 'responsable__username', 'responsable__email')
-    date_hierarchy = 'fecha'
-    list_per_page = 20
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('responsable')
-
-
-@admin.register(EgresoComunal)
-class EgresoComunalAdmin(admin.ModelAdmin):
-    list_display = ('id', 'fecha', 'tipo_egreso', 'concepto', 'monto', 'beneficiario', 'responsable', 'fecha_registro')
-    list_filter = ('tipo_egreso', 'fecha', 'responsable')
-    search_fields = ('concepto', 'beneficiario', 'responsable__username', 'responsable__email')
-    date_hierarchy = 'fecha'
-    list_per_page = 20
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('responsable')
 
 
 @admin.register(ConstanciaResidencia)
 class ConstanciaResidenciaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'familia', 'fecha_documento', 'fecha_generacion', 'generado_por')
+    # SOLUCIÓN E108: El campo 'familia' no está directo en ConstanciaResidencia, se accede mediante el Habitante
+    list_display = ('habitante', 'get_familia_solicitante', 'fecha_documento', 'generado_por', 'fecha_generacion')
     list_filter = ('fecha_documento', 'fecha_generacion')
-    search_fields = ('familia__jefe_familia__name', 'familia__jefe_familia__surname', 'finalidad')
-    date_hierarchy = 'fecha_generacion'
-    list_per_page = 15
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('familia', 'generado_por')
+    search_fields = ('habitante__nombre', 'habitante__apellido', 'habitante__cedula', 'finalidad')
+    raw_id_fields = ('habitante', 'generado_por')
+
+    # Método para traer la familia del habitante que solicita la constancia
+    def get_familia_solicitante(self, obj):
+        return obj.habitante.familia.nombre_familia
+    get_familia_solicitante.short_description = 'Familia / Hogar'
+
+
+@admin.register(IngresoComunal)
+class IngresoComunalAdmin(admin.ModelAdmin):
+    list_display = ('fecha', 'tipo_ingreso', 'concepto', 'monto', 'responsable')
+    list_filter = ('tipo_ingreso', 'fecha')
+    search_fields = ('concepto', 'observaciones')
+    raw_id_fields = ('responsable',)
+
+
+@admin.register(EgresoComunal)
+class EgresoComunalAdmin(admin.ModelAdmin):
+    list_display = ('fecha', 'tipo_egreso', 'concepto', 'monto', 'beneficiario', 'responsable')
+    list_filter = ('tipo_egreso', 'fecha')
+    search_fields = ('concepto', 'beneficiario', 'observaciones')
+    raw_id_fields = ('responsable',)
 
 
 @admin.register(ActaReunion)
 class ActaReunionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'titulo', 'fecha_reunion', 'lugar', 'asistentes_count', 'generado_por', 'fecha_generacion')
-    list_filter = ('fecha_reunion', 'generado_por')
-    search_fields = ('titulo', 'lugar', 'asistentes', 'contenido')
-    date_hierarchy = 'fecha_reunion'
-    list_per_page = 15
-    
-    def asistentes_count(self, obj):
-        return obj.asistentes_count()
-    asistentes_count.short_description = 'Asistentes'
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('generado_por')
+    list_display = ('titulo', 'fecha_reunion', 'lugar', 'generado_por')
+    list_filter = ('fecha_reunion', 'fecha_generacion')
+    search_fields = ('titulo', 'contenido', 'acuerdos', 'lugar')
+    raw_id_fields = ('generado_por',)

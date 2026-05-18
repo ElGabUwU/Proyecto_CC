@@ -178,7 +178,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]  # Carpeta para archivos estáticos
 
-AUTH_USER_MODEL = 'myapp.User'
+#AUTH_USER_MODEL = 'myapp.User'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
