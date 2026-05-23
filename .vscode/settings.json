@@ -1,3 +1,10 @@
 {
-    "html.autoClosingTags": false
+    "html.autoClosingTags": false,
+    "python-envs.pythonProjects": [
+        {
+            "path": ".",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ]
 }

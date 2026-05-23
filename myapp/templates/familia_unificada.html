@@ -536,8 +536,11 @@
     }
     
     function obtenerDatosFormulario() {
+      const index = parseInt($('#habitante_index').val());
+      const habitanteExistente = index !== -1 ? habitantesList[index] : null;
+      
       return {
-        id: null,
+        id: habitanteExistente ? habitanteExistente.id : null,
         cedula: $('#cedula').val().trim().toUpperCase(),
         nombre: $('#nombre').val().trim(),
         apellido: $('#apellido').val().trim(),
