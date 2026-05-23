@@ -22,20 +22,20 @@ urlpatterns = [
     # ============================================
     
     # Vistas de Template
-    path('familias/', views_comunidad.familias, name='familias'),
-    path('familias/nueva/', views_comunidad.familia_unificada, name='familia_unificada'),
-    path('familias/editar/<int:familia_id>/', views_comunidad.familia_unificada, name='editar_familia_unificada'),
-    path('familias/eliminar/<int:id>/', views_comunidad.eliminar_familia, name='eliminar_familia_api'),
+    path('comunidad/familias/', views_comunidad.familias, name='familias'),
+    path('comunidad/familias/gestion/', views_comunidad.familia_unificada, name='familia_unificada'),
+    path('comunidad/familias/gestion/<int:familia_id>/', views_comunidad.familia_unificada, name='editar_familia_unificada'),
+    path('comunidad/familias/eliminar/<int:id>/', views_comunidad.eliminar_familia, name='eliminar_familia'),
     
     # API REST para Familias
-    path('api/familias/', views_comunidad.FamiliaAPIView.as_view(), name='api_familias_list'),
-    path('api/familias/<int:familia_id>/', views_comunidad.FamiliaAPIView.as_view(), name='api_familias_detail'),
+    path('api/familias/', views_comunidad.FamiliaAPIView.as_view(), name='api_familias_lista'),
+    path('api/familias/<int:familia_id>/', views_comunidad.FamiliaAPIView.as_view(), name='api_familia_detalle'),
     
-    # ============================================
-    # Habitantes (Vistas independientes para gestión individual)
-    # ============================================
-    path('habitantes/', views_comunidad.habitantes, name='habitantes'),
-    path('habitantes/detalle/<int:id>/', views_comunidad.detalle_habitante, name='detalle_habitante'),
+    # # ============================================
+    # # Habitantes (Vistas independientes para gestión individual)
+    # # ============================================
+    # path('habitantes/', views_comunidad.habitantes, name='habitantes'),
+    # path('habitantes/detalle/<int:id>/', views_comunidad.detalle_habitante, name='detalle_habitante'),
     
     # ============================================
     # Finanzas

@@ -108,13 +108,20 @@ class Habitante(SoftDeleteModel):
         verbose_name_plural = 'Habitantes'
         ordering = ['familia', '-es_jefe_familia', 'apellido', 'nombre']
         
-        # Restricción en la Base de Datos (PostgreSQL): 
-        # Evita que existan dos jefes activos en la misma familia.
         constraints = [
+            # 1. Regla del Consejo Comunal: Un solo jefe activo por cada grupo familiar
             models.UniqueConstraint(
                 fields=['familia'],
                 condition=models.Q(es_jefe_familia=True, is_deleted=False),
                 name='unique_jefe_activo_por_familia'
+            ),
+            
+            # 2. Regla del Estado Venezolano / Sistema: La cédula debe ser única en todo el sistema 
+            # (ignorando lógicamente los registros que hayan sido borrados con soft delete)
+            models.UniqueConstraint(
+                fields=['cedula'],
+                condition=models.Q(is_deleted=False),
+                name='unique_cedula_habitante_activo'
             )
         ]
 

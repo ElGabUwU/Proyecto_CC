@@ -200,19 +200,19 @@ class FamiliaAPIView(View):
 # ============================================
 # Vistas de Template para Familias (Nueva Arquitectura)
 # ============================================
+from .serializers import HabitanteSerializer
 
 @login_required
 def familias(request):
     """
-    Vista para listar y buscar familias (Template tradicional).
+    Vista Maestro: Muestra el listado de todas las familias con sus habitantes precargados.
     """
     query = request.GET.get('q', '')
-    campo = request.GET.get('campo', 'todos')
     
+    # Prefetch_related optimiza la consulta en Postgres trayendo los habitantes de un solo golpe
     familias_list = Familia.objects.filter(is_deleted=False).prefetch_related('habitantes')
     
     if query:
-        # Búsqueda por nombre de familia, dirección, vivienda o jefe de familia
         familias_list = familias_list.filter(
             Q(nombre_familia__icontains=query) |
             Q(direccion__icontains=query) |
@@ -223,138 +223,60 @@ def familias(request):
             Q(habitantes__cedula__icontains=query)
         ).distinct()
     
-    # Ordenar por fecha de registro (más recientes primero)
     familias_list = familias_list.order_by('-fecha_registro')
     
-    # Paginación
-    paginator = Paginator(familias_list, 20)  # 20 familias por página
+    paginator = Paginator(familias_list, 15)  # 15 familias por página
     page_number = request.GET.get('page')
     familias_page = paginator.get_page(page_number)
     
     context = {
         'familias': familias_page,
         'query': query,
-        'campo': campo,
     }
-    
     return render(request, 'familias.html', context)
 
-
 @login_required
-# @admin_required
 def familia_unificada(request, familia_id=None):
     """
-    Vista unificada maestro-detalle para crear/editar familia con habitantes.
-    
-    GET: Muestra el formulario para crear nueva familia
-    GET /{id}: Muestra el formulario para editar familia existente
-    POST: Crea nueva familia con habitantes
-    POST /{id}: Actualiza familia existente con habitantes
+    Vista Detalle: Renderiza la interfaz unificada de registro y edición masiva.
     """
+    # Evitar bloqueos de acceso si eres el administrador del sistema
+    es_autorizado = request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', None) in ['admin', 'vocero_secretaria']
+    if not es_autorizado:
+        messages.error(request, "No tienes permisos para acceder a esta sección.")
+        return redirect('welcome')
+
+    familia = None
+    habitantes_json = "[]"
+    
     if familia_id:
-        # Modo edición
         familia = get_object_or_404(Familia, pk=familia_id, is_deleted=False)
-    else:
-        # Modo creación
-        familia = None
+        # Convertir los habitantes existentes a JSON de manera segura para manipularlos en el frontend
+        habitantes_qs = familia.habitantes.filter(is_deleted=False)
+        habitantes_json = json.dumps(HabitanteSerializer(habitantes_qs, many=True).data)
     
-    if request.method == 'POST':
-        # Procesar datos JSON del formulario
-        try:
-            data = json.loads(request.body) if request.content_type == 'application/json' else request.POST.dict()
-        except:
-            data = request.POST.dict()
-        
-        # Validar y guardar usando el serializer
-        if familia:
-            serializer = FamiliaConHabitantesSerializer(familia, data=data)
-        else:
-            serializer = FamiliaConHabitantesSerializer(data=data)
-        
-        if serializer.is_valid():
-            try:
-                familia_guardada = serializer.save()
-                messages.success(request, f'Familia "{familia_guardada.nombre_familia}" guardada exitosamente.')
-                return redirect('familias')
-            except Exception as e:
-                messages.error(request, f'Error al guardar: {str(e)}')
-        else:
-            for field, errors in serializer.errors.items():
-                for error in errors:
-                    messages.error(request, f'{field}: {error}')
-    
-    # GET: Mostrar formulario
     context = {
         'familia': familia,
+        'habitantes_json': habitantes_json,
+        'is_edit': familia_id is not None
     }
-    
     return render(request, 'familia_unificada.html', context)
 
-
 @login_required
-# @admin_required
-def crear_familia(request):
-    """
-    Vista para crear una nueva familia.
-    """
-    if request.method == 'POST':
-        form = FamiliaForm(request.POST)
-        if form.is_valid():
-            familia = form.save()
-            messages.success(request, f'Familia {familia.jefe_familia.name} creada exitosamente.')
-            return redirect('familias')
-        else:
-            messages.error(request, 'Por favor corrija los errores en el formulario.')
-    else:
-        form = FamiliaForm()
-    
-    context = {'form': form}
-    return render(request, 'familias.html', context)
-
-
-@login_required
-# @admin_required
-def editar_familia(request, id):
-    """
-    Vista para editar una familia existente.
-    """
-    familia = get_object_or_404(Familia, id=id, is_deleted=False)
-    
-    if request.method == 'POST':
-        form = FamiliaForm(request.POST, instance=familia)
-        if form.is_valid():
-            familia = form.save()
-            messages.success(request, f'Familia {familia.jefe_familia.name} actualizada exitosamente.')
-            return redirect('familias')
-        else:
-            messages.error(request, 'Por favor corrija los errores en el formulario.')
-    else:
-        form = FamiliaForm(instance=familia)
-    
-    context = {
-        'form': form,
-        'familia': familia,
-        'person_to_edit': familia.jefe_familia,
-    }
-    return render(request, 'familias.html', context)
-
-
-@login_required
-# @admin_required
 @require_POST
 def eliminar_familia(request, id):
     """
-    Vista para eliminar (soft delete) una familia.
+    Soft delete unificado para resguardar la integridad del censo comunal.
     """
     familia = get_object_or_404(Familia, id=id, is_deleted=False)
     
-    # Verificar que no tenga habitantes antes de eliminar
-    if familia.habitante_set.exists():
-        messages.error(request, 'No se puede eliminar la familia porque tiene habitantes registrados.')
-        return redirect('familias')
-    
-    familia.delete()  # Soft delete
-    messages.success(request, f'Familia {familia.jefe_familia.name} eliminada exitosamente.')
+    with transaction.atomic():
+        familia.is_deleted = True
+        familia.save()
+        # Al eliminar la familia, se marcan automáticamente como dados de baja sus habitantes
+        familia.habitantes.filter(is_deleted=False).update(is_deleted=True)
+        
+    messages.success(request, f'Familia {familia.nombre_familia} y sus integrantes eliminados correctamente.')
     return redirect('familias')
 
 
@@ -376,64 +298,6 @@ def api_familia(request, id):
     }
     
     return JsonResponse(data)
-
-
-# ============================================
-# Vistas para Habitantes
-# ============================================
-
-@login_required
-def habitantes(request):
-    """
-    Vista para listar y buscar habitantes.
-    """
-    query = request.GET.get('q', '')
-    familia_id = request.GET.get('familia', '')
-    
-    habitantes_list = Habitante.objects.filter(is_deleted=False).select_related('familia')
-    
-    if query:
-        habitantes_list = habitantes_list.filter(
-            Q(cedula__icontains=query) |
-            Q(nombre__icontains=query) |
-            Q(apellido__icontains=query) |
-            Q(ocupacion__icontains=query)
-        )
-    
-    if familia_id and familia_id != 'todos':
-        habitantes_list = habitantes_list.filter(familia_id=familia_id)
-    
-    # Obtener todas las familias para el filtro
-    familias = Familia.objects.filter(is_deleted=False)
-    
-    # Paginación
-    paginator = Paginator(habitantes_list, 25)  # 25 habitantes por página
-    page_number = request.GET.get('page')
-    habitantes_page = paginator.get_page(page_number)
-    
-    context = {
-        'habitantes': habitantes_page,
-        'familias': familias,
-        'query': query,
-        'familia_id': familia_id,
-    }
-    
-    return render(request, 'habitantes.html', context)
-
-
-@login_required
-def detalle_habitante(request, id):
-    """
-    Vista para ver el detalle completo de un habitante.
-    """
-    habitante = get_object_or_404(Habitante, id=id, is_deleted=False)
-    
-    context = {
-        'habitante': habitante,
-    }
-    
-    return render(request, 'detalle_habitante.html', context)
-
 
 # ============================================
 # Vistas para Finanzas

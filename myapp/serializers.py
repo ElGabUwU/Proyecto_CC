@@ -6,6 +6,7 @@ from rest_framework import serializers
 from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Familia, Habitante
+from datetime import date
 import re
 
 
@@ -39,28 +40,61 @@ def validar_cedula_venezolana(cedula):
     
     return cedula
 
-
-def validar_cedula_unica(cedula, exclude_pk=None):
+def validar_cedula_venezolana(cedula):
     """
-    Valida que la cédula sea única en el sistema.
+    Valida el formato de cédula venezolana.
+    Si vienen solo números, le añade el prefijo 'V-' automáticamente para evitar quiebres.
+    Formatos válidos: V-12345678, E-12345678, V12345678, E12345678, 12345678
     """
-    queryset = Habitante.objects.filter(cedula=cedula, is_deleted=False)
-    if exclude_pk:
-        queryset = queryset.exclude(pk=exclude_pk)
+    if not cedula:
+        return cedula
     
-    if queryset.exists():
+    # Normalizar: quitar espacios y pasar a mayúsculas
+    cedula = str(cedula).strip().upper()
+    
+    # NUEVO TRUCO: Si el usuario metió solo números (ej: "30456789"), le asumimos la V- por defecto
+    if cedula.isdigit():
+        cedula = f"V-{cedula}"
+    
+    # Patrones válidos
+    patron_con_guion = r'^[VE]-\d{6,8}$'
+    patron_sin_guion = r'^[VE]\d{6,8}$'
+    
+    if not (re.match(patron_con_guion, cedula) or re.match(patron_sin_guion, cedula)):
         raise serializers.ValidationError(
-            f"Ya existe un habitante registrado con la cédula {cedula}"
+            "Formato de cédula inválido. Use: V-12345678 o E-12345678"
         )
     
+    # Normalizar con guion si venía pegado (ej: V12345678 -> V-12345678)
+    if re.match(patron_sin_guion, cedula):
+        cedula = f"{cedula[0]}-{cedula[1:]}"
+    
     return cedula
+# ============================================
+# Mixin para Tolerancia de Claves de Fecha (Frontend-Friendly)
+# ============================================
 
+class FechaToleranteMixin:
+    """
+    Mixin para interceptar datos crudos del frontend.
+    Si el JSON envía 'fecha_nac', lo traduce a 'fecha_nacimiento'
+    para que el validador nativo de Django no falle por obligatoriedad.
+    """
+    def to_internal_value(self, data):
+        # Clonar datos para poder mutar de manera segura
+        dict_data = data.copy() if hasattr(data, 'copy') else dict(data)
+        
+        # Si el Frontend envió 'fecha_nac', mapearla transparentemente a 'fecha_nacimiento'
+        if 'fecha_nac' in dict_data and 'fecha_nacimiento' not in dict_data:
+            dict_data['fecha_nacimiento'] = dict_data['fecha_nac']
+            
+        return super().to_internal_value(dict_data)
 
 # ============================================
 # Serializers para Habitante
 # ============================================
 
-class HabitanteSerializer(serializers.ModelSerializer):
+class HabitanteSerializer(FechaToleranteMixin, serializers.ModelSerializer):
     """
     Serializer completo para Habitante.
     Usado para lectura y operaciones individuales.
@@ -84,7 +118,6 @@ class HabitanteSerializer(serializers.ModelSerializer):
     
     def get_edad(self, obj):
         """Calcula la edad basada en la fecha de nacimiento."""
-        from datetime import date
         if not obj.fecha_nacimiento:
             return None
         
@@ -104,15 +137,12 @@ class HabitanteSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Validaciones a nivel de objeto."""
-        # Validar unicidad de cédula
         cedula = data.get('cedula')
         instance = self.instance
         
         if cedula:
             validar_cedula_unica(cedula, exclude_pk=instance.pk if instance else None)
         
-        # Validar fecha de nacimiento
-        from datetime import date
         fecha_nacimiento = data.get('fecha_nacimiento')
         if fecha_nacimiento and fecha_nacimiento > date.today():
             raise serializers.ValidationError({
@@ -128,6 +158,10 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
     Usado dentro de FamiliaConHabitantesSerializer.
     Sin el campo 'familia' ya que se asigna desde el padre.
     """
+    # SOLUCIÓN: Declaramos el ID explícitamente como un IntegerField 
+    # que no es obligatorio y acepta valores nulos (para registros nuevos).
+    id = serializers.IntegerField(required=False, allow_null=True)
+
     class Meta:
         model = Habitante
         fields = [
@@ -137,23 +171,24 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
             'ocupacion', 'nivel_educativo',
             'ingresos_mensuales', 'condiciones_salud'
         ]
+        # Dejamos únicamente el borrado de validadores automáticos para la cédula
         extra_kwargs = {
-            'id': {'read_only': True, 'required': False},
+            'cedula': {
+                'validators': [] # Desactiva la validación automática estricta de DRF
+            }
         }
     
     def validate_cedula(self, value):
-        """Valida el formato de la cédula."""
+        """Valida únicamente el formato de la cédula."""
         return validar_cedula_venezolana(value)
     
     def validate_fecha_nacimiento(self, value):
         """Valida que la fecha de nacimiento no sea futura."""
-        from datetime import date
         if value and value > date.today():
             raise serializers.ValidationError(
                 'La fecha de nacimiento no puede ser futura.'
             )
         return value
-
 
 # ============================================
 # Serializers para Familia
@@ -162,7 +197,6 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
 class FamiliaListSerializer(serializers.ModelSerializer):
     """
     Serializer ligero para listado de familias.
-    Incluye conteo de habitantes y datos básicos del jefe.
     """
     cantidad_habitantes = serializers.ReadOnlyField()
     jefe_nombre = serializers.SerializerMethodField()
@@ -179,22 +213,18 @@ class FamiliaListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'fecha_registro', 'is_deleted']
     
     def get_jefe_nombre(self, obj):
-        """Retorna el nombre completo del jefe de familia."""
         jefe = obj.jefe_familia
         if jefe:
             return f"{jefe.nombre} {jefe.apellido}"
         return "Sin jefe asignado"
     
     def get_jefe_cedula(self, obj):
-        """Retorna la cédula del jefe de familia."""
         jefe = obj.jefe_familia
         return jefe.cedula if jefe else "-"
-
 
 class FamiliaDetalleSerializer(serializers.ModelSerializer):
     """
     Serializer detallado para lectura de una familia.
-    Incluye todos los habitantes relacionados.
     """
     habitantes = HabitanteSerializer(many=True, read_only=True)
     jefe_familia = serializers.SerializerMethodField()
@@ -211,7 +241,6 @@ class FamiliaDetalleSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'fecha_registro', 'is_deleted']
     
     def get_jefe_familia(self, obj):
-        """Retorna los datos del jefe de familia."""
         jefe = obj.jefe_familia
         if jefe:
             return {
@@ -222,12 +251,9 @@ class FamiliaDetalleSerializer(serializers.ModelSerializer):
                 'genero': jefe.genero,
             }
         return None
-
-
 class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
     """
-    Serializer maestro-detalle para crear Familia + Habitantes en una operación.
-    Implementa nested write para crear todo transaccionalmente.
+    Serializer maestro-detalle para crear Familia + Habitantes transaccionalmente.
     """
     habitantes = HabitanteNestedSerializer(many=True, required=True)
     
@@ -240,151 +266,121 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
     
     def validate_habitantes(self, habitantes):
-        """
-        Valida la lista de habitantes antes de guardar.
-        - Al menos 1 habitante requerido
-        - Exactamente 1 jefe de familia
-        - Cédulas únicas en la lista y en el sistema
-        """
         if not habitantes or len(habitantes) == 0:
-            raise serializers.ValidationError(
-                "Debe agregar al menos un habitante a la familia."
-            )
+            raise serializers.ValidationError("Debe agregar al menos un habitante.")
         
-        # Validar exactamente un jefe de familia
+        # Validar consistencia de Jefes (Regla del consejo comunal)
         jefes = [h for h in habitantes if h.get('es_jefe_familia', False)]
-        if len(jefes) == 0:
-            raise serializers.ValidationError(
-                "Debe designar exactamente un jefe de familia."
-            )
-        if len(jefes) > 1:
-            raise serializers.ValidationError(
-                "Solo puede haber un jefe de familia por hogar."
-            )
-        
-        # Validar cédulas únicas en la lista
+        if len(jefes) != 1:
+            raise serializers.ValidationError("Debe designar exactamente un jefe de familia.")
+            
+        # Validar que no metan la misma cédula dos veces en el mismo formulario
         cedulas = [h.get('cedula') for h in habitantes if h.get('cedula')]
         if len(cedulas) != len(set(cedulas)):
-            raise serializers.ValidationError(
-                "Hay cédulas duplicadas en la lista de habitantes."
-            )
+            raise serializers.ValidationError("Hay cédulas duplicadas en el formulario.")
         
-        # Validar cédulas únicas en el sistema
-        # Obtener la familia actual si estamos editando
-        instance = self.instance
-        familia_id = instance.id if instance else None
-        
-        for habitante_data in habitantes:
-            cedula = habitante_data.get('cedula')
+        # Validar duplicados EXTERNOS (en otras familias)
+        instance = self.instance # La familia que se está editando (si es un PUT)
+        for h_data in habitantes:
+            cedula = h_data.get('cedula')
             if cedula:
-                # Normalizar cédula
-                cedula_normalizada = validar_cedula_venezolana(cedula)
-                habitante_data['cedula'] = cedula_normalizada
-                
-                # Verificar unicidad en BD
-                queryset = Habitante.objects.filter(cedula=cedula_normalizada, is_deleted=False)
-                
-                # Si estamos editando una familia, excluir habitantes de esta familia
-                if familia_id:
-                    queryset = queryset.exclude(familia_id=familia_id)
-                
-                # Si el habitante tiene ID (está siendo editado), excluirlo también
-                habitante_id = habitante_data.get('id')
-                if habitante_id:
-                    queryset = queryset.exclude(pk=habitante_id)
+                # Buscar si la cédula ya existe en la BD
+                queryset = Habitante.objects.filter(cedula=cedula, is_deleted=False)
+                # Si estamos editando, permitimos que la cédula ya exista si pertenece a ESTA familia
+                if instance:
+                    queryset = queryset.exclude(familia=instance)
                 
                 if queryset.exists():
                     raise serializers.ValidationError(
-                        f"La cédula {cedula_normalizada} ya está registrada en el sistema."
+                        f"La cédula {cedula} ya está registrada en otro hogar del consejo comunal."
                     )
-        
+                    
         return habitantes
     
     @transaction.atomic
     def create(self, validated_data):
         """
-        Crea Familia y sus Habitantes en una transacción atómica.
+        Crea Familia y vincula los habitantes. La relación de jefe de familia
+        se infiere automáticamente a través del campo 'es_jefe_familia' en el Habitante.
         """
         habitantes_data = validated_data.pop('habitantes')
         
-        # Crear la familia
+        # 1. Crear la familia limpiamente con los datos de la vivienda/dirección
         familia = Familia.objects.create(**validated_data)
         
-        # Crear cada habitante vinculado a la familia
-        for habitante_data in habitantes_data:
-            Habitante.objects.create(familia=familia, **habitante_data)
-        
+        # 2. Crear los habitantes asociados. 
+        # Al guardar cada uno con su bandera 'es_jefe_familia', el modelo Familia 
+        # resolverá su propiedad 'jefe_familia' automáticamente en las consultas.
+        for h_data in habitantes_data:
+            Habitante.objects.create(familia=familia, **h_data)
+            
         return familia
     
     @transaction.atomic
     def update(self, instance, validated_data):
         """
-        Actualiza Familia y sus Habitantes en una transacción atómica.
-        Estrategia: Actualizar habitantes existentes, crear nuevos, eliminar los que no están en la lista.
+        Actualiza la Familia y gestiona el ciclo de vida de los habitantes,
+        emparejando por ID o por Cédula si el frontend omitió el ID.
         """
         habitantes_data = validated_data.pop('habitantes', None)
         
-        # Actualizar datos de la familia
+        # 1. Actualizar datos propios de la familia
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
         
-        # Si se proporcionaron habitantes, actualizar
+        # 2. Sincronizar el maestro-detalle de los habitantes
         if habitantes_data is not None:
-            # Obtener IDs de habitantes existentes
             habitantes_existentes = instance.habitantes.filter(is_deleted=False)
-            ids_existentes = set(habitantes_existentes.values_list('id', flat=True))
+            
+            # Mapeos para buscar de forma rápida por ID o por Cédula preexistente en la familia
+            dict_por_id = {h.id: h for h in habitantes_existentes}
+            dict_por_cedula = {h.cedula: h for h in habitantes_existentes}
+            
             ids_enviados = set()
             
-            # Procesar cada habitante en los datos enviados
-            for habitante_data in habitantes_data:
-                habitante_id = habitante_data.get('id')
+            for h_data in habitantes_data:
+                habitante_id = h_data.get('id')
+                cedula_enviada = h_data.get('cedula')
                 
-                if habitante_id and habitante_id in ids_existentes:
+                habitante_instancia = None
+                
+                # Intentar buscar el habitante por ID
+                if habitante_id and int(habitante_id) in dict_por_id:
+                    habitante_instancia = dict_por_id[int(habitante_id)]
+                # Salvavidas: Si el frontend no mandó ID, buscamos si la cédula ya era de esta familia
+                elif cedula_enviada in dict_por_cedula:
+                    habitante_instancia = dict_por_cedula[cedula_enviada]
+                
+                if habitante_instancia:
                     # Actualizar habitante existente
-                    try:
-                        habitante = Habitante.objects.get(
-                            pk=habitante_id, 
-                            familia=instance, 
-                            is_deleted=False
-                        )
-                        for attr, value in habitante_data.items():
-                            if attr != 'id':  # No actualizar el ID
-                                setattr(habitante, attr, value)
-                        habitante.save()
-                        ids_enviados.add(habitante_id)
-                    except Habitante.DoesNotExist:
-                        # Si no existe, crear nuevo
-                        habitante_data.pop('id', None)  # Remover ID inválido
-                        Habitante.objects.create(familia=instance, **habitante_data)
+                    for attr, value in h_data.items():
+                        if attr != 'id':
+                            setattr(habitante_instancia, attr, value)
+                    habitante_instancia.save()
+                    ids_enviados.add(habitante_instancia.id)
                 else:
-                    # Crear nuevo habitante
-                    habitante_data.pop('id', None)  # Remover ID si existe pero no es válido
-                    Habitante.objects.create(familia=instance, **habitante_data)
+                    # Es un habitante verdaderamente nuevo en la familia
+                    h_data.pop('id', None)
+                    nuevo = Habitante.objects.create(familia=instance, **h_data)
+                    ids_enviados.add(nuevo.id)
             
-            # Soft delete de habitantes que no fueron enviados en la lista
+            # Limpieza remanente / Soft Delete para los miembros que fueron removidos en la interfaz
+            ids_existentes = set(dict_por_id.keys())
             ids_a_eliminar = ids_existentes - ids_enviados
             if ids_a_eliminar:
-                Habitante.objects.filter(
-                    pk__in=ids_a_eliminar, 
-                    familia=instance, 
-                    is_deleted=False
-                ).update(is_deleted=True)
+                Habitante.objects.filter(pk__in=ids_a_eliminar, familia=instance, is_deleted=False).update(is_deleted=True)
         
         return instance
     
     def to_representation(self, instance):
-        """
-        Retorna la representación completa después de guardar.
-        """
         return FamiliaDetalleSerializer(instance).data
-
-
+    
 # ============================================
 # Serializer para actualización parcial de Habitante
 # ============================================
 
-class HabitanteUpdateSerializer(serializers.ModelSerializer):
+class HabitanteUpdateSerializer(FechaToleranteMixin, serializers.ModelSerializer):
     """
     Serializer para actualizar un habitante individualmente.
     """
@@ -397,7 +393,6 @@ class HabitanteUpdateSerializer(serializers.ModelSerializer):
         ]
     
     def validate_fecha_nacimiento(self, value):
-        from datetime import date
         if value and value > date.today():
             raise serializers.ValidationError(
                 'La fecha de nacimiento no puede ser futura.'
@@ -405,11 +400,7 @@ class HabitanteUpdateSerializer(serializers.ModelSerializer):
         return value
     
     def validate_es_jefe_familia(self, value):
-        """
-        Valida que no haya otro jefe de familia activo.
-        """
         if value and self.instance:
-            # Verificar si ya hay otro jefe en la familia
             jefes_existentes = Habitante.objects.filter(
                 familia=self.instance.familia,
                 es_jefe_familia=True,
@@ -420,5 +411,4 @@ class HabitanteUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Esta familia ya tiene un jefe de familia asignado."
                 )
-        
         return value

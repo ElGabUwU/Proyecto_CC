@@ -77,18 +77,12 @@ def sidebar_context(request):
     ]
     
     # 3. Menú de Gestión Comunitaria (Admin y Voceros autorizados)
-    comunidad_roles = ['admin', 'vocero_finanzas', 'vocero_secretaria', 'vocero_salud', 'vocero_educacion']
+    comunidad_roles = ['admin']
     comunidad_items = [
-        {
-            'name': 'Familias',
+{
+            'name': 'Familias - Habitantes', 
             'url': 'familias',
             'icon': 'fas fa-home',
-            'roles': comunidad_roles
-        },
-        {
-            'name': 'Habitantes',
-            'url': 'habitantes',
-            'icon': 'fas fa-user-friends',
             'roles': comunidad_roles
         },
         {
