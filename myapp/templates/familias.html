@@ -5,13 +5,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Familias - Consejo Comunal</title>
-  <!-- 🔄 MODIFICADO: Título actualizado para contexto comunitario -->
   <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
   <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   {% include 'partials/session_timeout.html' %}
   <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+  
+  
 </head>
 
 <body class="m-0 p-0">
@@ -20,201 +21,206 @@
     {% include 'partials/sidebar.html' %}
 
     <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
-      <div class="card shadow">
-        <div class="card-header">Gestión de Familias</div>
-        <!-- 🆕 NUEVO: Card header actualizado para contexto comunitario -->
-        
+      <div class="card custom-card-comunidad shadow">
+        <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom border-secondary py-3">
+          <h4 class="m-0 fw-bold"><i class="fas fa-home text-primary me-2"></i>Censo de Familias y Viviendas</h4>
+          <a href="{% url 'familia_unificada' %}" class="btn btn-primary px-4">
+            <i class="fas fa-plus-circle me-2"></i>Registrar Familia
+          </a>
+        </div>
+
         <div class="card-body">
-          <!-- Formulario de Búsqueda (patrón reutilizado de cedulas.html) -->
-          <form method="get" action="{% url 'familias' %}" class="mb-3">
-            <div class="row g-2 align-items-end">
-              <div class="col-12 col-md">
-                <label class="visually-hidden" for="q">Buscar</label>
-                <div class="input-group">
-                  <input type="text" name="q" id="q" class="form-control"
-                    placeholder="Buscar por jefe de familia, dirección..." value="{{ query|default_if_none:'' }}">
-                </div>
+          <form method="GET" action="{% url 'familias' %}" class="row g-3 mb-4">
+            <div class="col-md-9">
+              <div class="input-group">
+                <span class="input-group-text bg-transparent text-muted"><i class="fas fa-search"></i></span>
+                <input type="text" name="q" value="{{ query|default:'' }}" class="form-control input-busqueda" placeholder="Buscar por apellido de familia, cédula, nombre, catastro...">
               </div>
-              <div class="col-12 col-md-auto">
-                <label class="visually-hidden" for="campo">Campo</label>
-                <select name="campo" id="campo" class="form-select">
-                  <option value="todos" {% if campo == "todos" %}selected{% endif %}>Todos los campos</option>
-                  <option value="jefe_familia__name" {% if campo == "jefe_familia__name" %}selected{% endif %}>Jefe de Familia</option>
-                  <option value="direccion" {% if campo == "direccion" %}selected{% endif %}>Dirección</option>
-                  <option value="telefono_contacto" {% if campo == "telefono_contacto" %}selected{% endif %}>Teléfono</option>
-                  <option value="numero_vivienda" {% if campo == "numero_vivienda" %}selected{% endif %}>N° Vivienda</option>
-                </select>
-              </div>
-              <div class="col-12 col-md-auto d-flex flex-wrap gap-2">
-                <button class="btn btn-secondary flex-grow-1 flex-md-grow-0" type="submit">
-                  <i class="fa fa-search me-1"></i>Buscar
-                </button>
-                <a href="{% url 'familias' %}" class="btn btn-secondary flex-grow-1 flex-md-grow-0">
-                  <i class="fa fa-undo me-1"></i>Refrescar
-                </a>
-                <button type="button" class="btn btn-primary flex-grow-1 flex-md-grow-0"
-                  data-bs-toggle="modal" data-bs-target="#familiaModal">
-                  <i class="fas fa-plus me-1"></i>Añadir Familia
-                </button>
-              </div>
+            </div>
+            <div class="col-md-3">
+              <button type="submit" class="btn btn-secondary w-100"><i class="fas fa-filter me-2"></i>Filtrar</button>
             </div>
           </form>
 
-          <!-- Tabla de Familias -->
           <div class="table-responsive">
-            <table class="table table-bordered">
+            <table class="table table-bordered align-middle m-0">
               <thead>
-                <tr class="align-top">
-                  <th style="min-width: 120px;">Acciones</th>
-                  <th>Jefe de Familia</th>
-                  <th>Documento</th>
-                  <th>Dirección</th>
+                <tr>
+                  <th>Familia / Hogar</th>
                   <th>N° Vivienda</th>
-                  <th>Teléfono</th>
-                  <th>Fecha Registro</th>
-                  <th>Habitantes</th>
+                  <th>Código Catastro</th>
+                  <th>Jefe de Familia</th>
+                  <th>Integrantes</th>
+                  <th class="text-center">Acciones</th>
                 </tr>
               </thead>
-              <tbody id="tabla-familias">
-                {% if familias %}
-                {% for familia in familias %}
+              <tbody>
+                {% for f in familias %}
                 <tr>
+                  <td >{{ f.nombre_familia }}</td>
+                  <td><span class="badge bg-primary px-2.5 py-1.5">{{ f.vivienda }}</span></td>
+                  <td>{{ f.catastro }}</td>
                   <td>
-                    <button type="button" class="w-100 btn btn-warning btn-sm mb-2" data-bs-toggle="modal"
-                      data-bs-target="#familiaModal" data-familia-id="{{ familia.id }}">
-                      <i class="fas fa-edit me-1"></i>Editar
-                    </button>
-                    <button type="button" class="w-100 btn btn-info btn-sm mb-2" 
-                      onclick="window.location.href='{% url 'habitantes_familia' familia.id %}'">
-                      <i class="fas fa-users me-1"></i>Habitantes
-                    </button>
-                    <form action="{% url 'eliminar_familia' familia.id %}" method="post" style="display:inline;">
-                      {% csrf_token %}
-                      <button type="submit" class="w-100 btn btn-danger btn-sm"
-                        onclick="return confirm('¿Eliminar esta familia y todos sus habitantes?')">
-                        <i class="fas fa-trash me-1"></i>Eliminar
-                      </button>
-                    </form>
+                    {% if f.jefe_familia %}
+                      <span ><i class="fas fa-user-check text-success me-1"></i> {{ f.jefe_familia.nombre }} {{ f.jefe_familia.apellido }}</span>
+                    {% else %}
+                      <span class="text-warning fst-italic small">Sin asignar jefe</span>
+                    {% endif %}
                   </td>
-                  <td>{{ familia.jefe_familia.name }} {{ familia.jefe_familia.surname }}</td>
-                  <td>{{ familia.jefe_familia.document_number }}</td>
-                  <td>{{ familia.direccion }}</td>
-                  <td>{{ familia.numero_vivienda|default:"-" }}</td>
-                  <td>{{ familia.telefono_contacto }}</td>
-                  <td>{{ familia.fecha_registro|date:"d/m/Y" }}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-primary px-3" onclick="cargarIntegrantes('{{ f.id }}', '{{ f.nombre_familia }}')">
+                      <i class="fas fa-users me-1"></i> Ver ({{ f.habitantes.count }})
+                    </button>
+                  </td>
                   <td class="text-center">
-                    <span class="badge bg-primary">{{ familia.habitante_set.count }}</span>
+                    <div class="d-inline-flex gap-2">
+                      <a href="{% url 'editar_familia_unificada' f.id %}" class="btn btn-sm btn-warning text-dark" title="Editar">
+                        <i class="fas fa-edit"></i>
+                      </a>
+                      <button class="btn btn-sm btn-danger btn-eliminar" data-id="{{ f.id }}" data-nombre="{{ f.nombre_familia }}">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">
+                    <i class="fas fa-folder-open display-4 d-block mb-2 text-secondary"></i>
+                    No se encontraron núcleos familiares registrados.
                   </td>
                 </tr>
                 {% endfor %}
-                {% else %}
-                <tr>
-                  <td colspan="8" class="text-center text-muted">No se encontraron familias registradas.</td>
-                </tr>
-                {% endif %}
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
 
-      <!-- Paginación (patrón reutilizado) -->
-      <div class="pagination-container d-flex justify-content-center align-items-center my-4">
-        <button id="prev-page" class="btn pagination-btn" {% if not familias.has_previous %}disabled{% endif %}>
-          <img src="{% static 'assets/images/flecha_izq.png' %}" alt="Anterior" width="40" height="30">
-        </button>
-        <span id="page-info" class="page-info text-white mx-3">
-          {{ familias.number }} / {{ familias.paginator.num_pages|default:1 }}
-        </span>
-        <button id="next-page" class="btn pagination-btn" {% if not familias.has_next %}disabled{% endif %}>
-          <img src="{% static 'assets/images/flecha_der.png' %}" alt="Siguiente" width="40" height="30">
-        </button>
+          {% if familias.has_other_pages %}
+          <nav class="d-flex justify-content-center mt-4">
+            <ul class="pagination pagination-sm">
+              {% if familias.has_previous %}
+                <li class="page-item"><a class="page-link bg-transparent text-primary border-secondary" href="?page={{ familias.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">Anterior</a></li>
+              {% endif %}
+              <li class="page-item active"><span class="page-link bg-primary border-primary text-white">{{ familias.number }} de {{ familias.paginator.num_pages }}</span></li>
+              {% if familias.has_next %}
+                <li class="page-item"><a class="page-link bg-transparent text-primary border-secondary" href="?page={{ familias.next_page_number }}{% if query %}&q={{ query }}{% endif %}">Siguiente</a></li>
+              {% endif %}
+            </ul>
+          </nav>
+          {% endif %}
+        </div>
       </div>
     </main>
   </div>
 
-  <!-- Modal para Familia (patrón reutilizado de cedulas.html) -->
-  <div class="modal fade" id="familiaModal" tabindex="-1" aria-labelledby="familiaModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title text-center w-100" id="modalFamiliaTitle">Registrar Familia</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  <div class="modal fade" id="modalIntegrantes" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content" >
+        <div class="modal-header bg-primary border-bottom border-secondary">
+          <h5 class="modal-title text-white fw-bold" id="tituloModal">Integrantes</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <form id="familiaForm" method="POST" action="">
-            {% csrf_token %}
-            {{ familia_form.as_p }}
-          </form>
-        </div>
-        <div class="modal-footer">
-          <div class="row w-100">
-            <div class="col">
-              <button type="submit" form="familiaForm" class="btn btn-primary w-100">Guardar</button>
-            </div>
-            <div class="col">
-              <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">Cancelar</button>
-            </div>
+        <div class="modal-body mt-0 p-0">
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle m-0" id="tablaIntegrantes">
+              <thead>
+                <tr>
+                  <th class="ps-3">Cédula</th>
+                  <th>Nombre Completo</th>
+                  <th>Género</th>
+                  <th>Filiación / Rol</th>
+                  <th>Ocupación</th>
+                </tr>
+              </thead>
+              <tbody>
+                </tbody>
+            </table>
           </div>
+        </div>
+        <div class="modal-footer border-top border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // Lógica del modal (patrón reutilizado de cedulas.html)
-    const familiaModal = document.getElementById('familiaModal');
-    const modalFamiliaTitle = document.getElementById('modalFamiliaTitle');
-    const familiaForm = document.getElementById('familiaForm');
+    function cargarIntegrantes(familiaId, nombreFamilia) {
+      $('#tituloModal').html(`<i class="fas fa-users text-white me-2"></i>Integrantes de la Familia: ${nombreFamilia}`);
+      const tbody = $('#tablaIntegrantes tbody');
+      tbody.html('<tr><td colspan="5" class="text-center py-4 text-info"><i class="fas fa-spinner fa-spin me-2"></i>Consultando Postgres...</td></tr>');
+      
+      var modal = new bootstrap.Modal(document.getElementById('modalIntegrantes'));
+      modal.show();
 
-    familiaModal.addEventListener('show.bs.modal', function (event) {
-      const button = event.relatedTarget;
-      const familiaId = button.getAttribute('data-familia-id');
-
-      if (familiaId) {
-        modalFamiliaTitle.textContent = 'Editar Familia';
-        familiaForm.action = `/familias/editar/${familiaId}/`;
-
-        // AJAX para obtener datos de la familia
-        fetch(`/familias/api/${familiaId}/`)
-          .then(response => response.json())
-          .then(data => {
-            for (const [key, value] of Object.entries(data)) {
-              const input = familiaForm.querySelector(`[name="${key}"]`);
-              if (input) {
-                input.value = value !== null ? value : '';
-              }
-            }
+      fetch(`/api/familias/${familiaId}/`)
+        .then(response => response.json())
+        .then(data => {
+          tbody.empty();
+          if (!data.habitantes || data.habitantes.length === 0) {
+            tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No hay integrantes registrados en este hogar.</td></tr>');
+            return;
+          }
+          data.habitantes.forEach(h => {
+            const esJefe = h.es_jefe_familia ? '<span class="badge bg-success">Jefe de Familia</span>' : '<span class="badge bg-secondary">Carga Familiar</span>';
+            tbody.append(`
+              <tr>
+                <td class="ps-3">${h.cedula}</td>
+                <td>${h.nombre} ${h.apellido}</td>
+                <td>${h.genero === 'M' ? 'Masculino' : 'Femenino'}</td>
+                <td>${esJefe}</td>
+                <td>${h.ocupacion || 'Ninguna'}</td>
+              </tr>
+            `);
           });
-      } else {
-        modalFamiliaTitle.textContent = 'Registrar Familia';
-        familiaForm.action = "{% url 'familias' %}";
-        familiaForm.reset();
-      }
-    });
+        })
+        .catch(error => {
+          tbody.html('<tr><td colspan="5" class="text-center text-danger py-3">Error al conectar con el servidor.</td></tr>');
+        });
+    }
 
-    familiaModal.addEventListener('hidden.bs.modal', function () {
-      modalFamiliaTitle.textContent = 'Registrar Familia';
-      familiaForm.reset();
-      familiaForm.action = "{% url 'familias' %}";
-    });
-
-    // Mensajes de Django (patrón reutilizado)
-    $(document).ready(function () {
-      {% if messages %}
-      {% for message in messages %}
+    $('.btn-eliminar').on('click', function() {
+      const id = $(this).data('id');
+      const nombre = $(this).data('nombre');
+      
       Swal.fire({
-        icon: '{{ message.tags }}',
-        title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% else %}Notificación{% endif %}',
-        html: '{{ message.message|safe }}',
-        showConfirmButton: true
+        title: '¿Dar de baja núcleo familiar?',
+        html: `Esta acción marcará como eliminada a la familia <strong>${nombre}</strong> y a todos sus habitantes vinculados.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        background: '#1e293b',
+        color: '#fff'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/comunidad/familias/eliminar/${id}/`;
+          form.innerHTML = `{% csrf_token %}`;
+          document.body.appendChild(form);
+          form.submit();
+        }
       });
-      {% endfor %}
+    });
+
+    $(document).ready(function() {
+      {% if messages %}
+        {% for message in messages %}
+          Swal.fire({
+            icon: '{% if message.tags == "error" %}error{% else %}success{% endif %}',
+            title: '{% if message.tags == "error" %}Error{% else %}¡Éxito!{% endif %}',
+            text: '{{ message }}',
+            background: '#1e293b',
+            color: '#fff'
+          });
+        {% endfor %}
       {% endif %}
     });
   </script>

@@ -15,10 +15,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 # Importar decoradores y mixins de permisos
 from myapp.decorators import admin_required, teacher_required, student_data_only
 from myapp.mixins import AdminRequiredMixin, TeacherRequiredMixin, StudentDataOnlyMixin
-from .models import Cedula, Group_Levels, User, Calendario, Courses, Tutors, Levels, TodoItem, Person, Testing, Grade_Students
-from .forms import CourseForm, LevelForm, PersonForm, TodoItemForm, UserForm, UserUpdateForm, DocenteForm, UnitForm, GroupLevelForm, EvaluacionForm
+# from .models import Cedula, Group_Levels, User, Calendario, Courses, Tutors, Levels, TodoItem, Person, Testing, Grade_Students
+# from .forms import CourseForm, LevelForm, PersonForm, TodoItemForm, UserForm, UserUpdateForm, DocenteForm, UnitForm, GroupLevelForm, EvaluacionForm
 from django import forms
-from .models import Person, Students, User, Units, Tutors
+# from .models import Person, Students, User, Units, Tutors
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q, CharField, Max

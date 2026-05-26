@@ -1,0 +1,381 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if familia.id %}Editar Familia{% else %}Nueva Familia{% endif %} - Consejo Comunal</title>
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  {% include 'partials/session_timeout.html' %}
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+  
+  <style>
+    .custom-card-comunidad {
+      background: rgba(30, 41, 59, 0.45) !important;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      border-radius: 12px !important;
+    }
+    .seccion-bloque {
+      background: rgba(15, 23, 42, 0.45) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    .form-control-comunal, .form-select-comunal {
+      background-color: rgba(15, 23, 42, 0.6) !important;
+      color: #ffffff !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    .form-control-comunal:focus, .form-select-comunal:focus {
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25) !important;
+    }
+    .label-comunal {
+      color: #94a3b8 !important;
+      font-weight: 600;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+    .table-comunidad {
+      color: #e2e8f0 !important;
+    }
+    .table-comunidad th {
+      background-color: rgba(15, 23, 42, 0.7) !important;
+      color: #38bdf8 !important;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white">
+    {% include 'partials/sidebar.html' %}
+
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      <div class="card custom-card-comunidad shadow">
+        
+        <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom border-secondary py-3">
+          <h4 class="m-0 text-white fw-bold">
+            <i class="fas fa-edit text-primary me-2"></i>
+            {% if familia.id %}Actualizar Censo Familiar #{{ familia.id }}{% else %}Registrar Ficha Única Familiar{% endif %}
+          </h4>
+          <a href="{% url 'familias' %}" class="btn btn-secondary btn-sm px-3">
+            <i class="fas fa-arrow-left me-1"></i> Volver al Listado
+          </a>
+        </div>
+
+        <div class="card-body">
+          <div class="alert alert-danger" id="form-errors" style="display: none;">
+            <i class="fas fa-exclamation-triangle me-2"></i><span id="error-message"></span>
+          </div>
+
+          <form id="mainFamiliaForm" class="mb-4">
+            {% csrf_token %}
+            <div class="p-4 mb-3 seccion-bloque rounded-3">
+              <h5 class="mb-3 text-primary fw-bold"><i class="fas fa-map-marker-alt me-2"></i>1. Ubicación Geográfica e Inmueble</h5>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label label-comunal">APELLIDO DE FAMILIA / IDENTIFICADOR</label>
+                  <input type="text" id="nombre_familia" class="form-control form-control-comunal" value="{{ familia.nombre_familia|default:'' }}" placeholder="Ej: Familia Colmenares" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label label-comunal">NÚMERO DE VIVIENDA / CASA</label>
+                  <input type="text" id="vivienda" class="form-control form-control-comunal" value="{{ familia.vivienda|default:'' }}" placeholder="Ej: Casa Nro 12-B" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label label-comunal">CÓDIGO DE CATASTRO</label>
+                  <input type="text" id="catastro" class="form-control form-control-comunal" value="{{ familia.catastro|default:'' }}" placeholder="Código único de catastro" required>
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label label-comunal">DIRECCIÓN EXACTA DENTRO DE LA COMUNIDAD</label>
+                  <textarea id="direccion" class="form-control form-control-comunal" rows="2" placeholder="Vereda, calle, avenida o puntos de referencia..." required>{{ familia.direccion|default:'' }}</textarea>
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <div class="p-4 seccion-bloque rounded-3 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="m-0 text-primary fw-bold"><i class="fas fa-users me-2"></i>2. Censo de Integrantes del Hogar</h5>
+              <button type="button" class="btn btn-primary btn-sm px-3" onclick="abrirModalHabitante()">
+                <i class="fas fa-user-plus me-1"></i> Agregar Miembro
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-comunidad align-middle m-0" id="tableHabitantes">
+                <thead>
+                  <tr>
+                    <th>Cédula</th>
+                    <th>Nombre y Apellido</th>
+                    <th>Nacimiento</th>
+                    <th>Género</th>
+                    <th>Filiación / Rol</th>
+                    <th>Ocupación</th>
+                    <th class="text-center">Operaciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-success px-5 py-2 fw-bold" id="btnGuardarTodo">
+              <i class="fas fa-save me-2"></i> Guardar Ficha Completa
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal fade" id="habitanteModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content text-white" style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.15);">
+        <div class="modal-header border-bottom border-secondary">
+          <h5 class="modal-title text-white fw-bold" id="habitanteModalLabel">Datos del Ciudadano</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="habitanteForm">
+            <input type="hidden" id="habitante_index" value="-1">
+            <input type="hidden" id="habitante_id" value="">
+            
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label label-comunal">CÉDULA DE IDENTIDAD</label>
+                <input type="text" id="h_cedula" class="form-control form-control-comunal" placeholder="Ej: V-26123456" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">GÉNERO / SEXO</label>
+                <select id="h_genero" class="form-select form-select-comunal" required>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">NOMBRES</label>
+                <input type="text" id="h_nombre" class="form-control form-control-comunal" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">APELLIDOS</label>
+                <input type="text" id="h_apellido" class="form-control form-control-comunal" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">FECHA DE NACIMIENTO</label>
+                <input type="date" id="h_fecha_nacimiento" class="form-control form-control-comunal" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">NIVEL EDUCATIVO</label>
+                <select id="h_nivel_educativo" class="form-select form-select-comunal">
+                  <option value="primaria">Primaria</option>
+                  <option value="secundaria">Secundaria</option>
+                  <option value="tecnico">Técnico</option>
+                  <option value="universitario">Universitario</option>
+                  <option value="postgrado">Postgrado</option>
+                  <option value="ninguno">Ninguno</option>
+                </select>
+              </div>
+              <div class="col-md-12">
+                <label class="form-label label-comunal">OCUPACIÓN / OFICIO</label>
+                <input type="text" id="h_ocupacion" class="form-control form-control-comunal" placeholder="Ej: Empleado público, comerciante, estudiante...">
+              </div>
+              <div class="col-md-12">
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="h_es_jefe_familia">
+                  <label class="form-check-label text-warning small fw-bold" for="h_es_jefe_familia">¿Designar como Jefe de Familia?</label>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer border-top border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarFilaHabitante()">Guardar Integrante</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+
+  <script>
+    let habitantesList = JSON.parse('{{ habitantes_json|safe }}');
+    const familiaId = "{{ familia.id|default:'' }}";
+
+    $(document).ready(function() {
+      renderHabitantesTable();
+    });
+
+    function renderHabitantesTable() {
+      const tbody = $('#tableHabitantes tbody');
+      tbody.empty();
+      
+      if (habitantesList.length === 0) {
+        tbody.html('<tr><td colspan="7" class="text-center text-muted py-3">No se han ingresado ciudadanos a esta vivienda.</td></tr>');
+        return;
+      }
+
+      habitantesList.forEach((h, index) => {
+        const jefeBadge = h.es_jefe_familia ? '<span class="badge bg-success">JEFE(A)</span>' : '<span class="badge bg-secondary">Carga</span>';
+        tbody.append(`
+          <tr>
+            <td>${h.cedula}</td>
+            <td>${h.nombre} ${h.apellido}</td>
+            <td>${h.fecha_nacimiento}</td>
+            <td>${h.genero === 'M' ? 'M' : 'F'}</td>
+            <td>${jefeBadge}</td>
+            <td>${h.ocupacion || 'N/A'}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-warning text-dark me-1" onclick="editarFilaHabitante(${index})"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-sm btn-danger" onclick="eliminarFilaHabitante(${index})"><i class="fas fa-user-minus"></i></button>
+            </td>
+          </tr>
+        `);
+      });
+    }
+
+    function abrirModalHabitante() {
+      $('#habitanteForm')[0].reset();
+      $('#habitante_index').val(-1);
+      $('#habitante_id').val('');
+      $('#habitanteModalLabel').html('<i class="fas fa-user-plus text-primary me-2"></i>Agregar Miembro Familiar');
+      new bootstrap.Modal(document.getElementById('habitanteModal')).show();
+    }
+
+    function guardarFilaHabitante() {
+      const index = parseInt($('#habitante_index').val());
+      
+      const habitanteData = {
+        id: $('#habitante_id').val() ? parseInt($('#habitante_id').val()) : null,
+        cedula: $('#h_cedula').val().trim(),
+        nombre: $('#h_nombre').val().trim(),
+        apellido: $('#h_apellido').val().trim(),
+        fecha_nacimiento: $('#h_fecha_nacimiento').val(),
+        genero: $('#h_genero').val(),
+        nivel_educativo: $('#h_nivel_educativo').val(),
+        ocupacion: $('#h_ocupacion').val().trim(),
+        es_jefe_familia: $('#h_es_jefe_familia').is(':checked')
+      };
+
+      if (!habitanteData.cedula || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento) {
+        Swal.fire('Campos vacíos', 'Por favor complete los campos obligatorios del ciudadano.', 'warning');
+        return;
+      }
+
+      if (habitanteData.es_jefe_familia) {
+        habitantesList.forEach((h, idx) => {
+          if (idx !== index) h.es_jefe_familia = false;
+        });
+      }
+
+      if (index === -1) {
+        habitantesList.push(habitanteData);
+      } else {
+        habitantesList[index] = habitanteData;
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('habitanteModal')).hide();
+      renderHabitantesTable();
+    }
+
+    function editarFilaHabitante(index) {
+      const h = habitantesList[index];
+      $('#habitante_index').val(index);
+      $('#habitante_id').val(h.id || '');
+      $('#h_cedula').val(h.cedula);
+      $('#h_nombre').val(h.nombre);
+      $('#h_apellido').val(h.apellido);
+      $('#h_fecha_nacimiento').val(h.fecha_nacimiento);
+      $('#h_genero').val(h.genero);
+      $('#h_nivel_educativo').val(h.nivel_educativo);
+      $('#h_ocupacion').val(h.ocupacion);
+      $('#h_es_jefe_familia').prop('checked', h.es_jefe_familia);
+
+      $('#habitanteModalLabel').html('<i class="fas fa-edit text-warning me-2"></i>Modificar Datos del Ciudadano');
+      new bootstrap.Modal(document.getElementById('habitanteModal')).show();
+    }
+
+    function eliminarFilaHabitante(index) {
+      habitantesList.splice(index, 1);
+      renderHabitantesTable();
+    }
+
+    $('#btnGuardarTodo').on('click', function() {
+      const nombreFamilia = $('#nombre_familia').val().trim();
+      const vivienda = $('#vivienda').val().trim();
+      const catastro = $('#catastro').val().trim();
+      const direccion = $('#direccion').val().trim();
+
+      if (!nombreFamilia || !vivienda || !catastro || !direccion) {
+        Swal.fire('Formulario Incompleto', 'Los datos del inmueble y vivienda son requeridos.', 'error');
+        return;
+      }
+
+      if (habitantesList.length === 0) {
+        Swal.fire('Falta Carga', 'Debe agregar al menos un ciudadano a la vivienda.', 'warning');
+        return;
+      }
+
+      const tieneJefe = habitantesList.some(h => h.es_jefe_familia);
+      if (!tieneJefe) {
+        Swal.fire('Falta Jerarquía', 'Debe marcar obligatoriamente a un integrante como Jefe de Familia.', 'warning');
+        return;
+      }
+
+      const payload = {
+        nombre_familia: nombreFamilia,
+        vivienda: vivienda,
+        catastro: catastro,
+        direccion: direccion,
+        habitantes: habitantesList
+      };
+
+      const url = familiaId ? `/api/familias/${familiaId}/` : '/api/familias/';
+      const method = familiaId ? 'PUT' : 'POST';
+
+      Swal.fire({
+        title: 'Sincronizando...',
+        text: 'Escribiendo en Postgres...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
+      fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Error al guardar datos');
+        return response.json();
+      })
+      .then(data => {
+        Swal.fire({
+          icon: 'success',
+          title: '¡Ficha Guardada!',
+          text: 'El censo familiar se ha procesado con total éxito.',
+          background: '#1e293b',
+          color: '#fff'
+        }).then(() => {
+          window.location.href = "{% url 'familias' %}";
+        });
+      })
+      .catch(error => {
+        Swal.fire('Error de Comunicación', 'No se pudo guardar la información en el servidor.', 'error');
+      });
+    });
+  </script>
+</body>
+</html>
