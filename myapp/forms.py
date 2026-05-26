@@ -1033,3 +1033,252 @@ class ActaReunionForm(forms.ModelForm):
         """
         
         return contenido
+
+
+# ============================================
+# 🆕 NUEVO: Formularios para Gestión de Proyectos
+# ============================================
+
+from .models import Comite, Proyecto, ProyectoIntegrante
+
+class ComiteForm(forms.ModelForm):
+    """
+    Formulario para crear y editar comités.
+    """
+    nombre = forms.CharField(
+        label="Nombre del Comité",
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Comité de Finanzas Sector Norte'
+        }),
+        help_text="Nombre descriptivo del comité"
+    )
+    
+    tipo_comite = forms.ChoiceField(
+        choices=Comite.TIPO_COMITE_CHOICES,
+        label="Tipo de Comité",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione el tipo de comité"
+    )
+    
+    descripcion = forms.CharField(
+        label="Descripción",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Descripción del comité y sus funciones...'
+        }),
+        help_text="Descripción opcional del comité"
+    )
+    
+    vocero_principal = forms.ModelChoiceField(
+        queryset=Person.objects.filter(is_deleted=False),
+        label="Vocero Principal",
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Persona responsable del comité (opcional)"
+    )
+    
+    activo = forms.BooleanField(
+        label="Comité Activo",
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="Desmarque si el comité está inactivo"
+    )
+    
+    class Meta:
+        model = Comite
+        fields = ['nombre', 'tipo_comite', 'descripcion', 'vocero_principal', 'activo']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['nombre'].widget.attrs['readonly'] = False
+
+
+class ProyectoForm(forms.ModelForm):
+    """
+    Formulario para crear y editar proyectos comunitarios.
+    """
+    nombre = forms.CharField(
+        label="Nombre del Proyecto",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Construcción de cancha deportiva'
+        }),
+        help_text="Nombre descriptivo del proyecto (máximo 200 caracteres)"
+    )
+    
+    fecha_inicio = forms.DateField(
+        label="Fecha de Inicio",
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha estimada de inicio del proyecto"
+    )
+    
+    fecha_fin = forms.DateField(
+        label="Fecha de Fin Estimada",
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha estimada de finalización (opcional)"
+    )
+    
+    descripcion = forms.CharField(
+        label="Descripción del Proyecto",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Describa los objetivos, alcance y detalles del proyecto...'
+        }),
+        help_text="Descripción detallada del proyecto"
+    )
+    
+    monto_estimado = forms.DecimalField(
+        label="Monto Estimado (Bs.)",
+        max_digits=12,
+        decimal_places=2,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'min': '0',
+            'placeholder': '0.00'
+        }),
+        help_text="Monto estimado en bolívares"
+    )
+    
+    estatus = forms.ChoiceField(
+        choices=Proyecto.ESTATUS_CHOICES,
+        label="Estatus del Proyecto",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Estado actual del proyecto"
+    )
+    
+    comite = forms.ModelChoiceField(
+        queryset=Comite.objects.filter(is_deleted=False, activo=True),
+        label="Comité Responsable",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione el comité encargado del proyecto",
+        empty_label="-- Seleccione un comité --"
+    )
+    
+    class Meta:
+        model = Proyecto
+        fields = ['nombre', 'fecha_inicio', 'fecha_fin', 'descripcion', 'monto_estimado', 'estatus', 'comite']
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Si es un nuevo proyecto, preestablecer la fecha de inicio
+        if not self.instance.pk:
+            from datetime import date
+            self.fields['fecha_inicio'].initial = date.today()
+    
+    def clean_fecha_fin(self):
+        """Validar que la fecha de fin sea posterior a la fecha de inicio"""
+        fecha_inicio = self.cleaned_data.get('fecha_inicio')
+        fecha_fin = self.cleaned_data.get('fecha_fin')
+        
+        if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+            raise forms.ValidationError(
+                "La fecha de fin no puede ser anterior a la fecha de inicio."
+            )
+        return fecha_fin
+    
+    def clean_monto_estimado(self):
+        """Validar que el monto sea positivo"""
+        monto = self.cleaned_data.get('monto_estimado')
+        if monto is not None and monto < 0:
+            raise forms.ValidationError("El monto estimado debe ser un valor positivo.")
+        return monto
+    
+    def save(self, commit=True):
+        """Guardar con el usuario como creador"""
+        instance = super().save(commit=False)
+        if self.user and not instance.pk:
+            instance.creado_por = self.user
+        if commit:
+            instance.save()
+        return instance
+
+
+class AsignarHabitanteForm(forms.ModelForm):
+    """
+    Formulario para asignar un habitante a un proyecto.
+    """
+    habitante = forms.ModelChoiceField(
+        queryset=Habitante.objects.filter(is_deleted=False),
+        label="Habitante",
+        widget=forms.Select(attrs={
+            'class': 'form-control select2',
+            'data-placeholder': 'Buscar por nombre o cédula...'
+        }),
+        help_text="Seleccione el habitante a asignar"
+    )
+    
+    rol = forms.ChoiceField(
+        choices=ProyectoIntegrante.ROL_CHOICES,
+        label="Rol en el Proyecto",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Rol que desempeñará el habitante en el proyecto"
+    )
+    
+    observaciones = forms.CharField(
+        label="Observaciones",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Observaciones adicionales...'
+        }),
+        help_text="Observaciones sobre la asignación (opcional)"
+    )
+    
+    class Meta:
+        model = ProyectoIntegrante
+        fields = ['habitante', 'rol', 'observaciones']
+    
+    def __init__(self, *args, **kwargs):
+        self.proyecto = kwargs.pop('proyecto', None)
+        super().__init__(*args, **kwargs)
+        
+        # Optimizar queryset con select_related
+        self.fields['habitante'].queryset = self.fields['habitante'].queryset.select_related(
+            'persona', 'familia'
+        )
+    
+    def clean_habitante(self):
+        """Validar que el habitante no esté ya asignado al proyecto"""
+        habitante = self.cleaned_data.get('habitante')
+        
+        if self.proyecto and habitante:
+            # Verificar si ya está asignado
+            existe = ProyectoIntegrante.objects.filter(
+                proyecto=self.proyecto,
+                habitante=habitante
+            ).exists()
+            
+            if existe:
+                raise forms.ValidationError(
+                    f"Este habitante ya está asignado al proyecto."
+                )
+        
+        return habitante
+    
+    def save(self, commit=True):
+        """Guardar con el proyecto"""
+        instance = super().save(commit=False)
+        if self.proyecto:
+            instance.proyecto = self.proyecto
+        if commit:
+            instance.save()
+        return instance

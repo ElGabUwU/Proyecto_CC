@@ -795,3 +795,186 @@ class ActaReunion(models.Model):
     def asistentes_count(self):
         """Retorna la cantidad de asistentes"""
         return len(self.asistentes.split(',')) if self.asistentes else 0
+
+
+# ============================================
+# 🆕 NUEVO: Modelos para Gestión de Proyectos Comunitarios
+# ============================================
+
+class Comite(SoftDeleteModel):
+    """
+    Modelo que representa un comité del consejo comunal.
+    Los proyectos se asignan a comités específicos.
+    """
+    TIPO_COMITE_CHOICES = [
+        ('finanzas', 'Comité de Finanzas'),
+        ('salud', 'Comité de Salud'),
+        ('educacion', 'Comité de Educación'),
+        ('vivienda', 'Comité de Vivienda'),
+        ('deporte', 'Comité de Deporte y Recreación'),
+        ('cultura', 'Comité de Cultura'),
+        ('seguridad', 'Comité de Seguridad'),
+        ('alimentacion', 'Comité de Alimentación'),
+        ('medio_ambiente', 'Comité de Medio Ambiente'),
+        ('otro', 'Otro Comité'),
+    ]
+    
+    nombre = models.CharField(max_length=100, verbose_name="Nombre del Comité")
+    tipo_comite = models.CharField(
+        max_length=50, 
+        choices=TIPO_COMITE_CHOICES, 
+        default='otro',
+        verbose_name="Tipo de Comité"
+    )
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    vocero_principal = models.ForeignKey(
+        Person, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='comites_dirigidos',
+        verbose_name="Vocero Principal"
+    )
+    fecha_creacion = models.DateField(auto_now_add=True, verbose_name="Fecha de Creación")
+    activo = models.BooleanField(default=True, verbose_name="Comité Activo")
+    
+    class Meta:
+        db_table = 'comites'
+        verbose_name = 'Comité'
+        verbose_name_plural = 'Comités'
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return f"{self.nombre} ({self.get_tipo_comite_display()})"
+    
+    def cantidad_proyectos_activos(self):
+        """Retorna la cantidad de proyectos activos del comité"""
+        return self.proyectos.filter(is_deleted=False).exclude(estatus='cancelado').count()
+
+
+class Proyecto(SoftDeleteModel):
+    """
+    Modelo que representa un proyecto comunitario.
+    """
+    ESTATUS_CHOICES = [
+        ('planificacion', 'Planificación'),
+        ('ejecucion', 'Ejecución'),
+        ('finalizado', 'Finalizado'),
+        ('cancelado', 'Cancelado'),
+    ]
+    
+    nombre = models.CharField(max_length=200, verbose_name="Nombre del Proyecto")
+    fecha_inicio = models.DateField(verbose_name="Fecha de Inicio")
+    fecha_fin = models.DateField(null=True, blank=True, verbose_name="Fecha de Fin Estimada")
+    descripcion = models.TextField(verbose_name="Descripción del Proyecto")
+    monto_estimado = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        verbose_name="Monto Estimado (Bs.)",
+        help_text="Monto estimado en bolívares"
+    )
+    estatus = models.CharField(
+        max_length=20, 
+        choices=ESTATUS_CHOICES, 
+        default='planificacion',
+        verbose_name="Estatus del Proyecto"
+    )
+    comite = models.ForeignKey(
+        Comite, 
+        on_delete=models.PROTECT, 
+        related_name='proyectos',
+        verbose_name="Comité Responsable"
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='proyectos_creados',
+        verbose_name="Creado por"
+    )
+    
+    class Meta:
+        db_table = 'proyectos'
+        verbose_name = 'Proyecto'
+        verbose_name_plural = 'Proyectos'
+        ordering = ['-fecha_creacion']
+    
+    def __str__(self):
+        return f"{self.nombre} ({self.get_estatus_display()})"
+    
+    def get_estatus_badge_class(self):
+        """Retorna la clase CSS del badge según el estatus"""
+        clases = {
+            'planificacion': 'bg-info',
+            'ejecucion': 'bg-warning',
+            'finalizado': 'bg-success',
+            'cancelado': 'bg-danger',
+        }
+        return clases.get(self.estatus, 'bg-secondary')
+    
+    def cantidad_integrantes(self):
+        """Retorna la cantidad de integrantes del proyecto"""
+        return self.integrantes.count()
+    
+    def duracion_dias(self):
+        """Calcula la duración del proyecto en días"""
+        if self.fecha_inicio and self.fecha_fin:
+            return (self.fecha_fin - self.fecha_inicio).days
+        return None
+
+
+class ProyectoIntegrante(models.Model):
+    """
+    Modelo intermedio para la relación Proyecto - Habitante.
+    Permite registrar el rol y fecha de asignación de cada integrante.
+    """
+    ROL_CHOICES = [
+        ('coordinador', 'Coordinador'),
+        ('ejecutor', 'Ejecutor'),
+        ('contralor', 'Contralor'),
+        ('colaborador', 'Colaborador'),
+        ('beneficiario', 'Beneficiario'),
+    ]
+    
+    proyecto = models.ForeignKey(
+        Proyecto, 
+        on_delete=models.CASCADE,
+        related_name='integrantes',
+        verbose_name="Proyecto"
+    )
+    habitante = models.ForeignKey(
+        'Habitante',
+        on_delete=models.CASCADE,
+        related_name='proyectos_asignados',
+        verbose_name="Habitante"
+    )
+    rol = models.CharField(
+        max_length=20, 
+        choices=ROL_CHOICES, 
+        default='colaborador',
+        verbose_name="Rol en el Proyecto"
+    )
+    fecha_asignacion = models.DateField(auto_now_add=True, verbose_name="Fecha de Asignación")
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+    
+    class Meta:
+        db_table = 'proyecto_integrantes'
+        verbose_name = 'Integrante de Proyecto'
+        verbose_name_plural = 'Integrantes de Proyecto'
+        unique_together = ['proyecto', 'habitante']  # Un habitante solo puede estar una vez en cada proyecto
+        ordering = ['proyecto', 'rol', 'habitante__persona__name']
+    
+    def __str__(self):
+        return f"{self.habitante.persona.name} - {self.get_rol_display()} en {self.proyecto.nombre}"
+    
+    @property
+    def nombre_habitante(self):
+        """Retorna el nombre completo del habitante"""
+        return f"{self.habitante.persona.name} {self.habitante.persona.surname}"
+    
+    @property
+    def documento_habitante(self):
+        """Retorna el documento del habitante"""
+        return self.habitante.persona.document_number

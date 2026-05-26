@@ -1,0 +1,416 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proyectos Comunitarios - Consejo Comunal</title>
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  {% include 'partials/session_timeout.html' %}
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white">
+    {% include 'partials/sidebar.html' %}
+
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      <!-- Breadcrumbs -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'welcome' %}" class="text-decoration-none">Inicio</a></li>
+          <li class="breadcrumb-item active text-white" aria-current="page">Proyectos Comunitarios</li>
+        </ol>
+      </nav>
+
+      <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">
+            <i class="fas fa-project-diagram me-2"></i>Gestión de Proyectos
+          </h4>
+          <div>
+            <a href="{% url 'comites' %}" class="btn btn-outline-info me-2">
+              <i class="fas fa-sitemap me-1"></i>Comités
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#proyectoModal">
+              <i class="fas fa-plus me-1"></i>Nuevo Proyecto
+            </button>
+          </div>
+        </div>
+        
+        <div class="card-body">
+          <!-- Filtros -->
+          <div class="row mb-4">
+            <div class="col-md-3">
+              <label for="filtro-estatus" class="form-label">Filtrar por Estatus</label>
+              <select class="form-select" id="filtro-estatus" onchange="filtrarPorEstatus(this.value)">
+                <option value="">Todos los estatus</option>
+                <option value="planificacion" {% if estatus == 'planificacion' %}selected{% endif %}>Planificación</option>
+                <option value="ejecucion" {% if estatus == 'ejecucion' %}selected{% endif %}>Ejecución</option>
+                <option value="finalizado" {% if estatus == 'finalizado' %}selected{% endif %}>Finalizado</option>
+                <option value="cancelado" {% if estatus == 'cancelado' %}selected{% endif %}>Cancelado</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label for="filtro-comite" class="form-label">Filtrar por Comité</label>
+              <select class="form-select" id="filtro-comite" onchange="filtrarPorComite(this.value)">
+                <option value="">Todos los comités</option>
+                {% for comite in comites %}
+                <option value="{{ comite.id }}" {% if comite_id == comite.id|stringformat:"s" %}selected{% endif %}>
+                  {{ comite.nombre }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <form method="get" action="{% url 'proyectos' %}" class="mt-4">
+                <div class="input-group">
+                  <input type="text" name="q" class="form-control" placeholder="Buscar por nombre, descripción..." 
+                         value="{{ query|default_if_none:'' }}">
+                  <button class="btn btn-secondary" type="submit">
+                    <i class="fa fa-search"></i>
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div class="col-md-2 mt-4">
+              <a href="{% url 'proyectos' %}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-redo me-1"></i>Limpiar filtros
+              </a>
+            </div>
+          </div>
+
+          <!-- Resumen de estatus -->
+          <div class="row mb-4">
+            <div class="col-md-3">
+              <div class="card bg-info text-white">
+                <div class="card-body text-center py-2">
+                  <i class="fas fa-clipboard-list fa-2x mb-1"></i>
+                  <h5 class="mb-0">Planificación</h5>
+                  <small id="count-planificacion">-</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-warning text-dark">
+                <div class="card-body text-center py-2">
+                  <i class="fas fa-hard-hat fa-2x mb-1"></i>
+                  <h5 class="mb-0">Ejecución</h5>
+                  <small id="count-ejecucion">-</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-success text-white">
+                <div class="card-body text-center py-2">
+                  <i class="fas fa-check-circle fa-2x mb-1"></i>
+                  <h5 class="mb-0">Finalizados</h5>
+                  <small id="count-finalizado">-</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-danger text-white">
+                <div class="card-body text-center py-2">
+                  <i class="fas fa-times-circle fa-2x mb-1"></i>
+                  <h5 class="mb-0">Cancelados</h5>
+                  <small id="count-cancelado">-</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de Proyectos -->
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <th style="width: 140px;">Acciones</th>
+                  <th>Nombre del Proyecto</th>
+                  <th>Comité Responsable</th>
+                  <th>Fecha Inicio</th>
+                  <th>Fecha Fin</th>
+                  <th>Monto Estimado</th>
+                  <th>Estatus</th>
+                  <th>Integrantes</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-proyectos">
+                {% for proyecto in proyectos %}
+                <tr data-estatus="{{ proyecto.estatus }}" data-comite="{{ proyecto.comite.id }}">
+                  <td>
+                    <a href="{% url 'detalle_proyecto' proyecto.pk %}" class="btn btn-sm btn-info mb-1" title="Ver detalle">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-warning mb-1" data-bs-toggle="modal" 
+                            data-bs-target="#proyectoModal" data-proyecto-id="{{ proyecto.pk }}" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <form action="{% url 'eliminar_proyecto' proyecto.pk %}" method="post" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-danger mb-1" 
+                              onclick="return confirmarEliminacion('{{ proyecto.nombre }}')" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                  <td>
+                    <a href="{% url 'detalle_proyecto' proyecto.pk %}" class="text-decoration-none text-white">
+                      <strong>{{ proyecto.nombre }}</strong>
+                    </a>
+                  </td>
+                  <td>
+                    <span class="badge bg-secondary">{{ proyecto.comite.nombre }}</span>
+                  </td>
+                  <td>{{ proyecto.fecha_inicio|date:"d/m/Y" }}</td>
+                  <td>
+                    {% if proyecto.fecha_fin %}
+                      {{ proyecto.fecha_fin|date:"d/m/Y" }}
+                    {% else %}
+                      <span class="text-muted">Sin definir</span>
+                    {% endif %}
+                  </td>
+                  <td>Bs. {{ proyecto.monto_estimado|floatformat:2 }}</td>
+                  <td>
+                    <span class="badge {{ proyecto.get_estatus_badge_class }}">
+                      {{ proyecto.get_estatus_display }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-primary">{{ proyecto.num_integrantes }}</span>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="8" class="text-center text-muted py-4">
+                    <i class="fas fa-folder-open fa-3x mb-2 d-block"></i>
+                    No se encontraron proyectos registrados.
+                    <br>
+                    <small>Haga clic en "Nuevo Proyecto" para comenzar.</small>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paginación -->
+          {% if proyectos.has_other_pages %}
+          <div class="pagination-container d-flex justify-content-center align-items-center my-4">
+            <button id="prev-page" class="btn pagination-btn" {% if not proyectos.has_previous %}disabled{% endif %}>
+              <img src="{% static 'assets/images/flecha_izq.png' %}" alt="Anterior" width="40" height="30">
+            </button>
+            <span id="page-info" class="page-info text-white mx-3">
+              {{ proyectos.number }} / {{ proyectos.paginator.num_pages }}
+            </span>
+            <button id="next-page" class="btn pagination-btn" {% if not proyectos.has_next %}disabled{% endif %}>
+              <img src="{% static 'assets/images/flecha_der.png' %}" alt="Siguiente" width="40" height="30">
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para Proyecto -->
+  <div class="modal fade" id="proyectoModal" tabindex="-1" aria-labelledby="proyectoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="modalProyectoTitle">Registrar Proyecto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="proyectoForm" method="POST" action="">
+            {% csrf_token %}
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="id_nombre" class="form-label">{{ proyecto_form.nombre.label }}</label>
+                {{ proyecto_form.nombre }}
+                <small class="text-muted">{{ proyecto_form.nombre.help_text }}</small>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="id_fecha_inicio" class="form-label">{{ proyecto_form.fecha_inicio.label }}</label>
+                {{ proyecto_form.fecha_inicio }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_fecha_fin" class="form-label">{{ proyecto_form.fecha_fin.label }}</label>
+                {{ proyecto_form.fecha_fin }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="id_comite" class="form-label">{{ proyecto_form.comite.label }}</label>
+                {{ proyecto_form.comite }}
+              </div>
+              <div class="col-md-3 mb-3">
+                <label for="id_monto_estimado" class="form-label">{{ proyecto_form.monto_estimado.label }}</label>
+                {{ proyecto_form.monto_estimado }}
+              </div>
+              <div class="col-md-3 mb-3">
+                <label for="id_estatus" class="form-label">{{ proyecto_form.estatus.label }}</label>
+                {{ proyecto_form.estatus }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="id_descripcion" class="form-label">{{ proyecto_form.descripcion.label }}</label>
+                {{ proyecto_form.descripcion }}
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="proyectoForm" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Contadores de estatus
+    function actualizarContadores() {
+      const tabla = document.getElementById('tabla-proyectos');
+      if (!tabla) return;
+      
+      const filas = tabla.getElementsByTagName('tr');
+      let planificacion = 0, ejecucion = 0, finalizado = 0, cancelado = 0;
+      
+      for (let i = 1; i < filas.length; i++) {
+        const estatus = filas[i].getAttribute('data-estatus');
+        if (estatus === 'planificacion') planificacion++;
+        else if (estatus === 'ejecucion') ejecucion++;
+        else if (estatus === 'finalizado') finalizado++;
+        else if (estatus === 'cancelado') cancelado++;
+      }
+      
+      document.getElementById('count-planificacion').textContent = planificacion;
+      document.getElementById('count-ejecucion').textContent = ejecucion;
+      document.getElementById('count-finalizado').textContent = finalizado;
+      document.getElementById('count-cancelado').textContent = cancelado;
+    }
+    
+    // Lógica para modal de proyecto
+    const proyectoModal = document.getElementById('proyectoModal');
+    if (proyectoModal) {
+      proyectoModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const proyectoId = button ? button.getAttribute('data-proyecto-id') : null;
+        const form = document.getElementById('proyectoForm');
+        const title = document.getElementById('modalProyectoTitle');
+        
+        if (proyectoId) {
+          title.textContent = 'Editar Proyecto';
+          form.action = `/proyectos/${proyectoId}/editar/`;
+          // AJAX para cargar datos
+          fetch(`/proyectos/api/${proyectoId}/`)
+            .then(response => response.json())
+            .then(data => {
+              document.getElementById('id_nombre').value = data.nombre || '';
+              document.getElementById('id_fecha_inicio').value = data.fecha_inicio || '';
+              document.getElementById('id_fecha_fin').value = data.fecha_fin || '';
+              document.getElementById('id_descripcion').value = data.descripcion || '';
+              document.getElementById('id_monto_estimado').value = data.monto_estimado || '';
+              document.getElementById('id_estatus').value = data.estatus || 'planificacion';
+              document.getElementById('id_comite').value = data.comite || '';
+            });
+        } else {
+          title.textContent = 'Registrar Proyecto';
+          form.action = "{% url 'crear_proyecto' %}";
+          form.reset();
+        }
+      });
+    }
+    
+    // Función para filtrar por estatus
+    function filtrarPorEstatus(estatus) {
+      const url = new URL(window.location.href.split('?')[0], window.location.origin);
+      if (estatus) url.searchParams.append('estatus', estatus);
+      const comite = document.getElementById('filtro-comite').value;
+      if (comite) url.searchParams.append('comite', comite);
+      const query = "{{ query|default:'' }}";
+      if (query && query !== 'None') url.searchParams.append('q', query);
+      window.location.href = url.toString();
+    }
+    
+    // Función para filtrar por comité
+    function filtrarPorComite(comiteId) {
+      const url = new URL(window.location.href.split('?')[0], window.location.origin);
+      if (comiteId) url.searchParams.append('comite', comiteId);
+      const estatus = document.getElementById('filtro-estatus').value;
+      if (estatus) url.searchParams.append('estatus', estatus);
+      const query = "{{ query|default:'' }}";
+      if (query && query !== 'None') url.searchParams.append('q', query);
+      window.location.href = url.toString();
+    }
+    
+    // Confirmar eliminación
+    function confirmarEliminacion(nombre) {
+      return confirm(`¿Está seguro de eliminar el proyecto "${nombre}"?\n\nEsta acción no se puede deshacer.`);
+    }
+    
+    // Mensajes de Django
+    $(document).ready(function () {
+      actualizarContadores();
+      
+      {% if messages %}
+      {% for message in messages %}
+      Swal.fire({
+        icon: '{{ message.tags }}',
+        title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% else %}Notificación{% endif %}',
+        html: '{{ message.message|safe }}',
+        showConfirmButton: true
+      });
+      {% endfor %}
+      {% endif %}
+    });
+    
+    // Lógica de paginación
+    document.addEventListener('DOMContentLoaded', function() {
+      const prevButton = document.getElementById('prev-page');
+      const nextButton = document.getElementById('next-page');
+      const currentPage = {{ proyectos.number|default:1 }};
+      const totalPages = {{ proyectos.paginator.num_pages|default:1 }};
+      const query = "{{ query|default:'' }}";
+      const estatusFilter = "{{ estatus|default:'' }}";
+      const comiteFilter = "{{ comite_id|default:'' }}";
+      
+      function buildURL(page) {
+        const url = new URL(window.location.href.split('?')[0], window.location.origin);
+        if (page > 1) url.searchParams.append('page', page);
+        if (query && query !== 'None' && query.trim() !== '') url.searchParams.append('q', query);
+        if (estatusFilter && estatusFilter !== 'None') url.searchParams.append('estatus', estatusFilter);
+        if (comiteFilter && comiteFilter !== 'None') url.searchParams.append('comite', comiteFilter);
+        return url.toString();
+      }
+      
+      if (prevButton && !prevButton.disabled) {
+        prevButton.addEventListener('click', function() {
+          if (currentPage > 1) window.location.href = buildURL(currentPage - 1);
+        });
+      }
+      
+      if (nextButton && !nextButton.disabled) {
+        nextButton.addEventListener('click', function() {
+          if (currentPage < totalPages) window.location.href = buildURL(currentPage + 1);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

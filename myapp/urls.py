@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from . import views
 from . import views_export
 from . import views_comunidad
+from . import views_proyectos
 from .views import PersonApiView, DocenteApiView
 from .views import change_password
 
@@ -141,6 +142,34 @@ urlpatterns = [
     
     # Dashboard Comunitario
     path('dashboard-comunitario/', views_comunidad.dashboard_comunitario, name='dashboard_comunitario'),
+
+    # ============================================
+    # 🆕 NUEVO: Gestión de Proyectos Comunitarios
+    # ============================================
+    
+    # Comités
+    path('proyectos/comites/', views_proyectos.comites, name='comites'),
+    path('proyectos/comites/crear/', views_proyectos.crear_comite, name='crear_comite'),
+    path('proyectos/comites/editar/<int:id>/', views_proyectos.editar_comite, name='editar_comite'),
+    path('proyectos/comites/eliminar/<int:id>/', views_proyectos.eliminar_comite, name='eliminar_comite'),
+    path('proyectos/comites/api/<int:id>/', views_proyectos.api_comite, name='api_comite'),
+    
+    # Proyectos
+    path('proyectos/', views_proyectos.proyectos, name='proyectos'),
+    path('proyectos/crear/', views_proyectos.crear_proyecto, name='crear_proyecto'),
+    path('proyectos/<int:pk>/', views_proyectos.detalle_proyecto, name='detalle_proyecto'),
+    path('proyectos/<int:pk>/editar/', views_proyectos.editar_proyecto, name='editar_proyecto'),
+    path('proyectos/<int:pk>/eliminar/', views_proyectos.eliminar_proyecto, name='eliminar_proyecto'),
+    path('proyectos/api/<int:pk>/', views_proyectos.api_proyecto, name='api_proyecto'),
+    
+    # Integrantes de Proyectos
+    path('proyectos/<int:pk>/asignar-habitante/', views_proyectos.asignar_habitante, name='asignar_habitante_proyecto'),
+    path('proyectos/<int:pk>/remover-habitante/<int:habitante_id>/', views_proyectos.remover_habitante, name='remover_habitante_proyecto'),
+    path('proyectos/api/buscar-habitantes/', views_proyectos.buscar_habitantes_proyecto, name='buscar_habitantes_proyecto'),
+    path('proyectos/api/integrante/<int:integrante_id>/', views_proyectos.api_integrante, name='api_integrante'),
+    
+    # Dashboard de Proyectos
+    path('proyectos/dashboard/', views_proyectos.dashboard_proyectos, name='dashboard_proyectos'),
 
 ]
 
