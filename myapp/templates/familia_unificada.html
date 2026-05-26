@@ -228,8 +228,8 @@
         const jefeBadge = h.es_jefe_familia ? '<span class="badge bg-success">JEFE(A)</span>' : '<span class="badge bg-secondary">Carga</span>';
         tbody.append(`
           <tr>
-            <td><code class="text-info fw-bold">${h.cedula}</code></td>
-            <td class="text-white fw-semibold">${h.nombre} ${h.apellido}</td>
+            <td>${h.cedula}</td>
+            <td>${h.nombre} ${h.apellido}</td>
             <td>${h.fecha_nacimiento}</td>
             <td>${h.genero === 'M' ? 'M' : 'F'}</td>
             <td>${jefeBadge}</td>

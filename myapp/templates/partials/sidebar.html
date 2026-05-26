@@ -93,9 +93,7 @@
       {# 2. SECCIÓN RESTRINGIDA: Gestión Comunitaria (Solo Admin y Voceros) #}
       {% if is_admin or user.role in 'vocero_finanzas,vocero_secretaria,vocero_salud,vocero_educacion' %}
       <div class="sidebar-section">
-        <h5 class="sidebar-section-title text-uppercase text-muted small mb-2 ps-2">
-          <i class="fas fa-users me-1"></i>G. Comunitaria
-        </h5>
+        
         
         <a class="nav-link" href="{% url 'familias' %}"
           {% if request.resolver_match.url_name == 'familias' %}style="background-color: #922323"{% endif %}>
@@ -139,16 +137,16 @@
   <div class="offcanvas-body p-0">
     <div class="d-flex flex-column h-100 py-4" style="background-color: #002763">
       <!-- Tus enlaces (optimizados para móvil) -->
-      <!-- <a class=" nav-link align-items-center  px-4 py-3 rounded" href="{% url 'welcome' %}">
+      <a class=" nav-link align-items-center  px-4 py-3 rounded" href="{% url 'welcome' %}">
         <i class="fa fa-home me-3" style="font-size: 1.5rem;"></i> Inicio
-      </a>
+      </a> 
       
-      <a class="nav-link align-items-center px-4  py-3 rounded" href="{# % url 'docentes' % #}"
+      <!-- <a class="nav-link align-items-center px-4  py-3 rounded" href="{# % url 'docentes' % #}"
         {% if request.resolver_match.url_name == 'docentes' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28" class="me-3"> Docentes
-      </a>
-      <!-- Estudiantes -->
-      <!-- <a class="nav-link align-items-center px-4 py-3 rounded" href="{# % url 'cedulas' % #}"
+      </a> 
+      <!-- Estudiantes 
+       <a class="nav-link align-items-center px-4 py-3 rounded" href="{# % url 'cedulas' % #}"
         {% if request.resolver_match.url_name == 'cedulas' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28" class="me-3"> Estudiantes
       </a>
@@ -175,9 +173,6 @@
       {% if is_admin or user.role in 'vocero_finanzas,vocero_secretaria,vocero_salud,vocero_educacion' %}
       <hr class="border-secondary mx-4 my-3">
       <div class="px-4 mb-3">
-        <h6 class="text-uppercase text-muted small mb-2">
-          <i class="fas fa-users me-1"></i>Gestión Comunitaria
-        </h6>
       </div>
       <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'familias' %}"
         {% if request.resolver_match.url_name == 'familias' %}style="background-color: #922323;"{% endif %}>

@@ -12,38 +12,7 @@
   {% include 'partials/session_timeout.html' %}
   <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
   
-  <style>
-    /* Contenedor principal con fondo azulado translúcido suave */
-    .custom-card-comunidad {
-      background: rgba(30, 41, 59, 0.45) !important;
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08) !important;
-      border-radius: 12px !important;
-    }
-    /* Tabla adaptada para alta legibilidad */
-    .table-comunidad {
-      color: #e2e8f0 !important;
-    }
-    .table-comunidad th {
-      background-color: rgba(15, 23, 42, 0.6) !important;
-      color: #38bdf8 !important;
-      font-weight: 600;
-      border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
-    }
-    .table-comunidad td {
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-    }
-    /* Inputs de búsqueda limpios y claros */
-    .input-busqueda {
-      background-color: rgba(15, 23, 42, 0.5) !important;
-      color: #ffffff !important;
-      border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    }
-    .input-busqueda:focus {
-      border-color: #38bdf8 !important;
-      box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25) !important;
-    }
-  </style>
+  
 </head>
 
 <body class="m-0 p-0">
@@ -54,7 +23,7 @@
     <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
       <div class="card custom-card-comunidad shadow">
         <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom border-secondary py-3">
-          <h4 class="m-0 text-white fw-bold"><i class="fas fa-home text-primary me-2"></i>Censo de Familias y Viviendas</h4>
+          <h4 class="m-0 fw-bold"><i class="fas fa-home text-primary me-2"></i>Censo de Familias y Viviendas</h4>
           <a href="{% url 'familia_unificada' %}" class="btn btn-primary px-4">
             <i class="fas fa-plus-circle me-2"></i>Registrar Familia
           </a>
@@ -64,7 +33,7 @@
           <form method="GET" action="{% url 'familias' %}" class="row g-3 mb-4">
             <div class="col-md-9">
               <div class="input-group">
-                <span class="input-group-text bg-transparent border-secondary text-muted"><i class="fas fa-search"></i></span>
+                <span class="input-group-text bg-transparent text-muted"><i class="fas fa-search"></i></span>
                 <input type="text" name="q" value="{{ query|default:'' }}" class="form-control input-busqueda" placeholder="Buscar por apellido de familia, cédula, nombre, catastro...">
               </div>
             </div>
@@ -74,7 +43,7 @@
           </form>
 
           <div class="table-responsive">
-            <table class="table table-comunidad align-middle m-0">
+            <table class="table table-bordered align-middle m-0">
               <thead>
                 <tr>
                   <th>Familia / Hogar</th>
@@ -88,12 +57,12 @@
               <tbody>
                 {% for f in familias %}
                 <tr>
-                  <td class="fw-bold text-white">{{ f.nombre_familia }}</td>
+                  <td >{{ f.nombre_familia }}</td>
                   <td><span class="badge bg-primary px-2.5 py-1.5">{{ f.vivienda }}</span></td>
-                  <td><code class="text-info fw-bold">{{ f.catastro }}</code></td>
+                  <td>{{ f.catastro }}</td>
                   <td>
                     {% if f.jefe_familia %}
-                      <span class="text-white fw-semibold"><i class="fas fa-user-check text-success me-1"></i> {{ f.jefe_familia.nombre }} {{ f.jefe_familia.apellido }}</span>
+                      <span ><i class="fas fa-user-check text-success me-1"></i> {{ f.jefe_familia.nombre }} {{ f.jefe_familia.apellido }}</span>
                     {% else %}
                       <span class="text-warning fst-italic small">Sin asignar jefe</span>
                     {% endif %}
@@ -146,14 +115,14 @@
 
   <div class="modal fade" id="modalIntegrantes" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content text-white" style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.15);">
-        <div class="modal-header border-bottom border-secondary">
+      <div class="modal-content" >
+        <div class="modal-header bg-primary border-bottom border-secondary">
           <h5 class="modal-title text-white fw-bold" id="tituloModal">Integrantes</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body p-0">
+        <div class="modal-body mt-0 p-0">
           <div class="table-responsive">
-            <table class="table table-comunidad align-middle m-0" id="tablaIntegrantes">
+            <table class="table table-bordered align-middle m-0" id="tablaIntegrantes">
               <thead>
                 <tr>
                   <th class="ps-3">Cédula</th>
@@ -181,7 +150,7 @@
 
   <script>
     function cargarIntegrantes(familiaId, nombreFamilia) {
-      $('#tituloModal').html(`<i class="fas fa-users text-primary me-2"></i>Integrantes de la Familia: ${nombreFamilia}`);
+      $('#tituloModal').html(`<i class="fas fa-users text-white me-2"></i>Integrantes de la Familia: ${nombreFamilia}`);
       const tbody = $('#tablaIntegrantes tbody');
       tbody.html('<tr><td colspan="5" class="text-center py-4 text-info"><i class="fas fa-spinner fa-spin me-2"></i>Consultando Postgres...</td></tr>');
       
@@ -200,8 +169,8 @@
             const esJefe = h.es_jefe_familia ? '<span class="badge bg-success">Jefe de Familia</span>' : '<span class="badge bg-secondary">Carga Familiar</span>';
             tbody.append(`
               <tr>
-                <td class="ps-3"><code class="text-info font-bold">${h.cedula}</code></td>
-                <td class="text-white fw-semibold">${h.nombre} ${h.apellido}</td>
+                <td class="ps-3">${h.cedula}</td>
+                <td>${h.nombre} ${h.apellido}</td>
                 <td>${h.genero === 'M' ? 'Masculino' : 'Femenino'}</td>
                 <td>${esJefe}</td>
                 <td>${h.ocupacion || 'Ninguna'}</td>
