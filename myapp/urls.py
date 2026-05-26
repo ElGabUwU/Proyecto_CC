@@ -22,20 +22,20 @@ urlpatterns = [
     # ============================================
     
     # Vistas de Template
-    path('familias/', views_comunidad.familias, name='familias'),
-    path('familias/nueva/', views_comunidad.familia_unificada, name='familia_unificada'),
-    path('familias/editar/<int:familia_id>/', views_comunidad.familia_unificada, name='editar_familia_unificada'),
-    path('familias/eliminar/<int:id>/', views_comunidad.eliminar_familia, name='eliminar_familia_api'),
+    path('comunidad/familias/', views_comunidad.familias, name='familias'),
+    path('comunidad/familias/gestion/', views_comunidad.familia_unificada, name='familia_unificada'),
+    path('comunidad/familias/gestion/<int:familia_id>/', views_comunidad.familia_unificada, name='editar_familia_unificada'),
+    path('comunidad/familias/eliminar/<int:id>/', views_comunidad.eliminar_familia, name='eliminar_familia'),
     
     # API REST para Familias
-    path('api/familias/', views_comunidad.FamiliaAPIView.as_view(), name='api_familias_list'),
-    path('api/familias/<int:familia_id>/', views_comunidad.FamiliaAPIView.as_view(), name='api_familias_detail'),
+    path('api/familias/', views_comunidad.FamiliaAPIView.as_view(), name='api_familias_lista'),
+    path('api/familias/<int:familia_id>/', views_comunidad.FamiliaAPIView.as_view(), name='api_familia_detalle'),
     
-    # ============================================
-    # Habitantes (Vistas independientes para gestión individual)
-    # ============================================
-    path('habitantes/', views_comunidad.habitantes, name='habitantes'),
-    path('habitantes/detalle/<int:id>/', views_comunidad.detalle_habitante, name='detalle_habitante'),
+    # # ============================================
+    # # Habitantes (Vistas independientes para gestión individual)
+    # # ============================================
+    # path('habitantes/', views_comunidad.habitantes, name='habitantes'),
+    # path('habitantes/detalle/<int:id>/', views_comunidad.detalle_habitante, name='detalle_habitante'),
     
     # ============================================
     # Finanzas
@@ -54,12 +54,16 @@ urlpatterns = [
     # ============================================
     # Documentación
     # ============================================
-    path('documentacion/', views_comunidad.documentacion, name='documentacion'),
-    path('documentacion/constancia/', views_comunidad.generar_constancia, name='generar_constancia'),
-    path('documentacion/constancia/descargar/<int:id>/', views_comunidad.descargar_constancia, name='descargar_constancia'),
+# 📁 Módulo de Gestión Documental Principal
+    path('comunidad/documentacion/', views_comunidad.documentacion, name='documentacion'),
+    # Procesamiento de Formularios (POST)
+    path('comunidad/documentacion/constancia/generar/', views_comunidad.generar_constancia, name='generar_constancia'),
+    path('comunidad/documentacion/acta/generar/', views_comunidad.generar_acta, name='generar_acta'),
+    # Descarga e Impresión de PDFs Reales
+    path('comunidad/documentacion/constancia/descargar/<int:id>/', views_comunidad.descargar_constancia, name='descargar_constancia'),
+    path('comunidad/documentacion/acta/descargar/<int:id>/', views_comunidad.descargar_acta, name='descargar_acta'),
+    # APIs JSON para las previsualizaciones interactivas de SweetAlert2
     path('documentacion/constancia/previa/<int:id>/', views_comunidad.previa_constancia, name='previa_constancia'),
-    path('documentacion/acta/', views_comunidad.generar_acta, name='generar_acta'),
-    path('documentacion/acta/descargar/<int:id>/', views_comunidad.descargar_acta, name='descargar_acta'),
     path('documentacion/acta/previa/<int:id>/', views_comunidad.previa_acta, name='previa_acta'),
     
     # ============================================

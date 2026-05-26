@@ -41,12 +41,12 @@
                   <form id="formConstancia" method="POST" action="{% url 'generar_constancia' %}">
                     {% csrf_token %}
                     <div class="mb-3">
-                      <label for="familia_constancia" class="form-label">Familia</label>
-                      <select class="form-select" id="familia_constancia" name="familia_id" required>
-                        <option value="">Seleccionar familia...</option>
+                      <label for="familia_constancia" class="form-label text-white">Seleccione el grupo Familiar</label>
+                      <select class="form-select" id="select_familia" name="familia" required>
+                        <option value="">Seleccionar una familia...</option>
                         {% for familia in familias %}
                         <option value="{{ familia.id }}">
-                          {{ familia.jefe_familia.name }} {{ familia.jefe_familia.surname }} - {{ familia.direccion }}
+                            Familia: {{ familia.nombre_familia }} - {{ familia.direccion }}
                         </option>
                         {% empty %}
                         <option value="" disabled>No hay familias registradas</option>
@@ -55,8 +55,15 @@
                     </div>
                     
                     <div class="mb-3">
+                      <label for="select_habitante" class="form-label text-white">Seleccione el Ciudadano (Solicitante)</label>
+                      <select class="form-select" id="select_habitante" name="habitante" disabled>
+                        <option value="">-- Seleccione primero una familia --</option>
+                      </select>
+                    </div>
+
+                    <div class="mb-3">
                       <label for="fecha_constancia" class="form-label">Fecha del Documento</label>
-                      <input type="date" class="form-control" id="fecha_constancia" name="fecha" 
+                      <input type="date" class="form-control" id="fecha_constancia" name="fecha_documento" 
                              value="{% now 'Y-m-d' %}" required>
                     </div>
                     
@@ -85,7 +92,7 @@
                         <h6 class="mb-1">Constancia #{{ constancia.id }}</h6>
                         <small>{{ constancia.fecha_generacion|date:"d/m/Y" }}</small>
                       </div>
-                      <p class="mb-1">Familia: {{ constancia.familia.jefe_familia.name }}</p>
+                      <p class="mb-1"><strong>Solicitante:</strong> {{ constancia.habitante.nombre }} {{ constancia.habitante.apellido }}</p>
                       <small>Generada por: {{ constancia.generado_por.get_full_name }}</small>
                       <div class="mt-2">
                         <a href="{% url 'descargar_constancia' constancia.id %}" class="btn btn-sm btn-success">
@@ -201,119 +208,156 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
-    // Función para previsualizar constancia
-    function verPreviaConstancia(constanciaId) {
-      Swal.fire({
-        title: 'Cargando previsualización...',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-      
-      fetch(`/documentacion/constancia/previa/${constanciaId}/`)
-        .then(response => response.json())
-        .then(data => {
-          Swal.fire({
-            title: `Constancia #${constanciaId}`,
-            html: `
-              <div class="text-start">
-                <p><strong>Familia:</strong> ${data.familia}</p>
-                <p><strong>Fecha:</strong> ${data.fecha}</p>
-                <p><strong>Finalidad:</strong> ${data.finalidad}</p>
-                <hr>
-                <p><strong>Contenido:</strong></p>
-                <div class="border p-3 bg-light">${data.contenido}</div>
-              </div>
-            `,
-            showConfirmButton: true,
-            confirmButtonText: 'Descargar PDF',
-            showCancelButton: true,
-            cancelButtonText: 'Cerrar'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              window.location.href = `/documentacion/constancia/descargar/${constanciaId}/`;
+<script>
+    $(document).ready(function () {
+        // 1. Manejo dinámico del Selection List (Familias -> Habitantes)
+        $('#select_familia').on('change', function() {
+            const familiaId = $(this).val();
+            const selectHabitante = $('#select_habitante');
+            
+            if (!familiaId) {
+                selectHabitante.html('<option value="">-- Seleccione primero una familia --</option>').prop('disabled', true);
+                return;
             }
-          });
-        })
-        .catch(error => {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo cargar la previsualización'
-          });
+            
+            selectHabitante.html('<option value=""><i class="fas fa-spinner fa-spin"></i> Cargando habitantes...</option>').prop('disabled', true);
+            
+            // Consumimos tu API REST transaccional que reparamos ayer
+            fetch(`/api/familias/${familiaId}/`)
+                .then(response => {
+                    if (!response.ok) throw new Error("Error en el servidor");
+                    return response.json();
+                })
+                .then(data => {
+                    selectHabitante.empty().prop('disabled', false);
+                    if (!data.habitantes || data.habitantes.length === 0) {
+                        selectHabitante.html('<option value="">No hay habitantes registrados en esta familia</option>');
+                        return;
+                    }
+                    selectHabitante.append('<option value="">-- Seleccione el Ciudadano (Solicitante) --</option>');
+                    data.habitantes.forEach(h => {
+                        selectHabitante.append(`<option value="${h.id}">${h.nombre} ${h.apellido} (C.I: ${h.cedula})</option>`);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    selectHabitante.html('<option value="">Error al cargar los integrantes</option>').prop('disabled', true);
+                });
         });
-    }
-    
-    // Función para previsualizar acta
-    function verPreviaActa(actaId) {
-      Swal.fire({
-        title: 'Cargando previsualización...',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
+
+        // 🌟 NUEVO AJUSTE CRÍTICO: Asegurar que el navegador envíe el habitante en el POST
+        $('#formConstancia').on('submit', function() {
+            $('#select_habitante').prop('disabled', false);
+        });
+
+        const fechaActaInput = document.getElementById('fecha_acta');
+        if (fechaActaInput) {
+            const now = new Date();
+            const formatted = now.toISOString().slice(0, 16);
+            fechaActaInput.value = formatted;
         }
-      });
-      
-      fetch(`/documentacion/acta/previa/${actaId}/`)
-        .then(response => response.json())
-        .then(data => {
-          Swal.fire({
-            title: data.titulo,
-            html: `
-              <div class="text-start">
-                <p><strong>Fecha:</strong> ${data.fecha_reunion}</p>
-                <p><strong>Lugar:</strong> ${data.lugar}</p>
-                <p><strong>Asistentes:</strong> ${data.asistentes_count} personas</p>
-                <hr>
-                <p><strong>Contenido:</strong></p>
-                <div class="border p-3 bg-light">${data.contenido}</div>
-              </div>
-            `,
-            showConfirmButton: true,
-            confirmButtonText: 'Descargar PDF',
-            showCancelButton: true,
-            cancelButtonText: 'Cerrar'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              window.location.href = `/documentacion/acta/descargar/${actaId}/`;
-            }
-          });
-        })
-        .catch(error => {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo cargar la previsualización'
-          });
-        });
-    }
-    
-    // Configurar fecha por defecto para actas
-    document.addEventListener('DOMContentLoaded', function() {
-      const fechaActaInput = document.getElementById('fecha_acta');
-      if (fechaActaInput) {
-        const now = new Date();
-        // Formato: YYYY-MM-DDTHH:MM
-        const formatted = now.toISOString().slice(0, 16);
-        fechaActaInput.value = formatted;
-      }
-      
-      // Mensajes de Django
-      $(document).ready(function () {
+
+        // 4. Mostrar Mensajes flash de Django mediante SweetAlert2
         {% if messages %}
-        {% for message in messages %}
-        Swal.fire({
-          icon: '{{ message.tags }}',
-          title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% else %}Notificación{% endif %}',
-          html: '{{ message.message|safe }}',
-          showConfirmButton: true
-        });
-        {% endfor %}
+            {% for message in messages %}
+            Swal.fire({
+                icon: '{% if message.tags == "error" %}error{% else %}success{% endif %}',
+                title: '{% if message.tags == "error" %}Error{% else %}¡Éxito!{% endif %}',
+                html: '{{ message.message|safe }}',
+                background: '#1e293b',
+                color: '#fff',
+                showConfirmButton: true
+            });
+            {% endfor %}
         {% endif %}
-      });
     });
-  </script>
+
+    // 5. Función para previsualizar constancias desde el historial (mantiene tu lógica previa)
+    function verPreviaConstancia(constanciaId) {
+        Swal.fire({
+            title: 'Cargando previsualización...',
+            allowOutsideClick: false,
+            background: '#1e293b',
+            color: '#fff',
+            didOpen: () => { Swal.showLoading(); }
+        });
+        
+        fetch(`/documentacion/constancia/previa/${constanciaId}/`)
+            .then(response => response.json())
+            .then(data => {
+                Swal.fire({
+                    title: `Constancia #${constanciaId}`,
+                    background: '#1e293b',
+                    color: '#fff',
+                    html: `
+                        <div class="text-start text-white">
+                            <p><strong>Familia:</strong> ${data.familia}</p>
+                            <p><strong>Fecha:</strong> ${data.fecha}</p>
+                            <p><strong>Finalidad:</strong> ${data.finalidad}</p>
+                            <hr class="border-secondary">
+                            <p><strong>Contenido:</strong></p>
+                            <div class="border p-3 bg-dark text-white rounded">${data.contenido}</div>
+                        </div>
+                    `,
+                    showConfirmButton: true,
+                    confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cerrar',
+                    confirmButtonColor: '#0ea5e9'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = `/documentacion/constancia/descargar/${constanciaId}/`;
+                    }
+                });
+            })
+            .catch(error => {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
+            });
+    }
+    
+    // 6. Función para previsualizar actas desde el historial (mantiene tu lógica previa)
+    function verPreviaActa(actaId) {
+        Swal.fire({
+            title: 'Cargando previsualización...',
+            allowOutsideClick: false,
+            background: '#1e293b',
+            color: '#fff',
+            didOpen: () => { Swal.showLoading(); }
+        });
+        
+        fetch(`/documentacion/acta/previa/${actaId}/`)
+            .then(response => response.json())
+            .then(data => {
+                Swal.fire({
+                    title: data.titulo,
+                    background: '#1e293b',
+                    color: '#fff',
+                    html: `
+                        <div class="text-start text-white">
+                            <p><strong>Fecha:</strong> ${data.fecha_reunion}</p>
+                            <p><strong>Lugar:</strong> ${data.lugar}</p>
+                            <p><strong>Asistentes:</strong> ${data.asistentes_count} personas</p>
+                            <hr class="border-secondary">
+                            <p><strong>Contenido:</strong></p>
+                            <div class="border p-3 bg-dark text-white rounded">${data.contenido}</div>
+                        </div>
+                    `,
+                    showConfirmButton: true,
+                    confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cerrar',
+                    confirmButtonColor: '#0ea5e9'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = `/documentacion/acta/descargar/${actaId}/`;
+                    }
+                });
+            })
+            .catch(error => {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
+            });
+    }
+</script>
+
 </body>
 </html>

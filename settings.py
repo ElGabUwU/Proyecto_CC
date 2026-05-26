@@ -25,6 +25,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',   # Archivos estáticos (CSS, JS, imágenes)
     'estudiantes',                  # Tu aplicación personalizada
     'import_export',
+    
+    # Frameworks de terceros
+    'rest_framework',
+    
+    # App personales
+    'myapp', 
 ]
 
 JAZZMIN_SETTINGS = {
@@ -162,4 +168,4 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # ==============================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'  # Tipo de clave primaria predeterminada
 
-AUTH_USER_MODEL = 'myapp.User' # Modelo de usuario personalizado
+# AUTH_USER_MODEL = 'myapp.User' # Modelo de usuario personalizado
