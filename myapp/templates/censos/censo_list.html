@@ -83,7 +83,7 @@
                 <div class="card-body text-center py-2">
                   <i class="fas fa-check-circle fa-2x mb-1"></i>
                   <h5 class="mb-0">Activos</h5>
-                  <small id="count-activo">-</small>
+                  <small id="count-activo">{{ count_activo|default:0 }}</small>
                 </div>
               </div>
             </div>
@@ -92,7 +92,7 @@
                 <div class="card-body text-center py-2">
                   <i class="fas fa-lock fa-2x mb-1"></i>
                   <h5 class="mb-0">Cerrados</h5>
-                  <small id="count-cerrado">-</small>
+                  <small id="count-cerrado">{{ count_cerrado|default:0 }}</small>
                 </div>
               </div>
             </div>
@@ -101,7 +101,7 @@
                 <div class="card-body text-center py-2">
                   <i class="fas fa-archive fa-2x mb-1"></i>
                   <h5 class="mb-0">Archivados</h5>
-                  <small id="count-archivado">-</small>
+                  <small id="count-archivado">{{ count_archivado|default:0 }}</small>
                 </div>
               </div>
             </div>
@@ -263,27 +263,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
-    // Contadores de estatus
-    function actualizarContadores() {
-      const tabla = document.getElementById('tabla-censos');
-      if (!tabla) return;
-      
-      const filas = tabla.getElementsByTagName('tr');
-      let activo = 0, cerrado = 0, archivado = 0;
-      
-      for (let i = 1; i < filas.length; i++) {
-        const estatus = filas[i].getAttribute('data-estatus');
-        if (estatus === 'activo') activo++;
-        else if (estatus === 'cerrado') cerrado++;
-        else if (estatus === 'archivado') archivado++;
-      }
-      
-      document.getElementById('count-activo').textContent = activo;
-      document.getElementById('count-cerrado').textContent = cerrado;
-      document.getElementById('count-archivado').textContent = archivado;
-    }
-    
+  <script>  
     // Lógica para modal de censo
     const censoModal = document.getElementById('censoModal');
     if (censoModal) {
@@ -344,7 +324,6 @@
     
     // Mensajes de Django
     $(document).ready(function () {
-      actualizarContadores();
       
       {% if messages %}
       {% for message in messages %}

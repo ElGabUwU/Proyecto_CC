@@ -91,7 +91,7 @@
                 <div class="card-body text-center py-2">
                   <i class="fas fa-clipboard-list fa-2x mb-1"></i>
                   <h5 class="mb-0">Planificación</h5>
-                  <small id="count-planificacion">-</small>
+                  <small id="count-planificacion">{{ count_planificacion|default:0 }}</small>
                 </div>
               </div>
             </div>
@@ -100,7 +100,7 @@
                 <div class="card-body text-center py-2">
                   <i class="fas fa-hard-hat fa-2x mb-1"></i>
                   <h5 class="mb-0">Ejecución</h5>
-                  <small id="count-ejecucion">-</small>
+                  <small id="count-ejecucion">{{ count_ejecucion|default:0 }}</small>
                 </div>
               </div>
             </div>
@@ -109,7 +109,7 @@
                 <div class="card-body text-center py-2">
                   <i class="fas fa-check-circle fa-2x mb-1"></i>
                   <h5 class="mb-0">Finalizados</h5>
-                  <small id="count-finalizado">-</small>
+                  <small id="count-finalizado">{{ count_finalizados|default:0 }}</small>
                 </div>
               </div>
             </div>
@@ -118,7 +118,7 @@
                 <div class="card-body text-center py-2">
                   <i class="fas fa-times-circle fa-2x mb-1"></i>
                   <h5 class="mb-0">Cancelados</h5>
-                  <small id="count-cancelado">-</small>
+                  <small id="count-cancelado">{{ count_cancelados|default:0 }}</small>
                 </div>
               </div>
             </div>
@@ -283,28 +283,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // Contadores de estatus
-    function actualizarContadores() {
-      const tabla = document.getElementById('tabla-proyectos');
-      if (!tabla) return;
-      
-      const filas = tabla.getElementsByTagName('tr');
-      let planificacion = 0, ejecucion = 0, finalizado = 0, cancelado = 0;
-      
-      for (let i = 1; i < filas.length; i++) {
-        const estatus = filas[i].getAttribute('data-estatus');
-        if (estatus === 'planificacion') planificacion++;
-        else if (estatus === 'ejecucion') ejecucion++;
-        else if (estatus === 'finalizado') finalizado++;
-        else if (estatus === 'cancelado') cancelado++;
-      }
-      
-      document.getElementById('count-planificacion').textContent = planificacion;
-      document.getElementById('count-ejecucion').textContent = ejecucion;
-      document.getElementById('count-finalizado').textContent = finalizado;
-      document.getElementById('count-cancelado').textContent = cancelado;
-    }
-    
     // Lógica para modal de proyecto
     const proyectoModal = document.getElementById('proyectoModal');
     if (proyectoModal) {
@@ -366,7 +344,6 @@
     
     // Mensajes de Django
     $(document).ready(function () {
-      actualizarContadores();
       
       {% if messages %}
       {% for message in messages %}

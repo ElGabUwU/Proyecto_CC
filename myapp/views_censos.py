@@ -64,6 +64,12 @@ def censos(request):
     paginator = Paginator(censos_list, 15)
     page_number = request.GET.get('page')
     censos_page = paginator.get_page(page_number)
+
+    conteos = censos_list.aggregate(
+        activo=Count('pk', filter=Q(estatus='activo')),
+        cerrado=Count('pk', filter=Q(estatus='cerrado')),
+        archivado=Count('pk', filter=Q(estatus='archivado')),
+    )
     
     context = {
         'censos': censos_page,
@@ -73,6 +79,9 @@ def censos(request):
         'censo_form': CensoForm(user=request.user),
         'estatus_choices': Censo.ESTATUS_CHOICES,
         'categoria_choices': Censo.CATEGORIA_ENFOQUE_CHOICES,
+        'count_activo': conteos['activo'],
+        'count_cerrado': conteos['cerrado'],
+        'count_archivado': conteos['archivado'],
     }
     
     return render(request, 'censos/censo_list.html', context)

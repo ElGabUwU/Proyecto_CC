@@ -202,6 +202,13 @@ def proyectos(request):
     
     # Obtener todos los comités para el filtro
     comites = Comite.objects.filter(is_deleted=False, activo=True).order_by('nombre')
+
+    conteos = proyectos_list.aggregate(
+        planificacion=Count('pk', filter=Q(estatus='planificacion')),
+        ejecucion=Count('pk', filter=Q(estatus='ejecucion')),
+        finalizados=Count('pk', filter=Q(estatus='finalizados')),
+        cancelados=Count('pk', filter=Q(estatus='cancelados')),
+    )
     
     context = {
         'proyectos': proyectos_page,
@@ -211,6 +218,10 @@ def proyectos(request):
         'comite_id': comite_id,
         'proyecto_form': ProyectoForm(user=request.user),
         'estatus_choices': Proyecto.ESTATUS_CHOICES,
+        'count_planificacion': conteos['planificacion'],
+        'count_ejecucion': conteos['ejecucion'],
+        'count_finalizados': conteos['finalizados'],
+        'count_cancelados': conteos['cancelados'],
     }
     
     return render(request, 'proyectos/proyecto_list.html', context)
