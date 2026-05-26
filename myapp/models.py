@@ -978,3 +978,173 @@ class ProyectoIntegrante(models.Model):
     def documento_habitante(self):
         """Retorna el documento del habitante"""
         return self.habitante.persona.document_number
+
+
+# ============================================
+# 🆕 NUEVO: Modelos para Gestión de Censos Comunitarios
+# ============================================
+
+class Censo(SoftDeleteModel):
+    """
+    Modelo que representa una campaña de censo comunitario.
+    Permite registrar habitantes participantes en cada censo.
+    """
+    CATEGORIA_ENFOQUE_CHOICES = [
+        ('salud', 'Salud'),
+        ('educacion', 'Educación'),
+        ('vivienda', 'Vivienda'),
+        ('desempleo', 'Desempleo'),
+        ('nutricion', 'Nutrición'),
+        ('seguridad', 'Seguridad'),
+        ('servicios_publicos', 'Servicios Públicos'),
+        ('poblacion', 'Censo Poblacional'),
+        ('general', 'General'),
+    ]
+    
+    ESTATUS_CHOICES = [
+        ('activo', 'Activo'),
+        ('cerrado', 'Cerrado'),
+        ('archivado', 'Archivado'),
+    ]
+    
+    nombre_censo = models.CharField(
+        max_length=200, 
+        verbose_name="Nombre del Censo",
+        help_text="Nombre identificativo de la campaña de censo"
+    )
+    fecha_inicio = models.DateField(verbose_name="Fecha de Inicio")
+    fecha_fin = models.DateField(
+        null=True, 
+        blank=True, 
+        verbose_name="Fecha de Cierre"
+    )
+    descripcion = models.TextField(
+        verbose_name="Descripción",
+        help_text="Descripción detallada del objetivo del censo"
+    )
+    categoria_enfoque = models.CharField(
+        max_length=50,
+        choices=CATEGORIA_ENFOQUE_CHOICES,
+        default='general',
+        verbose_name="Categoría de Enfoque"
+    )
+    estatus = models.CharField(
+        max_length=20,
+        choices=ESTATUS_CHOICES,
+        default='activo',
+        verbose_name="Estatus del Censo"
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='censos_creados',
+        verbose_name="Creado por"
+    )
+    # Relación ManyToMany con Habitante a través de CensoParticipante
+    participantes = models.ManyToManyField(
+        'Habitante',
+        through='CensoParticipante',
+        related_name='censos_participados',
+        blank=True,
+        verbose_name="Participantes"
+    )
+    
+    class Meta:
+        db_table = 'censos'
+        verbose_name = 'Censo'
+        verbose_name_plural = 'Censos'
+        ordering = ['-fecha_creacion']
+    
+    def __str__(self):
+        return f"{self.nombre_censo} ({self.get_estatus_display()})"
+    
+    def get_estatus_badge_class(self):
+        """Retorna la clase CSS del badge según el estatus"""
+        clases = {
+            'activo': 'bg-success',
+            'cerrado': 'bg-secondary',
+            'archivado': 'bg-light text-dark',
+        }
+        return clases.get(self.estatus, 'bg-secondary')
+    
+    def get_categoria_badge_class(self):
+        """Retorna la clase CSS del badge según la categoría"""
+        clases = {
+            'salud': 'bg-danger',
+            'educacion': 'bg-primary',
+            'vivienda': 'bg-warning text-dark',
+            'desempleo': 'bg-info',
+            'nutricion': 'bg-success',
+            'seguridad': 'bg-dark',
+            'servicios_publicos': 'bg-secondary',
+            'poblacion': 'bg-purple',
+            'general': 'bg-light text-dark',
+        }
+        return clases.get(self.categoria_enfoque, 'bg-secondary')
+    
+    def cantidad_participantes(self):
+        """Retorna la cantidad de participantes en el censo"""
+        return self.participantes.count()
+    
+    def duracion_dias(self):
+        """Calcula la duración del censo en días"""
+        if self.fecha_inicio and self.fecha_fin:
+            return (self.fecha_fin - self.fecha_inicio).days
+        return None
+    
+    def esta_activo(self):
+        """Verifica si el censo está activo"""
+        return self.estatus == 'activo'
+
+
+class CensoParticipante(models.Model):
+    """
+    Modelo intermedio para la relación Censo - Habitante.
+    Registra qué habitantes participan en cada censo con fecha y observaciones.
+    """
+    censo = models.ForeignKey(
+        Censo,
+        on_delete=models.CASCADE,
+        related_name='participantes_censo',
+        verbose_name="Censo"
+    )
+    habitante = models.ForeignKey(
+        'Habitante',
+        on_delete=models.CASCADE,
+        related_name='participaciones_censo',
+        verbose_name="Habitante"
+    )
+    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    observaciones = models.TextField(
+        blank=True,
+        verbose_name="Observaciones",
+        help_text="Notas adicionales sobre la participación del habitante"
+    )
+    
+    class Meta:
+        db_table = 'censo_participantes'
+        verbose_name = 'Participante de Censo'
+        verbose_name_plural = 'Participantes de Censo'
+        unique_together = ['censo', 'habitante']  # Un habitante solo puede registrarse una vez por censo
+        ordering = ['censo', 'fecha_registro', 'habitante__persona__name']
+    
+    def __str__(self):
+        return f"{self.habitante.persona.name} {self.habitante.persona.surname} - {self.censo.nombre_censo}"
+    
+    @property
+    def nombre_habitante(self):
+        """Retorna el nombre completo del habitante"""
+        return f"{self.habitante.persona.name} {self.habitante.persona.surname}"
+    
+    @property
+    def documento_habitante(self):
+        """Retorna el documento del habitante"""
+        return self.habitante.persona.document_number
+    
+    @property
+    def telefono_habitante(self):
+        """Retorna el teléfono del habitante"""
+        return self.habitante.persona.telelephone_number or ''

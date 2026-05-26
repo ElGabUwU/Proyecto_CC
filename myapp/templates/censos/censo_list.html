@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proyectos Comunitarios - Consejo Comunal</title>
+  <title>Censos Comunitarios - Consejo Comunal</title>
   <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
   <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
@@ -23,23 +23,18 @@
       <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="{% url 'welcome' %}" class="text-decoration-none">Inicio</a></li>
-          <li class="breadcrumb-item active text-white" aria-current="page">Proyectos Comunitarios</li>
+          <li class="breadcrumb-item active text-white" aria-current="page">Censos Comunitarios</li>
         </ol>
       </nav>
 
       <div class="card shadow">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h4 class="mb-0">
-            <i class="fas fa-project-diagram me-2"></i>Gestión de Proyectos
+            <i class="fas fa-clipboard-list me-2"></i>Gestión de Censos
           </h4>
-          <div>
-            <a href="{% url 'comites' %}" class="btn btn-outline-info me-2">
-              <i class="fas fa-sitemap me-1"></i>Comités
-            </a>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#proyectoModal">
-              <i class="fas fa-plus me-1"></i>Nuevo Proyecto
-            </button>
-          </div>
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#censoModal">
+            <i class="fas fa-plus me-1"></i>Nuevo Censo
+          </button>
         </div>
         
         <div class="card-body">
@@ -49,27 +44,24 @@
               <label for="filtro-estatus" class="form-label">Filtrar por Estatus</label>
               <select class="form-select" id="filtro-estatus" onchange="filtrarPorEstatus(this.value)">
                 <option value="">Todos los estatus</option>
-                <option value="planificacion" {% if estatus == 'planificacion' %}selected{% endif %}>Planificación</option>
-                <option value="ejecucion" {% if estatus == 'ejecucion' %}selected{% endif %}>Ejecución</option>
-                <option value="finalizado" {% if estatus == 'finalizado' %}selected{% endif %}>Finalizado</option>
-                <option value="cancelado" {% if estatus == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                <option value="activo" {% if estatus == 'activo' %}selected{% endif %}>Activo</option>
+                <option value="cerrado" {% if estatus == 'cerrado' %}selected{% endif %}>Cerrado</option>
+                <option value="archivado" {% if estatus == 'archivado' %}selected{% endif %}>Archivado</option>
               </select>
             </div>
             <div class="col-md-3">
-              <label for="filtro-comite" class="form-label">Filtrar por Comité</label>
-              <select class="form-select" id="filtro-comite" onchange="filtrarPorComite(this.value)">
-                <option value="">Todos los comités</option>
-                {% for comite in comites %}
-                <option value="{{ comite.id }}" {% if comite_id == comite.id|stringformat:"s" %}selected{% endif %}>
-                  {{ comite.nombre }}
-                </option>
+              <label for="filtro-categoria" class="form-label">Filtrar por Categoría</label>
+              <select class="form-select" id="filtro-categoria" onchange="filtrarPorCategoria(this.value)">
+                <option value="">Todas las categorías</option>
+                {% for value, label in categoria_choices %}
+                <option value="{{ value }}" {% if categoria == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
               </select>
             </div>
             <div class="col-md-4">
-              <form method="get" action="{% url 'proyectos' %}" class="mt-4">
+              <form method="get" action="{% url 'censos' %}" class="mt-4">
                 <div class="input-group">
-                  <input type="text" name="q" class="form-control" placeholder="Buscar por nombre, descripción..." 
+                  <input type="text" name="q" class="form-control" placeholder="Buscar por nombre..." 
                          value="{{ query|default_if_none:'' }}">
                   <button class="btn btn-secondary" type="submit">
                     <i class="fa fa-search"></i>
@@ -78,119 +70,113 @@
               </form>
             </div>
             <div class="col-md-2 mt-4">
-              <a href="{% url 'proyectos' %}" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-redo me-1"></i>Limpiar filtros
+              <a href="{% url 'censos' %}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-redo me-1"></i>Limpiar
               </a>
             </div>
           </div>
 
           <!-- Resumen de estatus -->
           <div class="row mb-4">
-            <div class="col-md-3">
-              <div class="card bg-info text-white">
-                <div class="card-body text-center py-2">
-                  <i class="fas fa-clipboard-list fa-2x mb-1"></i>
-                  <h5 class="mb-0">Planificación</h5>
-                  <small id="count-planificacion">-</small>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="card bg-warning text-dark">
-                <div class="card-body text-center py-2">
-                  <i class="fas fa-hard-hat fa-2x mb-1"></i>
-                  <h5 class="mb-0">Ejecución</h5>
-                  <small id="count-ejecucion">-</small>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
               <div class="card bg-success text-white">
                 <div class="card-body text-center py-2">
                   <i class="fas fa-check-circle fa-2x mb-1"></i>
-                  <h5 class="mb-0">Finalizados</h5>
-                  <small id="count-finalizado">-</small>
+                  <h5 class="mb-0">Activos</h5>
+                  <small id="count-activo">-</small>
                 </div>
               </div>
             </div>
-            <div class="col-md-3">
-              <div class="card bg-danger text-white">
+            <div class="col-md-4">
+              <div class="card bg-secondary text-white">
                 <div class="card-body text-center py-2">
-                  <i class="fas fa-times-circle fa-2x mb-1"></i>
-                  <h5 class="mb-0">Cancelados</h5>
-                  <small id="count-cancelado">-</small>
+                  <i class="fas fa-lock fa-2x mb-1"></i>
+                  <h5 class="mb-0">Cerrados</h5>
+                  <small id="count-cerrado">-</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light text-dark">
+                <div class="card-body text-center py-2">
+                  <i class="fas fa-archive fa-2x mb-1"></i>
+                  <h5 class="mb-0">Archivados</h5>
+                  <small id="count-archivado">-</small>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Tabla de Proyectos -->
+          <!-- Tabla de Censos -->
           <div class="table-responsive">
             <table class="table table-bordered table-hover">
               <thead>
                 <tr>
                   <th style="width: 140px;">Acciones</th>
-                  <th>Nombre del Proyecto</th>
-                  <th>Comité Responsable</th>
+                  <th>Nombre del Censo</th>
+                  <th>Categoría</th>
                   <th>Fecha Inicio</th>
-                  <th>Fecha Fin</th>
-                  <th>Monto Estimado</th>
+                  <th>Fecha Cierre</th>
                   <th>Estatus</th>
-                  <th>Integrantes</th>
+                  <th>Participantes</th>
                 </tr>
               </thead>
-              <tbody id="tabla-proyectos">
-                {% for proyecto in proyectos %}
-                <tr data-estatus="{{ proyecto.estatus }}" data-comite="{{ proyecto.comite.id }}">
+              <tbody id="tabla-censos">
+                {% for censo in censos %}
+                <tr data-estatus="{{ censo.estatus }}" data-categoria="{{ censo.categoria_enfoque }}">
                   <td>
-                    <a href="{% url 'detalle_proyecto' proyecto.pk %}" class="btn btn-sm btn-info mb-1" title="Ver detalle">
+                    <a href="{% url 'detalle_censo' censo.pk %}" class="btn btn-sm btn-info mb-1" title="Ver detalle">
                       <i class="fas fa-eye"></i>
                     </a>
                     <button type="button" class="btn btn-sm btn-warning mb-1" data-bs-toggle="modal" 
-                            data-bs-target="#proyectoModal" data-proyecto-id="{{ proyecto.pk }}" title="Editar">
+                            data-bs-target="#censoModal" data-censo-id="{{ censo.pk }}" title="Editar">
                       <i class="fas fa-edit"></i>
                     </button>
-                    <form action="{% url 'eliminar_proyecto' proyecto.pk %}" method="post" style="display:inline;">
+                    <form action="{% url 'eliminar_censo' censo.pk %}" method="post" style="display:inline;">
                       {% csrf_token %}
                       <button type="submit" class="btn btn-sm btn-danger mb-1" 
-                              onclick="return confirmarEliminacion('{{ proyecto.nombre }}')" title="Eliminar">
+                              onclick="return confirmarEliminacion('{{ censo.nombre_censo }}')" title="Eliminar">
                         <i class="fas fa-trash"></i>
                       </button>
                     </form>
                   </td>
                   <td>
                     <a>
-                      <span>{{ proyecto.nombre }}</span>
+                      <span>{{ censo.nombre_censo }}</span>
                     </a>
+                    {% if censo.descripcion %}
+                    <br><small class="text-muted">{{ censo.descripcion|truncatechars:50 }}</small>
+                    {% endif %}
                   </td>
                   <td>
-                    <span class="badge bg-secondary">{{ proyecto.comite.nombre }}</span>
+                    <span class="badge {{ censo.get_categoria_badge_class }}">
+                      {{ censo.get_categoria_enfoque_display }}
+                    </span>
                   </td>
-                  <td>{{ proyecto.fecha_inicio|date:"d/m/Y" }}</td>
+                  <td>{{ censo.fecha_inicio|date:"d/m/Y" }}</td>
                   <td>
-                    {% if proyecto.fecha_fin %}
-                      {{ proyecto.fecha_fin|date:"d/m/Y" }}
+                    {% if censo.fecha_fin %}
+                      {{ censo.fecha_fin|date:"d/m/Y" }}
                     {% else %}
                       <span class="text-muted">Sin definir</span>
                     {% endif %}
                   </td>
-                  <td>Bs. {{ proyecto.monto_estimado|floatformat:2 }}</td>
                   <td>
-                    <span class="badge {{ proyecto.get_estatus_badge_class }}">
-                      {{ proyecto.get_estatus_display }}
+                    <span class="badge {{ censo.get_estatus_badge_class }}">
+                      {{ censo.get_estatus_display }}
                     </span>
                   </td>
                   <td>
-                    <span class="badge bg-primary">{{ proyecto.num_integrantes }}</span>
+                    <span class="badge bg-primary">{{ censo.num_participantes }}</span>
                   </td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="8" class="text-center text-muted py-4">
+                  <td colspan="7" class="text-center text-muted py-4">
                     <i class="fas fa-folder-open fa-3x mb-2 d-block"></i>
-                    No se encontraron proyectos registrados.
+                    No se encontraron censos registrados.
                     <br>
-                    <small>Haga clic en "Nuevo Proyecto" para comenzar.</small>
+                    <small>Haga clic en "Nuevo Censo" para comenzar.</small>
                   </td>
                 </tr>
                 {% endfor %}
@@ -199,15 +185,15 @@
           </div>
 
           <!-- Paginación -->
-          {% if proyectos.has_other_pages %}
+          {% if censos.has_other_pages %}
           <div class="pagination-container d-flex justify-content-center align-items-center my-4">
-            <button id="prev-page" class="btn pagination-btn" {% if not proyectos.has_previous %}disabled{% endif %}>
+            <button id="prev-page" class="btn pagination-btn" {% if not censos.has_previous %}disabled{% endif %}>
               <img src="{% static 'assets/images/flecha_izq.png' %}" alt="Anterior" width="40" height="30">
             </button>
-            <span id="page-info" class="page-info text-white mx-3">
-              {{ proyectos.number }} / {{ proyectos.paginator.num_pages }}
+            <span class="page-info text-white mx-3">
+              {{ censos.number }} / {{ censos.paginator.num_pages }}
             </span>
-            <button id="next-page" class="btn pagination-btn" {% if not proyectos.has_next %}disabled{% endif %}>
+            <button id="next-page" class="btn pagination-btn" {% if not censos.has_next %}disabled{% endif %}>
               <img src="{% static 'assets/images/flecha_der.png' %}" alt="Siguiente" width="40" height="30">
             </button>
           </div>
@@ -217,59 +203,54 @@
     </main>
   </div>
 
-  <!-- Modal para Proyecto -->
-  <div class="modal fade" id="proyectoModal" tabindex="-1" aria-labelledby="proyectoModalLabel" aria-hidden="true">
+  <!-- Modal para Censo -->
+  <div class="modal fade" id="censoModal" tabindex="-1" aria-labelledby="censoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="modalProyectoTitle">Registrar Proyecto</h5>
+          <h5 class="modal-title" id="modalCensoTitle">Registrar Censo</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="proyectoForm" method="POST" action="">
+          <form id="censoForm" method="POST" action="">
             {% csrf_token %}
             <div class="row">
               <div class="col-md-12 mb-3">
-                <label for="id_nombre" class="form-label">{{ proyecto_form.nombre.label }}</label>
-                {{ proyecto_form.nombre }}
-                <small class="text-muted">{{ proyecto_form.nombre.help_text }}</small>
+                <label for="id_nombre_censo" class="form-label">{{ censo_form.nombre_censo.label }}</label>
+                {{ censo_form.nombre_censo }}
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="id_fecha_inicio" class="form-label">{{ proyecto_form.fecha_inicio.label }}</label>
-                {{ proyecto_form.fecha_inicio }}
+                <label for="id_fecha_inicio" class="form-label">{{ censo_form.fecha_inicio.label }}</label>
+                {{ censo_form.fecha_inicio }}
               </div>
               <div class="col-md-6 mb-3">
-                <label for="id_fecha_fin" class="form-label">{{ proyecto_form.fecha_fin.label }}</label>
-                {{ proyecto_form.fecha_fin }}
+                <label for="id_fecha_fin" class="form-label">{{ censo_form.fecha_fin.label }}</label>
+                {{ censo_form.fecha_fin }}
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="id_comite" class="form-label">{{ proyecto_form.comite.label }}</label>
-                {{ proyecto_form.comite }}
+                <label for="id_categoria_enfoque" class="form-label">{{ censo_form.categoria_enfoque.label }}</label>
+                {{ censo_form.categoria_enfoque }}
               </div>
-              <div class="col-md-3 mb-3">
-                <label for="id_monto_estimado" class="form-label">{{ proyecto_form.monto_estimado.label }}</label>
-                {{ proyecto_form.monto_estimado }}
-              </div>
-              <div class="col-md-3 mb-3">
-                <label for="id_estatus" class="form-label">{{ proyecto_form.estatus.label }}</label>
-                {{ proyecto_form.estatus }}
+              <div class="col-md-6 mb-3">
+                <label for="id_estatus" class="form-label">{{ censo_form.estatus.label }}</label>
+                {{ censo_form.estatus }}
               </div>
             </div>
             <div class="row">
               <div class="col-md-12 mb-3">
-                <label for="id_descripcion" class="form-label">{{ proyecto_form.descripcion.label }}</label>
-                {{ proyecto_form.descripcion }}
+                <label for="id_descripcion" class="form-label">{{ censo_form.descripcion.label }}</label>
+                {{ censo_form.descripcion }}
               </div>
             </div>
           </form>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" form="proyectoForm" class="btn btn-primary">
+          <button type="submit" form="censoForm" class="btn btn-primary">
             <i class="fas fa-save me-1"></i>Guardar
           </button>
         </div>
@@ -285,53 +266,50 @@
   <script>
     // Contadores de estatus
     function actualizarContadores() {
-      const tabla = document.getElementById('tabla-proyectos');
+      const tabla = document.getElementById('tabla-censos');
       if (!tabla) return;
       
       const filas = tabla.getElementsByTagName('tr');
-      let planificacion = 0, ejecucion = 0, finalizado = 0, cancelado = 0;
+      let activo = 0, cerrado = 0, archivado = 0;
       
       for (let i = 1; i < filas.length; i++) {
         const estatus = filas[i].getAttribute('data-estatus');
-        if (estatus === 'planificacion') planificacion++;
-        else if (estatus === 'ejecucion') ejecucion++;
-        else if (estatus === 'finalizado') finalizado++;
-        else if (estatus === 'cancelado') cancelado++;
+        if (estatus === 'activo') activo++;
+        else if (estatus === 'cerrado') cerrado++;
+        else if (estatus === 'archivado') archivado++;
       }
       
-      document.getElementById('count-planificacion').textContent = planificacion;
-      document.getElementById('count-ejecucion').textContent = ejecucion;
-      document.getElementById('count-finalizado').textContent = finalizado;
-      document.getElementById('count-cancelado').textContent = cancelado;
+      document.getElementById('count-activo').textContent = activo;
+      document.getElementById('count-cerrado').textContent = cerrado;
+      document.getElementById('count-archivado').textContent = archivado;
     }
     
-    // Lógica para modal de proyecto
-    const proyectoModal = document.getElementById('proyectoModal');
-    if (proyectoModal) {
-      proyectoModal.addEventListener('show.bs.modal', function(event) {
+    // Lógica para modal de censo
+    const censoModal = document.getElementById('censoModal');
+    if (censoModal) {
+      censoModal.addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;
-        const proyectoId = button ? button.getAttribute('data-proyecto-id') : null;
-        const form = document.getElementById('proyectoForm');
-        const title = document.getElementById('modalProyectoTitle');
+        const censoId = button ? button.getAttribute('data-censo-id') : null;
+        const form = document.getElementById('censoForm');
+        const title = document.getElementById('modalCensoTitle');
         
-        if (proyectoId) {
-          title.textContent = 'Editar Proyecto';
-          form.action = `/proyectos/${proyectoId}/editar/`;
+        if (censoId) {
+          title.textContent = 'Editar Censo';
+          form.action = `/censos/${censoId}/editar/`;
           // AJAX para cargar datos
-          fetch(`/proyectos/api/${proyectoId}/`)
+          fetch(`/censos/api/${censoId}/`)
             .then(response => response.json())
             .then(data => {
-              document.getElementById('id_nombre').value = data.nombre || '';
+              document.getElementById('id_nombre_censo').value = data.nombre_censo || '';
               document.getElementById('id_fecha_inicio').value = data.fecha_inicio || '';
               document.getElementById('id_fecha_fin').value = data.fecha_fin || '';
               document.getElementById('id_descripcion').value = data.descripcion || '';
-              document.getElementById('id_monto_estimado').value = data.monto_estimado || '';
-              document.getElementById('id_estatus').value = data.estatus || 'planificacion';
-              document.getElementById('id_comite').value = data.comite || '';
+              document.getElementById('id_categoria_enfoque').value = data.categoria_enfoque || 'general';
+              document.getElementById('id_estatus').value = data.estatus || 'activo';
             });
         } else {
-          title.textContent = 'Registrar Proyecto';
-          form.action = "{% url 'crear_proyecto' %}";
+          title.textContent = 'Registrar Censo';
+          form.action = "{% url 'crear_censo' %}";
           form.reset();
         }
       });
@@ -341,17 +319,17 @@
     function filtrarPorEstatus(estatus) {
       const url = new URL(window.location.href.split('?')[0], window.location.origin);
       if (estatus) url.searchParams.append('estatus', estatus);
-      const comite = document.getElementById('filtro-comite').value;
-      if (comite) url.searchParams.append('comite', comite);
+      const categoria = document.getElementById('filtro-categoria').value;
+      if (categoria) url.searchParams.append('categoria', categoria);
       const query = "{{ query|default:'' }}";
       if (query && query !== 'None') url.searchParams.append('q', query);
       window.location.href = url.toString();
     }
     
-    // Función para filtrar por comité
-    function filtrarPorComite(comiteId) {
+    // Función para filtrar por categoría
+    function filtrarPorCategoria(categoria) {
       const url = new URL(window.location.href.split('?')[0], window.location.origin);
-      if (comiteId) url.searchParams.append('comite', comiteId);
+      if (categoria) url.searchParams.append('categoria', categoria);
       const estatus = document.getElementById('filtro-estatus').value;
       if (estatus) url.searchParams.append('estatus', estatus);
       const query = "{{ query|default:'' }}";
@@ -361,7 +339,7 @@
     
     // Confirmar eliminación
     function confirmarEliminacion(nombre) {
-      return confirm(`¿Está seguro de eliminar el proyecto "${nombre}"?\n\nEsta acción no se puede deshacer.`);
+      return confirm(`¿Está seguro de eliminar el censo "${nombre}"?\n\nEsta acción no se puede deshacer.`);
     }
     
     // Mensajes de Django
@@ -384,18 +362,18 @@
     document.addEventListener('DOMContentLoaded', function() {
       const prevButton = document.getElementById('prev-page');
       const nextButton = document.getElementById('next-page');
-      const currentPage = {{ proyectos.number|default:1 }};
-      const totalPages = {{ proyectos.paginator.num_pages|default:1 }};
+      const currentPage = {{ censos.number|default:1 }};
+      const totalPages = {{ censos.paginator.num_pages|default:1 }};
       const query = "{{ query|default:'' }}";
       const estatusFilter = "{{ estatus|default:'' }}";
-      const comiteFilter = "{{ comite_id|default:'' }}";
+      const categoriaFilter = "{{ categoria|default:'' }}";
       
       function buildURL(page) {
         const url = new URL(window.location.href.split('?')[0], window.location.origin);
         if (page > 1) url.searchParams.append('page', page);
         if (query && query !== 'None' && query.trim() !== '') url.searchParams.append('q', query);
         if (estatusFilter && estatusFilter !== 'None') url.searchParams.append('estatus', estatusFilter);
-        if (comiteFilter && comiteFilter !== 'None') url.searchParams.append('comite', comiteFilter);
+        if (categoriaFilter && categoriaFilter !== 'None') url.searchParams.append('categoria', categoriaFilter);
         return url.toString();
       }
       

@@ -1282,3 +1282,166 @@ class AsignarHabitanteForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+# ============================================
+# 🆕 NUEVO: Formularios para Gestión de Censos
+# ============================================
+
+from .models import Censo, CensoParticipante
+
+class CensoForm(forms.ModelForm):
+    """
+    Formulario para crear y editar censos comunitarios.
+    """
+    nombre_censo = forms.CharField(
+        label="Nombre del Censo",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Censo Poblacional 2026'
+        }),
+        help_text="Nombre identificativo de la campaña de censo"
+    )
+    
+    fecha_inicio = forms.DateField(
+        label="Fecha de Inicio",
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha de inicio del censo"
+    )
+    
+    fecha_fin = forms.DateField(
+        label="Fecha de Cierre",
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha de cierre estimada (opcional)"
+    )
+    
+    descripcion = forms.CharField(
+        label="Descripción",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Describa el objetivo y alcance del censo...'
+        }),
+        help_text="Descripción detallada del censo"
+    )
+    
+    categoria_enfoque = forms.ChoiceField(
+        choices=Censo.CATEGORIA_ENFOQUE_CHOICES,
+        label="Categoría de Enfoque",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione la categoría principal del censo"
+    )
+    
+    estatus = forms.ChoiceField(
+        choices=Censo.ESTATUS_CHOICES,
+        label="Estatus del Censo",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Estado actual del censo"
+    )
+    
+    class Meta:
+        model = Censo
+        fields = ['nombre_censo', 'fecha_inicio', 'fecha_fin', 'descripcion', 'categoria_enfoque', 'estatus']
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Si es un nuevo censo, preestablecer la fecha de inicio
+        if not self.instance.pk:
+            from datetime import date
+            self.fields['fecha_inicio'].initial = date.today()
+    
+    def clean_fecha_fin(self):
+        """Validar que la fecha de fin sea posterior a la fecha de inicio"""
+        fecha_inicio = self.cleaned_data.get('fecha_inicio')
+        fecha_fin = self.cleaned_data.get('fecha_fin')
+        
+        if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+            raise forms.ValidationError(
+                "La fecha de cierre no puede ser anterior a la fecha de inicio."
+            )
+        return fecha_fin
+    
+    def save(self, commit=True):
+        """Guardar con el usuario como creador"""
+        instance = super().save(commit=False)
+        if self.user and not instance.pk:
+            instance.creado_por = self.user
+        if commit:
+            instance.save()
+        return instance
+
+
+class AsignarParticipanteForm(forms.ModelForm):
+    """
+    Formulario para asignar un habitante a un censo.
+    """
+    habitante = forms.ModelChoiceField(
+        queryset=Habitante.objects.filter(is_deleted=False),
+        label="Habitante",
+        widget=forms.Select(attrs={
+            'class': 'form-control select2',
+            'data-placeholder': 'Buscar por nombre o cédula...'
+        }),
+        help_text="Seleccione el habitante a registrar en el censo"
+    )
+    
+    observaciones = forms.CharField(
+        label="Observaciones",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Observaciones adicionales...'
+        }),
+        help_text="Notas sobre la participación del habitante (opcional)"
+    )
+    
+    class Meta:
+        model = CensoParticipante
+        fields = ['habitante', 'observaciones']
+    
+    def __init__(self, *args, **kwargs):
+        self.censo = kwargs.pop('censo', None)
+        super().__init__(*args, **kwargs)
+        
+        # Optimizar queryset con select_related
+        self.fields['habitante'].queryset = self.fields['habitante'].queryset.select_related(
+            'persona', 'familia'
+        ).order_by('persona__name')
+    
+    def clean_habitante(self):
+        """Validar que el habitante no esté ya registrado en el censo"""
+        habitante = self.cleaned_data.get('habitante')
+        
+        if self.censo and habitante:
+            # Verificar si ya está registrado
+            existe = CensoParticipante.objects.filter(
+                censo=self.censo,
+                habitante=habitante
+            ).exists()
+            
+            if existe:
+                raise forms.ValidationError(
+                    f"Este habitante ya está registrado en este censo."
+                )
+        
+        return habitante
+    
+    def save(self, commit=True):
+        """Guardar con el censo"""
+        instance = super().save(commit=False)
+        if self.censo:
+            instance.censo = self.censo
+        if commit:
+            instance.save()
+        return instance

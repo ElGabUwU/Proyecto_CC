@@ -6,6 +6,7 @@ from . import views
 from . import views_export
 from . import views_comunidad
 from . import views_proyectos
+from . import views_censos
 from .views import PersonApiView, DocenteApiView
 from .views import change_password
 
@@ -170,6 +171,30 @@ urlpatterns = [
     
     # Dashboard de Proyectos
     path('proyectos/dashboard/', views_proyectos.dashboard_proyectos, name='dashboard_proyectos'),
+
+    # ============================================
+    # 🆕 NUEVO: Gestión de Censos Comunitarios
+    # ============================================
+    
+    # Censos
+    path('censos/', views_censos.censos, name='censos'),
+    path('censos/crear/', views_censos.crear_censo, name='crear_censo'),
+    path('censos/<int:pk>/', views_censos.detalle_censo, name='detalle_censo'),
+    path('censos/<int:pk>/editar/', views_censos.editar_censo, name='editar_censo'),
+    path('censos/<int:pk>/eliminar/', views_censos.eliminar_censo, name='eliminar_censo'),
+    path('censos/api/<int:pk>/', views_censos.api_censo, name='api_censo'),
+    
+    # Participantes de Censos
+    path('censos/<int:pk>/asignar-participante/', views_censos.asignar_participante, name='asignar_participante_censo'),
+    path('censos/<int:pk>/remover-participante/<int:habitante_id>/', views_censos.remover_participante, name='remover_participante_censo'),
+    path('censos/api/buscar-habitantes/', views_censos.buscar_habitantes_censo, name='buscar_habitantes_censo'),
+    path('censos/api/participante/<int:participante_id>/', views_censos.api_participante, name='api_participante_censo'),
+    
+    # Exportación de Censos
+    path('censos/<int:pk>/exportar/', views_censos.exportar_participantes_censo, name='exportar_participantes_censo'),
+    
+    # Dashboard de Censos
+    path('censos/dashboard/', views_censos.dashboard_censos, name='dashboard_censos'),
 
 ]
 
