@@ -19,7 +19,7 @@
   <div class="bg-my-background-color d-flex text-white">
     {% include 'partials/sidebar.html' %}
 
-    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+    <main class="flex-grow-1 main-content vh-100 p-3 mx-3 pt-4">
       <!-- Resumen Financiero -->
       <div class="row mb-4">
         <div class="col-md-4">
@@ -85,14 +85,16 @@
               </div>
               
               <div class="table-responsive">
-                <table class="table table-bordered">
-                  <thead>
+                <table class="table table-bordered table-hover align-middle">
+                  <thead class="table-light">
                     <tr>
                       <th>Fecha</th>
+                      <th>Tipo de Ingreso</th>
                       <th>Concepto</th>
                       <th>Monto</th>
+                      <th>Soporte Digital</th>
+                      <th>Observaciones</th>
                       <th>Responsable</th>
-                      <th>Soporte</th>
                       <th>Acciones</th>
                     </tr>
                   </thead>
@@ -100,18 +102,26 @@
                     {% for ingreso in ingresos %}
                     <tr>
                       <td>{{ ingreso.fecha|date:"d/m/Y" }}</td>
+                      <td>
+                        <span class="badge bg-primary">
+                          {{ ingreso.get_tipo_ingreso_display }}
+                        </span>
+                      </td>
                       <td>{{ ingreso.concepto }}</td>
-                      <td class="text-success">Bs. {{ ingreso.monto|floatformat:2 }}</td>
-                      <td>{{ ingreso.responsable.get_full_name }}</td>
+                      <td class="text-success fw-bold">Bs. {{ ingreso.monto|floatformat:2 }}</td>
                       <td>
                         {% if ingreso.soporte_digital %}
-                        <a href="{{ ingreso.soporte_digital.url }}" target="_blank" class="btn btn-sm btn-info">
-                          <i class="fas fa-file-pdf"></i>
-                        </a>
+                          <a href="{{ ingreso.soporte_digital.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-file-pdf"></i> Ver/Descargar
+                          </a>
                         {% else %}
-                        <span class="text-muted">Sin soporte</span>
+                          <span class="text-muted">Sin soporte</span>
                         {% endif %}
                       </td>
+                      <td title="{{ ingreso.observaciones }}">
+                        {{ ingreso.observaciones|truncatechars:40|default:"-" }}
+                      </td>
+                      <td>{{ ingreso.responsable.get_full_name|default:"Usuario eliminado" }}</td>
                       <td>
                         <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
                                 data-bs-target="#ingresoModal" data-ingreso-id="{{ ingreso.id }}">
@@ -120,7 +130,7 @@
                         <form action="{% url 'eliminar_ingreso' ingreso.id %}" method="post" style="display:inline;">
                           {% csrf_token %}
                           <button type="submit" class="btn btn-sm btn-danger" 
-                                  onclick="return confirm('¿Eliminar este ingreso?')">
+                                  onclick="return confirm('¿Estás seguro de eliminar este ingreso?')">
                             <i class="fas fa-trash"></i>
                           </button>
                         </form>
@@ -128,7 +138,10 @@
                     </tr>
                     {% empty %}
                     <tr>
-                      <td colspan="6" class="text-center text-muted">No hay ingresos registrados</td>
+                      <td colspan="8" class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                        No hay ingresos registrados
+                      </td>
                     </tr>
                     {% endfor %}
                   </tbody>
@@ -146,13 +159,16 @@
               </div>
               
               <div class="table-responsive">
-                <table class="table table-bordered">
-                  <thead>
+                <table class="table table-bordered table-hover align-middle">
+                  <thead class="table-light">
                     <tr>
                       <th>Fecha</th>
+                      <th>Tipo de Egreso</th>
                       <th>Concepto</th>
                       <th>Monto</th>
                       <th>Beneficiario</th>
+                      <th>Soporte</th>
+                      <th>Observaciones</th>
                       <th>Responsable</th>
                       <th>Acciones</th>
                     </tr>
@@ -161,10 +177,27 @@
                     {% for egreso in egresos %}
                     <tr>
                       <td>{{ egreso.fecha|date:"d/m/Y" }}</td>
+                      <td>
+                        <span class="badge bg-warning text-dark">
+                          {{ egreso.get_tipo_egreso_display }}
+                        </span>
+                      </td>
                       <td>{{ egreso.concepto }}</td>
-                      <td class="text-danger">Bs. {{ egreso.monto|floatformat:2 }}</td>
+                      <td class="text-danger fw-bold">Bs. {{ egreso.monto|floatformat:2 }}</td>
                       <td>{{ egreso.beneficiario|default:"-" }}</td>
-                      <td>{{ egreso.responsable.get_full_name }}</td>
+                      <td>
+                        {% if egreso.soporte %}
+                          <a href="{{ egreso.soporte.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-paperclip"></i> Ver
+                          </a>
+                        {% else %}
+                          <span class="text-muted">Sin soporte</span>
+                        {% endif %}
+                      </td>
+                      <td title="{{ egreso.observaciones }}">
+                        {{ egreso.observaciones|truncatechars:40|default:"-" }}
+                      </td>
+                      <td>{{ egreso.responsable.get_full_name|default:"Usuario eliminado" }}</td>
                       <td>
                         <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
                                 data-bs-target="#egresoModal" data-egreso-id="{{ egreso.id }}">
@@ -173,7 +206,7 @@
                         <form action="{% url 'eliminar_egreso' egreso.id %}" method="post" style="display:inline;">
                           {% csrf_token %}
                           <button type="submit" class="btn btn-sm btn-danger" 
-                                  onclick="return confirm('¿Eliminar este egreso?')">
+                                  onclick="return confirm('¿Estás seguro de eliminar este egreso?')">
                             <i class="fas fa-trash"></i>
                           </button>
                         </form>
@@ -181,7 +214,10 @@
                     </tr>
                     {% empty %}
                     <tr>
-                      <td colspan="6" class="text-center text-muted">No hay egresos registrados</td>
+                      <td colspan="9" class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                        No hay egresos registrados
+                      </td>
                     </tr>
                     {% endfor %}
                   </tbody>
@@ -209,10 +245,9 @@
                           <input type="date" class="form-control" id="fecha_fin" name="fecha_fin"
                                  value="{{ request.GET.fecha_fin|default:'' }}">
                         </div>
-                        <button type="submit" class="btn btn-primary">Generar Reporte</button>
-                        <button type="button" class="btn btn-success" onclick="exportarAExcel('tabla-reporte', 'finanzas')">
-                          <i class="fas fa-download me-1"></i>Exportar Excel
-                        </button>
+                        <button type="button" class="btn btn-success" id="btn-export-excel" disabled title="Selecciona ambas fechas para habilitar la exportación">
+                          <i class="fas fa-file-excel me-1"></i>Exportar Excel
+                        </button> 
                       </form>
                     </div>
                   </div>
@@ -298,7 +333,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="ingresoForm" method="POST" action="">
+          <form id="ingresoForm" method="POST" action="" enctype="multipart/form-data">
             {% csrf_token %}
             {{ ingreso_form.as_p }}
           </form>
@@ -320,7 +355,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="egresoForm" method="POST" action="">
+          <form id="egresoForm" method="POST" action="" enctype="multipart/form-data">
             {% csrf_token %}
             {{ egreso_form.as_p }}
           </form>
@@ -341,7 +376,7 @@
   <script>
     // Lógica para modales de finanzas
     document.addEventListener('DOMContentLoaded', function() {
-      // Inicializar pestañas
+      // 🔹 TU CÓDIGO ORIGINAL: Inicializar pestañas
       const triggerTabList = [].slice.call(document.querySelectorAll('#finanzasTab button'));
       triggerTabList.forEach(function (triggerEl) {
         const tabTrigger = new bootstrap.Tab(triggerEl);
@@ -350,6 +385,63 @@
           tabTrigger.show();
         });
       });
+
+      // 🔹 VALIDACIÓN: Habilitar botón solo si ambas fechas están seleccionadas
+      const btnExport = document.getElementById('btn-export-excel');
+      const inputInicio = document.getElementById('fecha_inicio');
+      const inputFin = document.getElementById('fecha_fin');
+
+      function verificarFechas() {
+        // Habilitar solo si AMBOS inputs tienen valor
+        if (inputInicio.value && inputFin.value) {
+          btnExport.disabled = false;
+          btnExport.title = "Exportar datos filtrados";
+          btnExport.classList.remove('disabled');
+          btnExport.style.opacity = '1';
+        } else {
+          btnExport.disabled = true;
+          btnExport.title = "Selecciona ambas fechas para habilitar la exportación";
+          btnExport.classList.add('disabled');
+          btnExport.style.opacity = '0.65';
+        }
+      }
+
+      // Ejecutar al cargar (por si hay fechas en la URL)
+      verificarFechas();
+
+      // Escuchar cambios en los inputs
+      if (inputInicio) inputInicio.addEventListener('change', verificarFechas);
+      if (inputFin) inputFin.addEventListener('change', verificarFechas);
+
+      // 🔹 EXPORTAR: Lógica para construir URL con filtros
+      if (btnExport) {
+        btnExport.addEventListener('click', function() {
+          const fechaInicio = inputInicio.value;
+          const fechaFin = inputFin.value;
+          
+          // Validación extra de seguridad
+          if (!fechaInicio || !fechaFin) {
+            alert('⚠️ Por favor selecciona ambas fechas antes de exportar.');
+            return;
+          }
+          
+          let url = "{% url 'exportar_finanzas' %}?";
+          const params = [];
+          
+          if (fechaInicio) params.push(`fecha_inicio=${encodeURIComponent(fechaInicio)}`);
+          if (fechaFin) params.push(`fecha_fin=${encodeURIComponent(fechaFin)}`);
+          
+          if (params.length > 0) {
+            url += params.join('&');
+          } else {
+            url = url.slice(0, -1);
+          }
+          
+          window.open(url, '_blank');
+        });
+      }
+
+  // 🔹 (Opcional) Tu lógica existente de modales iría aquí...
 
       // Lógica para modal de ingreso
       const ingresoModal = document.getElementById('ingresoModal');

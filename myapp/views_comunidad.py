@@ -308,93 +308,62 @@ def api_familia(request, id):
 
 @login_required
 def finanzas(request):
-    """
-    Vista principal del dashboard financiero.
-    """
     # Obtener fechas para filtro
     fecha_inicio_str = request.GET.get('fecha_inicio', '')
     fecha_fin_str = request.GET.get('fecha_fin', '')
     
-    # Fechas por defecto (últimos 30 días)
     fecha_fin = timezone.now().date()
     fecha_inicio = fecha_fin - timedelta(days=30)
     
     if fecha_inicio_str:
-        try:
-            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
-        except ValueError:
-            pass
-    
+        try: fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+        except ValueError: pass
     if fecha_fin_str:
-        try:
-            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
-        except ValueError:
-            pass
+        try: fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+        except ValueError: pass
     
-    # Calcular totales generales
+    # 🔹 TOTALES GENERALES (sin filtro)
     total_ingresos = IngresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
     total_egresos = EgresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
     saldo_actual = total_ingresos - total_egresos
     
-    # Calcular totales del período
-    ingresos_periodo = IngresoComunal.objects.filter(
-        fecha__range=[fecha_inicio, fecha_fin]
-    ).aggregate(Sum('monto'))['monto__sum'] or 0
+    # 🔹 QUERYSETS COMPLETOS FILTRADOS (para reporte y totales del período)
+    ingresos_qs = IngresoComunal.objects.filter(fecha__range=[fecha_inicio, fecha_fin])
+    egresos_qs = EgresoComunal.objects.filter(fecha__range=[fecha_inicio, fecha_fin])
     
-    egresos_periodo = EgresoComunal.objects.filter(
-        fecha__range=[fecha_inicio, fecha_fin]
-    ).aggregate(Sum('monto'))['monto__sum'] or 0
-    
+    ingresos_periodo = ingresos_qs.aggregate(Sum('monto'))['monto__sum'] or 0
+    egresos_periodo = egresos_qs.aggregate(Sum('monto'))['monto__sum'] or 0
     saldo_periodo = ingresos_periodo - egresos_periodo
     
-    # Obtener movimientos del período
-    ingresos = IngresoComunal.objects.filter(
-        fecha__range=[fecha_inicio, fecha_fin]
-    ).order_by('-fecha', '-fecha_registro')[:50]
+    # 🔹 DATOS PARA PESTAÑAS (limitados a 50 para rendimiento)
+    ingresos_tab = ingresos_qs.order_by('-fecha', '-fecha_registro')[:50]
+    egresos_tab = egresos_qs.order_by('-fecha', '-fecha_registro')[:50]
     
-    egresos = EgresoComunal.objects.filter(
-        fecha__range=[fecha_inicio, fecha_fin]
-    ).order_by('-fecha', '-fecha_registro')[:50]
-    
-    # Preparar movimientos combinados para reporte
+    # 🔹 DATOS PARA REPORTE (SIN límite, usa todo el queryset filtrado)
     movimientos_periodo = []
-    for ingreso in ingresos:
+    for ing in ingresos_qs.order_by('fecha'):
         movimientos_periodo.append({
-            'fecha': ingreso.fecha,
-            'tipo': 'ingreso',
-            'concepto': ingreso.concepto,
-            'monto': ingreso.monto,
-            'responsable': ingreso.responsable,
+            'fecha': ing.fecha, 'tipo': 'ingreso', 'concepto': ing.concepto,
+            'monto': ing.monto, 'responsable': ing.responsable
         })
-    
-    for egreso in egresos:
+    for eg in egresos_qs.order_by('fecha'):
         movimientos_periodo.append({
-            'fecha': egreso.fecha,
-            'tipo': 'egreso',
-            'concepto': egreso.concepto,
-            'monto': egreso.monto,
-            'responsable': egreso.responsable,
+            'fecha': eg.fecha, 'tipo': 'egreso', 'concepto': eg.concepto,
+            'monto': eg.monto, 'responsable': eg.responsable
         })
-    
-    # Ordenar movimientos por fecha
     movimientos_periodo.sort(key=lambda x: x['fecha'], reverse=True)
     
     context = {
-        'saldo_actual': saldo_actual,
-        'total_ingresos': total_ingresos,
-        'total_egresos': total_egresos,
-        'total_ingresos_periodo': ingresos_periodo,
-        'total_egresos_periodo': egresos_periodo,
+        'saldo_actual': saldo_actual, 'total_ingresos': total_ingresos, 'total_egresos': total_egresos,
+        'total_ingresos_periodo': ingresos_periodo, 'total_egresos_periodo': egresos_periodo,
         'saldo_periodo': saldo_periodo,
-        'ingresos': ingresos,
-        'egresos': egresos,
-        'movimientos_periodo': movimientos_periodo,
-        'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin,
+        'ingresos': ingresos_tab,       # 👈 Solo para pestañas
+        'egresos': egresos_tab,         # 👈 Solo para pestañas
+        'movimientos_periodo': movimientos_periodo, # 👈 Para reporte completo
+        'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin,
         'ingreso_form': IngresoComunalForm(user=request.user),
         'egreso_form': EgresoComunalForm(user=request.user),
     }
-    
     return render(request, 'finanzas.html', context)
 
 
@@ -537,6 +506,7 @@ def api_ingreso(request, id):
         'concepto': ingreso.concepto,
         'monto': str(ingreso.monto),
         'observaciones': ingreso.observaciones or '',
+        'soporte_digital_nombre': ingreso.soporte_digital.name if ingreso.soporte_digital else None,
     }
     
     return JsonResponse(data)
@@ -558,6 +528,7 @@ def api_egreso(request, id):
         'monto': str(egreso.monto),
         'beneficiario': egreso.beneficiario or '',
         'observaciones': egreso.observaciones or '',
+        'soporte_nombre': egreso.soporte.name if egreso.soporte else None,
     }
     
     return JsonResponse(data)
@@ -565,52 +536,45 @@ def api_egreso(request, id):
 
 @login_required
 def exportar_finanzas(request):
-    """
-    Vista para exportar datos financieros a CSV.
-    """
-    # Obtener parámetros de filtro
     fecha_inicio_str = request.GET.get('fecha_inicio', '')
     fecha_fin_str = request.GET.get('fecha_fin', '')
     
-    # Crear respuesta CSV
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="finanzas_comunales.csv"'
+    # Parseo seguro de fechas
+    fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date() if fecha_inicio_str else None
+    fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date() if fecha_fin_str else None
     
-    writer = csv.writer(response)
+    ingresos_qs = IngresoComunal.objects.all().order_by('fecha')
+    egresos_qs = EgresoComunal.objects.all().order_by('fecha')
+    
+    if fecha_inicio and fecha_fin:
+        ingresos_qs = ingresos_qs.filter(fecha__range=[fecha_inicio, fecha_fin])
+        egresos_qs = egresos_qs.filter(fecha__range=[fecha_inicio, fecha_fin])
+    elif fecha_inicio:
+        ingresos_qs = ingresos_qs.filter(fecha__gte=fecha_inicio)
+        egresos_qs = egresos_qs.filter(fecha__gte=fecha_inicio)
+    elif fecha_fin:
+        ingresos_qs = ingresos_qs.filter(fecha__lte=fecha_fin)
+        egresos_qs = egresos_qs.filter(fecha__lte=fecha_fin)
+        
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="finanzas_{datetime.now().strftime("%Y%m%d")}.csv"'
+    
+    # 👇 DELIMITADOR ; para que Excel en español abra las columnas correctamente
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_NONNUMERIC)
     writer.writerow(['Fecha', 'Tipo', 'Concepto', 'Monto (Bs.)', 'Responsable', 'Beneficiario', 'Observaciones'])
     
-    # Obtener ingresos
-    ingresos = IngresoComunal.objects.all()
-    if fecha_inicio_str and fecha_fin_str:
-        ingresos = ingresos.filter(fecha__range=[fecha_inicio_str, fecha_fin_str])
-    
-    for ingreso in ingresos:
+    for ing in ingresos_qs:
         writer.writerow([
-            ingreso.fecha.strftime('%d/%m/%Y'),
-            'INGRESO',
-            ingreso.concepto,
-            ingreso.monto,
-            ingreso.responsable.get_full_name(),
-            '',
-            ingreso.observaciones or ''
+            ing.fecha.strftime('%d/%m/%Y'), 'INGRESO', ing.concepto,
+            f"{ing.monto:.2f}", ing.responsable.get_full_name() or ing.responsable.username,
+            '', ing.observaciones or ''
         ])
-    
-    # Obtener egresos
-    egresos = EgresoComunal.objects.all()
-    if fecha_inicio_str and fecha_fin_str:
-        egresos = egresos.filter(fecha__range=[fecha_inicio_str, fecha_fin_str])
-    
-    for egreso in egresos:
+    for eg in egresos_qs:
         writer.writerow([
-            egreso.fecha.strftime('%d/%m/%Y'),
-            'EGRESO',
-            egreso.concepto,
-            egreso.monto,
-            egreso.responsable.get_full_name(),
-            egreso.beneficiario or '',
-            egreso.observaciones or ''
+            eg.fecha.strftime('%d/%m/%Y'), 'EGRESO', eg.concepto,
+            f"{eg.monto:.2f}", eg.responsable.get_full_name() or eg.responsable.username,
+            eg.beneficiario or '', eg.observaciones or ''
         ])
-    
     return response
 
 

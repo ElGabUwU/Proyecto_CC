@@ -379,15 +379,15 @@ class EgresoComunalForm(forms.ModelForm):
         }),
         help_text="Persona o empresa que recibió el pago (opcional)"
     )
-    
-    soporte = forms.FileField(
+
+    soporte_digital = forms.FileField(
         required=False,
-        label="Soporte",
+        label="Soporte Digital",
         widget=forms.ClearableFileInput(attrs={
             'class': 'form-control',
             'accept': '.pdf,.jpg,.jpeg,.png'
         }),
-        help_text="Factura, recibo o comprobante del egreso"
+        help_text="Comprobante o soporte del ingreso (PDF, imagen)"
     )
     
     observaciones = forms.CharField(
@@ -584,4 +584,419 @@ class ActaReunionForm(forms.ModelForm):
             <p><strong>PUNTOS DISCUTIDOS:</strong></p>
             <div style="white-space: pre-line; text-align: justify; padding-left: 10px;">{acta.contenido}</div>
         </div>
+        """
+        
+        return contenido
+
+
+# ============================================
+# 🆕 NUEVO: Formularios para Gestión de Proyectos
+# ============================================
+
+from .models import Comite, Proyecto, ProyectoIntegrante
+
+class ComiteForm(forms.ModelForm):
+    """
+    Formulario para crear y editar comités.
+    """
+    nombre = forms.CharField(
+        label="Nombre del Comité",
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Comité de Finanzas Sector Norte'
+        }),
+        help_text="Nombre descriptivo del comité"
+    )
+    
+    tipo_comite = forms.ChoiceField(
+        choices=Comite.TIPO_COMITE_CHOICES,
+        label="Tipo de Comité",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione el tipo de comité"
+    )
+    
+    descripcion = forms.CharField(
+        label="Descripción",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Descripción del comité y sus funciones...'
+        }),
+        help_text="Descripción opcional del comité"
+    )
+    
+    vocero_principal = forms.ModelChoiceField(
+        queryset=Person.objects.filter(is_deleted=False),
+        label="Vocero Principal",
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Persona responsable del comité (opcional)"
+    )
+    
+    activo = forms.BooleanField(
+        label="Comité Activo",
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="Desmarque si el comité está inactivo"
+    )
+    
+    class Meta:
+        model = Comite
+        fields = ['nombre', 'tipo_comite', 'descripcion', 'vocero_principal', 'activo']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['nombre'].widget.attrs['readonly'] = False
+
+
+class ProyectoForm(forms.ModelForm):
+    """
+    Formulario para crear y editar proyectos comunitarios.
+    """
+    nombre = forms.CharField(
+        label="Nombre del Proyecto",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Construcción de cancha deportiva'
+        }),
+        help_text="Nombre descriptivo del proyecto (máximo 200 caracteres)"
+    )
+    
+    fecha_inicio = forms.DateField(
+        label="Fecha de Inicio",
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha estimada de inicio del proyecto"
+    )
+    
+    fecha_fin = forms.DateField(
+        label="Fecha de Fin Estimada",
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha estimada de finalización (opcional)"
+    )
+    
+    descripcion = forms.CharField(
+        label="Descripción del Proyecto",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Describa los objetivos, alcance y detalles del proyecto...'
+        }),
+        help_text="Descripción detallada del proyecto"
+    )
+    
+    monto_estimado = forms.DecimalField(
+        label="Monto Estimado (Bs.)",
+        max_digits=12,
+        decimal_places=2,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'min': '0',
+            'placeholder': '0.00'
+        }),
+        help_text="Monto estimado en bolívares"
+    )
+    
+    estatus = forms.ChoiceField(
+        choices=Proyecto.ESTATUS_CHOICES,
+        label="Estatus del Proyecto",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Estado actual del proyecto"
+    )
+    
+    comite = forms.ModelChoiceField(
+        queryset=Comite.objects.filter(is_deleted=False, activo=True),
+        label="Comité Responsable",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione el comité encargado del proyecto",
+        empty_label="-- Seleccione un comité --"
+    )
+    
+    class Meta:
+        model = Proyecto
+        fields = ['nombre', 'fecha_inicio', 'fecha_fin', 'descripcion', 'monto_estimado', 'estatus', 'comite']
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Si es un nuevo proyecto, preestablecer la fecha de inicio
+        if not self.instance.pk:
+            from datetime import date
+            self.fields['fecha_inicio'].initial = date.today()
+    
+    def clean_fecha_fin(self):
+        """Validar que la fecha de fin sea posterior a la fecha de inicio"""
+        fecha_inicio = self.cleaned_data.get('fecha_inicio')
+        fecha_fin = self.cleaned_data.get('fecha_fin')
+        
+        if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+            raise forms.ValidationError(
+                "La fecha de fin no puede ser anterior a la fecha de inicio."
+            )
+        return fecha_fin
+    
+    def clean_monto_estimado(self):
+        """Validar que el monto sea positivo"""
+        monto = self.cleaned_data.get('monto_estimado')
+        if monto is not None and monto < 0:
+            raise forms.ValidationError("El monto estimado debe ser un valor positivo.")
+        return monto
+    
+    def save(self, commit=True):
+        """Guardar con el usuario como creador"""
+        instance = super().save(commit=False)
+        if self.user and not instance.pk:
+            instance.creado_por = self.user
+        if commit:
+            instance.save()
+        return instance
+
+
+class AsignarHabitanteForm(forms.ModelForm):
+    """
+    Formulario para asignar un habitante a un proyecto.
+    """
+    habitante = forms.ModelChoiceField(
+        queryset=Habitante.objects.filter(is_deleted=False),
+        label="Habitante",
+        widget=forms.Select(attrs={
+            'class': 'form-control select2',
+            'data-placeholder': 'Buscar por nombre o cédula...'
+        }),
+        help_text="Seleccione el habitante a asignar"
+    )
+    
+    rol = forms.ChoiceField(
+        choices=ProyectoIntegrante.ROL_CHOICES,
+        label="Rol en el Proyecto",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Rol que desempeñará el habitante en el proyecto"
+    )
+    
+    observaciones = forms.CharField(
+        label="Observaciones",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Observaciones adicionales...'
+        }),
+        help_text="Observaciones sobre la asignación (opcional)"
+    )
+    
+    class Meta:
+        model = ProyectoIntegrante
+        fields = ['habitante', 'rol', 'observaciones']
+    
+    def __init__(self, *args, **kwargs):
+        self.proyecto = kwargs.pop('proyecto', None)
+        super().__init__(*args, **kwargs)
+        
+        # Optimizar queryset con select_related
+        self.fields['habitante'].queryset = self.fields['habitante'].queryset.select_related(
+            'persona', 'familia'
+        )
+    
+    def clean_habitante(self):
+        """Validar que el habitante no esté ya asignado al proyecto"""
+        habitante = self.cleaned_data.get('habitante')
+        
+        if self.proyecto and habitante:
+            # Verificar si ya está asignado
+            existe = ProyectoIntegrante.objects.filter(
+                proyecto=self.proyecto,
+                habitante=habitante
+            ).exists()
+            
+            if existe:
+                raise forms.ValidationError(
+                    f"Este habitante ya está asignado al proyecto."
+                )
+        
+        return habitante
+    
+    def save(self, commit=True):
+        """Guardar con el proyecto"""
+        instance = super().save(commit=False)
+        if self.proyecto:
+            instance.proyecto = self.proyecto
+        if commit:
+            instance.save()
+        return instance
+
+
+# ============================================
+# 🆕 NUEVO: Formularios para Gestión de Censos
+# ============================================
+
+from .models import Censo, CensoParticipante
+
+class CensoForm(forms.ModelForm):
+    """
+    Formulario para crear y editar censos comunitarios.
+    """
+    nombre_censo = forms.CharField(
+        label="Nombre del Censo",
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Censo Poblacional 2026'
+        }),
+        help_text="Nombre identificativo de la campaña de censo"
+    )
+    
+    fecha_inicio = forms.DateField(
+        label="Fecha de Inicio",
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha de inicio del censo"
+    )
+    
+    fecha_fin = forms.DateField(
+        label="Fecha de Cierre",
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        help_text="Fecha de cierre estimada (opcional)"
+    )
+    
+    descripcion = forms.CharField(
+        label="Descripción",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Describa el objetivo y alcance del censo...'
+        }),
+        help_text="Descripción detallada del censo"
+    )
+    
+    categoria_enfoque = forms.ChoiceField(
+        choices=Censo.CATEGORIA_ENFOQUE_CHOICES,
+        label="Categoría de Enfoque",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Seleccione la categoría principal del censo"
+    )
+    
+    estatus = forms.ChoiceField(
+        choices=Censo.ESTATUS_CHOICES,
+        label="Estatus del Censo",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Estado actual del censo"
+    )
+    
+    class Meta:
+        model = Censo
+        fields = ['nombre_censo', 'fecha_inicio', 'fecha_fin', 'descripcion', 'categoria_enfoque', 'estatus']
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Si es un nuevo censo, preestablecer la fecha de inicio
+        if not self.instance.pk:
+            from datetime import date
+            self.fields['fecha_inicio'].initial = date.today()
+    
+    def clean_fecha_fin(self):
+        """Validar que la fecha de fin sea posterior a la fecha de inicio"""
+        fecha_inicio = self.cleaned_data.get('fecha_inicio')
+        fecha_fin = self.cleaned_data.get('fecha_fin')
+        
+        if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+            raise forms.ValidationError(
+                "La fecha de cierre no puede ser anterior a la fecha de inicio."
+            )
+        return fecha_fin
+    
+    def save(self, commit=True):
+        """Guardar con el usuario como creador"""
+        instance = super().save(commit=False)
+        if self.user and not instance.pk:
+            instance.creado_por = self.user
+        if commit:
+            instance.save()
+        return instance
+
+
+class AsignarParticipanteForm(forms.ModelForm):
+    """
+    Formulario para asignar un habitante a un censo.
+    """
+    habitante = forms.ModelChoiceField(
+        queryset=Habitante.objects.filter(is_deleted=False),
+        label="Habitante",
+        widget=forms.Select(attrs={
+            'class': 'form-control select2',
+            'data-placeholder': 'Buscar por nombre o cédula...'
+        }),
+        help_text="Seleccione el habitante a registrar en el censo"
+    )
+    
+    observaciones = forms.CharField(
+        label="Observaciones",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Observaciones adicionales...'
+        }),
+        help_text="Notas sobre la participación del habitante (opcional)"
+    )
+    
+    class Meta:
+        model = CensoParticipante
+        fields = ['habitante', 'observaciones']
+    
+    def __init__(self, *args, **kwargs):
+        self.censo = kwargs.pop('censo', None)
+        super().__init__(*args, **kwargs)
+        
+        # Optimizar queryset con select_related
+        self.fields['habitante'].queryset = self.fields['habitante'].queryset.select_related(
+            'persona', 'familia'
+        ).order_by('persona__name')
+    
+    def clean_habitante(self):
+        """Validar que el habitante no esté ya registrado en el censo"""
+        habitante = self.cleaned_data.get('habitante')
+        
+        if self.censo and habitante:
+            # Verificar si ya está registrado
+            existe = CensoParticipante.objects.filter(
+                censo=self.censo,
+                habitante=habitante
+            ).exists()
+            
+            if existe:
+                raise forms.ValidationError(
+                    f"Este habitante ya está registrado en este censo."
+                )
+        
+        return habitante
+    
+    def save(self, commit=True):
+        """Guardar con el censo"""
+        instance = super().save(commit=False)
+        if self.censo:
+            instance.censo = self.censo
+        if commit:
+            instance.save()
+        return instance
         """
