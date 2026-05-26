@@ -54,12 +54,16 @@ urlpatterns = [
     # ============================================
     # Documentación
     # ============================================
-    path('documentacion/', views_comunidad.documentacion, name='documentacion'),
-    path('documentacion/constancia/', views_comunidad.generar_constancia, name='generar_constancia'),
-    path('documentacion/constancia/descargar/<int:id>/', views_comunidad.descargar_constancia, name='descargar_constancia'),
+# 📁 Módulo de Gestión Documental Principal
+    path('comunidad/documentacion/', views_comunidad.documentacion, name='documentacion'),
+    # Procesamiento de Formularios (POST)
+    path('comunidad/documentacion/constancia/generar/', views_comunidad.generar_constancia, name='generar_constancia'),
+    path('comunidad/documentacion/acta/generar/', views_comunidad.generar_acta, name='generar_acta'),
+    # Descarga e Impresión de PDFs Reales
+    path('comunidad/documentacion/constancia/descargar/<int:id>/', views_comunidad.descargar_constancia, name='descargar_constancia'),
+    path('comunidad/documentacion/acta/descargar/<int:id>/', views_comunidad.descargar_acta, name='descargar_acta'),
+    # APIs JSON para las previsualizaciones interactivas de SweetAlert2
     path('documentacion/constancia/previa/<int:id>/', views_comunidad.previa_constancia, name='previa_constancia'),
-    path('documentacion/acta/', views_comunidad.generar_acta, name='generar_acta'),
-    path('documentacion/acta/descargar/<int:id>/', views_comunidad.descargar_acta, name='descargar_acta'),
     path('documentacion/acta/previa/<int:id>/', views_comunidad.previa_acta, name='previa_acta'),
     
     # ============================================
