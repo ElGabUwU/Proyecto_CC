@@ -33,11 +33,11 @@ urlpatterns = [
     path('api/familias/', views_comunidad.FamiliaAPIView.as_view(), name='api_familias_lista'),
     path('api/familias/<int:familia_id>/', views_comunidad.FamiliaAPIView.as_view(), name='api_familia_detalle'),
     
-    # # ============================================
-    # # Habitantes (Vistas independientes para gestión individual)
-    # # ============================================
-    # path('habitantes/', views_comunidad.habitantes, name='habitantes'),
-    # path('habitantes/detalle/<int:id>/', views_comunidad.detalle_habitante, name='detalle_habitante'),
+    # ============================================
+    # Habitantes (Vistas independientes para gestión individual)
+    # ============================================
+    path('habitantes/', views_comunidad.habitantes, name='habitantes'),
+    path('habitantes/detalle/<int:id>/', views_comunidad.detalle_habitante, name='detalle_habitante'),
     
     # ============================================
     # Finanzas

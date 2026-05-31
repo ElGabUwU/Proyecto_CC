@@ -97,14 +97,14 @@
         
         <a class="nav-link" href="{% url 'familias' %}"
           {% if request.resolver_match.url_name == 'familias' %}style="background-color: #922323"{% endif %}>
-          <i class="fas fa-home me-2"></i>
+          <i class="fas fa-user-friends me-2"></i>
           <span class="nav-text">Familias</span>
         </a>
-        <a class="nav-link" href="{% url 'habitantes' %}"
+        <!-- <a class="nav-link" href="{% url 'habitantes' %}"
           {% if request.resolver_match.url_name == 'habitantes' %}style="background-color: #922323"{% endif %}>
           <i class="fas fa-user-friends me-2"></i>
           <span class="nav-text">Habitantes</span>
-        </a>
+        </a> -->
         <a class="nav-link" href="{% url 'proyectos' %}"
           {% if request.resolver_match.url_name == 'proyectos' or request.resolver_match.url_name == 'comites' %}style="background-color: #922323"{% endif %}>
           <i class="fas fa-project-diagram me-2"></i>
@@ -121,6 +121,12 @@
           {% if request.resolver_match.url_name == 'documentacion' %}style="background-color: #922323"{% endif %}>
           <i class="fas fa-file-contract me-2"></i>
           <span class="nav-text">Documentación</span>
+        </a>
+        <!-- Censos -->
+        <a class="nav-link" href="{% url 'censos' %}"
+          {% if request.resolver_match.url_name == 'censos' %}style="background-color: #922323"{% endif %}>
+          <i class="fas fa-clipboard-list me-2"></i>
+          <span class="nav-text">Censos</span>
         </a>
       </div>
       {% endif %}

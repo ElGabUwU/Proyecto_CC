@@ -294,7 +294,7 @@ class Comite(SoftDeleteModel):
     )
     descripcion = models.TextField(blank=True, verbose_name="Descripción")
     vocero_principal = models.ForeignKey(
-        Person, 
+        Habitante, 
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True,
@@ -430,20 +430,18 @@ class ProyectoIntegrante(models.Model):
         verbose_name = 'Integrante de Proyecto'
         verbose_name_plural = 'Integrantes de Proyecto'
         unique_together = ['proyecto', 'habitante']  # Un habitante solo puede estar una vez en cada proyecto
-        ordering = ['proyecto', 'rol', 'habitante__persona__name']
+        ordering = ['proyecto', 'rol', 'habitante__nombre']
     
     def __str__(self):
         return f"{self.habitante.persona.name} - {self.get_rol_display()} en {self.proyecto.nombre}"
     
     @property
     def nombre_habitante(self):
-        """Retorna el nombre completo del habitante"""
-        return f"{self.habitante.persona.name} {self.habitante.persona.surname}"
-    
+        return f"{self.habitante.nombre} {self.habitante.apellido}"
+
     @property
     def documento_habitante(self):
-        """Retorna el documento del habitante"""
-        return self.habitante.persona.document_number
+        return self.habitante.cedula  # El campo en Habitante es 'cedula'
 
 
 # ============================================
@@ -595,23 +593,19 @@ class CensoParticipante(models.Model):
         verbose_name = 'Participante de Censo'
         verbose_name_plural = 'Participantes de Censo'
         unique_together = ['censo', 'habitante']  # Un habitante solo puede registrarse una vez por censo
-        ordering = ['censo', 'fecha_registro', 'habitante__persona__name']
+        ordering = ['censo', 'fecha_registro', 'habitante__nombre']
     
     def __str__(self):
         return f"{self.habitante.persona.name} {self.habitante.persona.surname} - {self.censo.nombre_censo}"
     
     @property
     def nombre_habitante(self):
-        """Retorna el nombre completo del habitante"""
-        return f"{self.habitante.persona.name} {self.habitante.persona.surname}"
-    
+        return f"{self.habitante.nombre} {self.habitante.apellido}"
+        
     @property
     def documento_habitante(self):
-        """Retorna el documento del habitante"""
-        return self.habitante.persona.document_number
+        return self.habitante.cedula
     
-    @property
-    def telefono_habitante(self):
-        """Retorna el teléfono del habitante"""
-        return self.habitante.persona.telelephone_number or ''
-        return len(self.asistentes.split(',')) if self.asistentes else 0
+    # @property
+    # def telefono_habitante(self):
+    #     return self.habitante.telefono or ''
