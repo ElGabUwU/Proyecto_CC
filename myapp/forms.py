@@ -70,32 +70,6 @@ class FamiliaForm(forms.ModelForm):
         model = Familia
         fields = ['nombre_familia', 'vivienda', 'direccion', 'catastro', 'observaciones']   
          
-    def clean_telefono_contacto(self):
-        """Validar formato de teléfono venezolano"""
-        telefono = self.cleaned_data.get('telefono_contacto')
-        if telefono:
-            # Formato: +58 412 1234567 o 0412-1234567
-            pattern = r'^(\+58\s?\d{3}\s?\d{7}|04\d{2}[-.]?\d{7})$'
-            if not re.match(pattern, telefono.replace(' ', '').replace('-', '').replace('.', '')):
-                raise ValidationError(
-                    "Formato de teléfono inválido. Use: +584121234567 o 0412-1234567"
-                )
-        return telefono
-    
-    def clean_jefe_familia(self):
-        """Validar que el jefe de familia no sea ya jefe de otra familia"""
-        jefe_familia = self.cleaned_data.get('jefe_familia')
-        if jefe_familia:
-            # Verificar si ya es jefe de otra familia (excluyendo esta si estamos editando)
-            familias_existentes = Familia.objects.filter(jefe_familia=jefe_familia)
-            if self.instance and self.instance.pk:
-                familias_existentes = familias_existentes.exclude(pk=self.instance.pk)
-            
-            if familias_existentes.exists():
-                raise ValidationError(
-                    f"{jefe_familia.name} {jefe_familia.surname} ya es jefe de otra familia."
-                )
-        return jefe_familia
 
 
 class HabitanteForm(forms.ModelForm):
@@ -221,20 +195,17 @@ class HabitanteForm(forms.ModelForm):
             'ingresos_mensuales', 'condiciones_salud'
         ]
     
-    def clean_document_number(self):
-        """Validar formato de cédula venezolana"""
-        document_number = self.cleaned_data.get('document_number')
-        type_document = self.cleaned_data.get('type_document')
-        
-        if document_number and type_document:
-            # Para cédula venezolana: V-12345678 o E-12345678
-            if type_document == 'V':
-                pattern = r'^[VE]-\d{6,8}$'
-                if not re.match(pattern, document_number):
-                    raise ValidationError(
-                        "Formato de cédula venezolana inválido. Use: V-12345678 o E-12345678"
-                    )
-        return document_number
+    def clean_cedula(self):
+        cedula = self.cleaned_data.get('cedula')
+        if cedula:
+            cedula_clean = cedula.strip().upper()
+            # Valida formato V-12345678 o E-12345678
+            if not re.match(r'^[VE]-\d{6,8}$', cedula_clean):
+                raise ValidationError(
+                    "Formato de cédula inválido. Use: V-12345678 o E-12345678"
+                )
+            self.cleaned_data['cedula'] = cedula_clean
+        return cedula
 
 
 class IngresoComunalForm(forms.ModelForm):
@@ -628,7 +599,7 @@ class ComiteForm(forms.ModelForm):
     )
     
     vocero_principal = forms.ModelChoiceField(
-        queryset=Person.objects.filter(is_deleted=False),
+        queryset=Habitante.objects.filter(is_deleted=False),
         label="Vocero Principal",
         required=False,
         widget=forms.Select(attrs={'class': 'form-control'}),
@@ -807,7 +778,7 @@ class AsignarHabitanteForm(forms.ModelForm):
         
         # Optimizar queryset con select_related
         self.fields['habitante'].queryset = self.fields['habitante'].queryset.select_related(
-            'persona', 'familia'
+            'familia'
         )
     
     def clean_habitante(self):
@@ -970,8 +941,8 @@ class AsignarParticipanteForm(forms.ModelForm):
         
         # Optimizar queryset con select_related
         self.fields['habitante'].queryset = self.fields['habitante'].queryset.select_related(
-            'persona', 'familia'
-        ).order_by('persona__name')
+            'familia'
+        ).order_by('nombre')
     
     def clean_habitante(self):
         """Validar que el habitante no esté ya registrado en el censo"""
@@ -999,4 +970,4 @@ class AsignarParticipanteForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
-        """
+        

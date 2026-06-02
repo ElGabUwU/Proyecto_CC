@@ -16,7 +16,7 @@ import json
 from datetime import datetime, timedelta
 
 from .models import (
-    Comite, Proyecto, ProyectoIntegrante, Habitante, Person
+    Comite, Proyecto, ProyectoIntegrante, Habitante
 )
 from .forms import (
     ComiteForm, ProyectoForm, AsignarHabitanteForm
@@ -47,10 +47,8 @@ def comites(request):
     if tipo:
         comites_list = comites_list.filter(tipo_comite=tipo)
     
-    # Ordenar por nombre
     comites_list = comites_list.order_by('nombre')
     
-    # Paginación
     paginator = Paginator(comites_list, 15)
     page_number = request.GET.get('page')
     comites_page = paginator.get_page(page_number)
@@ -69,9 +67,6 @@ def comites(request):
 @login_required
 @admin_required
 def crear_comite(request):
-    """
-    Vista para crear un nuevo comité.
-    """
     if request.method == 'POST':
         form = ComiteForm(request.POST)
         if form.is_valid():
@@ -90,9 +85,6 @@ def crear_comite(request):
 @login_required
 @admin_required
 def editar_comite(request, id):
-    """
-    Vista para editar un comité existente.
-    """
     comite = get_object_or_404(Comite, id=id, is_deleted=False)
     
     if request.method == 'POST':
@@ -106,10 +98,7 @@ def editar_comite(request, id):
     else:
         form = ComiteForm(instance=comite)
     
-    context = {
-        'form': form,
-        'comite': comite,
-    }
+    context = {'form': form, 'comite': comite}
     return render(request, 'comites.html', context)
 
 
@@ -117,21 +106,14 @@ def editar_comite(request, id):
 @admin_required
 @require_POST
 def eliminar_comite(request, id):
-    """
-    Vista para eliminar (soft delete) un comité.
-    """
     comite = get_object_or_404(Comite, id=id, is_deleted=False)
     
-    # Verificar si tiene proyectos activos
     proyectos_activos = comite.proyectos.filter(is_deleted=False).count()
     if proyectos_activos > 0:
-        messages.error(
-            request, 
-            f'No se puede eliminar el comité porque tiene {proyectos_activos} proyecto(s) asociado(s).'
-        )
+        messages.error(request, f'No se puede eliminar el comité porque tiene {proyectos_activos} proyecto(s) asociado(s).')
         return redirect('comites')
     
-    comite.delete()  # Soft delete
+    comite.delete()
     messages.success(request, f'Comité "{comite.nombre}" eliminado exitosamente.')
     return redirect('comites')
 
@@ -139,10 +121,10 @@ def eliminar_comite(request, id):
 @login_required
 @require_GET
 def api_comite(request, id):
-    """
-    API para obtener datos de un comité en formato JSON (para AJAX).
-    """
     comite = get_object_or_404(Comite, id=id, is_deleted=False)
+    
+    # ✅ CORRECCIÓN: Acceder directamente a nombre/apellido del Habitante
+    vocero_nombre = f"{comite.vocero_principal.nombre} {comite.vocero_principal.apellido}" if comite.vocero_principal else ''
     
     data = {
         'id': comite.id,
@@ -151,7 +133,7 @@ def api_comite(request, id):
         'tipo_comite_display': comite.get_tipo_comite_display(),
         'descripcion': comite.descripcion or '',
         'vocero_principal': comite.vocero_principal.id if comite.vocero_principal else None,
-        'vocero_principal_nombre': f"{comite.vocero_principal.name} {comite.vocero_principal.surname}" if comite.vocero_principal else '',
+        'vocero_principal_nombre': vocero_nombre,
         'activo': comite.activo,
         'proyectos_count': comite.cantidad_proyectos_activos(),
     }
@@ -187,27 +169,21 @@ def proyectos(request):
     if comite_id:
         proyectos_list = proyectos_list.filter(comite_id=comite_id)
     
-    # Anotar cantidad de integrantes
-    proyectos_list = proyectos_list.annotate(
-        num_integrantes=Count('integrantes')
-    )
-    
-    # Ordenar por fecha de creación (más recientes primero)
+    proyectos_list = proyectos_list.annotate(num_integrantes=Count('integrantes'))
     proyectos_list = proyectos_list.order_by('-fecha_creacion')
     
-    # Paginación
     paginator = Paginator(proyectos_list, 15)
     page_number = request.GET.get('page')
     proyectos_page = paginator.get_page(page_number)
     
-    # Obtener todos los comités para el filtro
     comites = Comite.objects.filter(is_deleted=False, activo=True).order_by('nombre')
 
+    # ✅ CORRECCIÓN: Usar valores SINGULARES para coincidir con ESTATUS_CHOICES del modelo
     conteos = proyectos_list.aggregate(
         planificacion=Count('pk', filter=Q(estatus='planificacion')),
         ejecucion=Count('pk', filter=Q(estatus='ejecucion')),
-        finalizados=Count('pk', filter=Q(estatus='finalizados')),
-        cancelados=Count('pk', filter=Q(estatus='cancelados')),
+        finalizado=Count('pk', filter=Q(estatus='finalizado')),
+        cancelado=Count('pk', filter=Q(estatus='cancelado')),
     )
     
     context = {
@@ -220,8 +196,8 @@ def proyectos(request):
         'estatus_choices': Proyecto.ESTATUS_CHOICES,
         'count_planificacion': conteos['planificacion'],
         'count_ejecucion': conteos['ejecucion'],
-        'count_finalizados': conteos['finalizados'],
-        'count_cancelados': conteos['cancelados'],
+        'count_finalizado': conteos['finalizado'],   # ✅ Clave corregida
+        'count_cancelado': conteos['cancelado'],     # ✅ Clave corregida
     }
     
     return render(request, 'proyectos/proyecto_list.html', context)
@@ -230,9 +206,6 @@ def proyectos(request):
 @login_required
 @admin_required
 def crear_proyecto(request):
-    """
-    Vista para crear un nuevo proyecto.
-    """
     if request.method == 'POST':
         form = ProyectoForm(request.POST, user=request.user)
         if form.is_valid():
@@ -244,34 +217,24 @@ def crear_proyecto(request):
     else:
         form = ProyectoForm(user=request.user)
     
-    context = {'form': form}
-    return render(request, 'proyectos/proyecto_list.html', context)
+    return render(request, 'proyectos/proyecto_list.html', {'form': form})
 
 
 @login_required
 def detalle_proyecto(request, pk):
-    """
-    Vista para ver el detalle completo de un proyecto.
-    Incluye el listado de integrantes asignados.
-    """
     proyecto = get_object_or_404(
         Proyecto.objects.filter(is_deleted=False).prefetch_related(
-            'integrantes__habitante__persona',
+            'integrantes__habitante',          # ✅ Eliminada referencia a __persona
             'integrantes__habitante__familia'
         ).select_related('comite', 'creado_por'),
         pk=pk
     )
     
-    # Obtener integrantes ordenados por rol
     integrantes = proyecto.integrantes.all()
-    
-    # Agrupar integrantes por rol
     integrantes_por_rol = {}
     for integrante in integrantes:
         rol = integrante.get_rol_display()
-        if rol not in integrantes_por_rol:
-            integrantes_por_rol[rol] = []
-        integrantes_por_rol[rol].append(integrante)
+        integrantes_por_rol.setdefault(rol, []).append(integrante)
     
     context = {
         'proyecto': proyecto,
@@ -286,9 +249,6 @@ def detalle_proyecto(request, pk):
 @login_required
 @admin_required
 def editar_proyecto(request, pk):
-    """
-    Vista para editar un proyecto existente.
-    """
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
     
     if request.method == 'POST':
@@ -302,25 +262,16 @@ def editar_proyecto(request, pk):
     else:
         form = ProyectoForm(instance=proyecto, user=request.user)
     
-    context = {
-        'form': form,
-        'proyecto': proyecto,
-    }
-    return render(request, 'proyectos/proyecto_form.html', context)
+    return render(request, 'proyectos/proyecto_form.html', {'form': form, 'proyecto': proyecto})
 
 
 @login_required
 @admin_required
 @require_POST
 def eliminar_proyecto(request, pk):
-    """
-    Vista para eliminar (soft delete) un proyecto.
-    """
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
-    
     nombre = proyecto.nombre
-    proyecto.delete()  # Soft delete
-    
+    proyecto.delete()
     messages.success(request, f'Proyecto "{nombre}" eliminado exitosamente.')
     return redirect('proyectos')
 
@@ -328,9 +279,6 @@ def eliminar_proyecto(request, pk):
 @login_required
 @require_GET
 def api_proyecto(request, pk):
-    """
-    API para obtener datos de un proyecto en formato JSON (para AJAX).
-    """
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
     
     data = {
@@ -358,41 +306,38 @@ def api_proyecto(request, pk):
 
 @login_required
 def buscar_habitantes_proyecto(request):
-    """
-    API para buscar habitantes para asignar a un proyecto.
-    Busca por nombre, apellido o número de documento.
-    """
     query = request.GET.get('q', '')
     proyecto_id = request.GET.get('proyecto_id', '')
     
     if len(query) < 2:
         return JsonResponse({'habitantes': []})
     
-    # Buscar habitantes no eliminados
+    # ✅ CORRECCIÓN: Filtrar por campos directos del modelo Habitante
     habitantes = Habitante.objects.filter(
         is_deleted=False
     ).filter(
-        Q(persona__name__icontains=query) |
-        Q(persona__surname__icontains=query) |
-        Q(persona__document_number__icontains=query)
-    ).select_related('persona', 'familia').order_by('persona__name')[:20]
+        Q(nombre__icontains=query) |
+        Q(apellido__icontains=query) |
+        Q(cedula__icontains=query)
+    ).select_related('familia').order_by('nombre')[:20]
     
-    # Si hay proyecto, excluir los ya asignados
     if proyecto_id:
-        asignados = ProyectoIntegrante.objects.filter(
-            proyecto_id=proyecto_id
-        ).values_list('habitante_id', flat=True)
+        asignados = ProyectoIntegrante.objects.filter(proyecto_id=proyecto_id).values_list('habitante_id', flat=True)
         habitantes = habitantes.exclude(id__in=asignados)
     
     resultados = []
     for h in habitantes:
+        jefe = h.familia.jefe_familia
+        familia_nombre = f"{jefe.nombre} {jefe.apellido}" if jefe else "Sin definir"
+        
         resultados.append({
             'id': h.id,
-            'nombre': f"{h.persona.name} {h.persona.surname}",
-            'documento': h.persona.document_number,
-            'telefono': h.persona.telephone_number or '',
-            'familia': f"{h.familia.jefe_familia.name} {h.familia.jefe_familia.surname}",
-            'parentesco': h.get_parentesco_jefe_display(),
+            'nombre': f"{h.nombre} {h.apellido}",
+            'documento': h.cedula,
+            'telefono': getattr(h, 'telefono', ''),  # Manejo seguro si el campo no existe
+            'familia': familia_nombre,
+            # ✅ CORRECCIÓN: Adaptado al campo actual es_jefe_familia
+            'parentesco': "Jefe de Familia" if h.es_jefe_familia else "Miembro",
         })
     
     return JsonResponse({'habitantes': resultados})
@@ -401,50 +346,35 @@ def buscar_habitantes_proyecto(request):
 @login_required
 @admin_required
 def asignar_habitante(request, pk):
-    """
-    Vista para asignar un habitante a un proyecto.
-    """
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
     
     if request.method == 'POST':
         form = AsignarHabitanteForm(request.POST, proyecto=proyecto)
         if form.is_valid():
             integrante = form.save()
-            messages.success(
-                request, 
-                f'{integrante.habitante.persona.name} {integrante.habitante.persona.surname} '
-                f'asignado como {integrante.get_rol_display()} al proyecto.'
-            )
+            # ✅ CORRECCIÓN: Nombres directos del habitante
+            nombre_completo = f"{integrante.habitante.nombre} {integrante.habitante.apellido}"
+            messages.success(request, f'{nombre_completo} asignado como {integrante.get_rol_display()} al proyecto.')
             return redirect('detalle_proyecto', pk=proyecto.pk)
         else:
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = AsignarHabitanteForm(proyecto=proyecto)
     
-    context = {
-        'form': form,
-        'proyecto': proyecto,
-    }
-    return render(request, 'proyectos/proyecto_detail.html', context)
+    return render(request, 'proyectos/proyecto_detail.html', {'form': form, 'proyecto': proyecto})
 
 
 @login_required
 @admin_required
 @require_POST
 def remover_habitante(request, pk, habitante_id):
-    """
-    Vista para remover un habitante de un proyecto.
-    """
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
     
     try:
-        integrante = ProyectoIntegrante.objects.get(
-            proyecto=proyecto,
-            habitante_id=habitante_id
-        )
-        nombre = f"{integrante.habitante.persona.name} {integrante.habitante.persona.surname}"
+        integrante = ProyectoIntegrante.objects.get(proyecto=proyecto, habitante_id=habitante_id)
+        nombre_completo = f"{integrante.habitante.nombre} {integrante.habitante.apellido}"
         integrante.delete()
-        messages.success(request, f'{nombre} removido del proyecto exitosamente.')
+        messages.success(request, f'{nombre_completo} removido del proyecto exitosamente.')
     except ProyectoIntegrante.DoesNotExist:
         messages.error(request, 'El integrante no está asignado a este proyecto.')
     
@@ -454,9 +384,6 @@ def remover_habitante(request, pk, habitante_id):
 @login_required
 @require_GET
 def api_integrante(request, integrante_id):
-    """
-    API para obtener datos de un integrante en formato JSON (para AJAX).
-    """
     integrante = get_object_or_404(ProyectoIntegrante, id=integrante_id)
     
     data = {
@@ -481,36 +408,23 @@ def api_integrante(request, integrante_id):
 
 @login_required
 def dashboard_proyectos(request):
-    """
-    Vista del dashboard de proyectos con estadísticas.
-    """
-    # Estadísticas generales
     total_proyectos = Proyecto.objects.filter(is_deleted=False).count()
     
-    # Proyectos por estatus
     por_estatus = Proyecto.objects.filter(is_deleted=False).values('estatus').annotate(
         count=Count('id')
     ).order_by('estatus')
     
-    # Proyectos por comité
     por_comite = Comite.objects.filter(is_deleted=False).annotate(
         num_proyectos=Count('proyectos', filter=Q(proyectos__is_deleted=False))
     ).order_by('-num_proyectos')[:10]
     
-    # Proyectos en ejecución
     en_ejecucion = Proyecto.objects.filter(
         is_deleted=False, 
         estatus='ejecucion'
     ).select_related('comite').order_by('fecha_inicio')[:10]
     
-    # Presupuesto total estimado
-    presupuesto_total = Proyecto.objects.filter(
-        is_deleted=False
-    ).aggregate(
-        total=Sum('monto_estimado')
-    )['total'] or 0
+    presupuesto_total = Proyecto.objects.filter(is_deleted=False).aggregate(total=Sum('monto_estimado'))['total'] or 0
     
-    # Proyectos próximos a vencer (fecha_fin en los próximos 30 días)
     hoy = timezone.now().date()
     en_30_dias = hoy + timedelta(days=30)
     proximos_vencer = Proyecto.objects.filter(

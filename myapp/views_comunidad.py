@@ -282,6 +282,59 @@ def eliminar_familia(request, id):
     messages.success(request, f'Familia {familia.nombre_familia} y sus integrantes eliminados correctamente.')
     return redirect('familias')
 
+# ============================================
+# Vistas para Habitantes (Lista y Detalle)
+# ============================================
+
+@login_required
+def habitantes(request):
+    """
+    Vista de listado general de habitantes.
+    Adaptada al modelo unificado (sin tabla Person).
+    """
+    query = request.GET.get('q', '')
+    familia_id = request.GET.get('familia', '')
+    
+    # Optimización con select_related para traer datos de la familia en una sola query
+    habitantes_list = Habitante.objects.filter(is_deleted=False).select_related('familia')
+    
+    if query:
+        habitantes_list = habitantes_list.filter(
+            Q(nombre__icontains=query) |
+            Q(apellido__icontains=query) |
+            Q(cedula__icontains=query)
+        )
+        
+    if familia_id:
+        habitantes_list = habitantes_list.filter(familia_id=familia_id)
+        
+    habitantes_list = habitantes_list.order_by('apellido', 'nombre')
+    
+    paginator = Paginator(habitantes_list, 20)
+    page_number = request.GET.get('page')
+    habitantes_page = paginator.get_page(page_number)
+    
+    context = {
+        'habitantes': habitantes_page,
+        'familias': Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
+        'query': query,
+        'familia_filter': familia_id,
+    }
+    return render(request, 'habitantes.html', context)
+
+
+@login_required
+def detalle_habitante(request, id):
+    """
+    Vista de detalle de un habitante individual.
+    """
+    habitante = get_object_or_404(Habitante, id=id, is_deleted=False)
+    
+    context = {
+        'habitante': habitante,
+    }
+    return render(request, 'detalle_habitante.html', context)
+
 
 @login_required
 @require_GET
