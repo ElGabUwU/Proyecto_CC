@@ -70,6 +70,23 @@ def validar_cedula_venezolana(cedula):
         cedula = f"{cedula[0]}-{cedula[1:]}"
     
     return cedula
+
+
+def validar_cedula_unica(cedula, exclude_pk=None):
+    """
+    Valida que la cédula no esté registrada en otro habitante activo.
+    """
+    queryset = Habitante.objects.filter(cedula=cedula, is_deleted=False)
+    if exclude_pk:
+        queryset = queryset.exclude(pk=exclude_pk)
+    
+    if queryset.exists():
+        raise serializers.ValidationError(
+            f"La cédula {cedula} ya está registrada en el sistema."
+        )
+    return cedula
+
+
 # ============================================
 # Mixin para Tolerancia de Claves de Fecha (Frontend-Friendly)
 # ============================================
