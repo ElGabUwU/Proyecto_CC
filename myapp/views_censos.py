@@ -81,7 +81,7 @@ def censos(request):
 
 
 @login_required
-@admin_required
+#@admin_required
 def crear_censo(request):
     if request.method == 'POST':
         form = CensoForm(request.POST, user=request.user)
@@ -137,7 +137,7 @@ def detalle_censo(request, pk):
 
 
 @login_required
-@admin_required
+#@admin_required
 def editar_censo(request, pk):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
     
@@ -156,7 +156,7 @@ def editar_censo(request, pk):
 
 
 @login_required
-@admin_required
+#@admin_required
 @require_POST
 def eliminar_censo(request, pk):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
@@ -236,7 +236,7 @@ def buscar_habitantes_censo(request):
 
 
 @login_required
-@admin_required
+#@admin_required
 def asignar_participante(request, pk):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
     
@@ -257,7 +257,7 @@ def asignar_participante(request, pk):
 
 
 @login_required
-@admin_required
+#@admin_required
 @require_POST
 def remover_participante(request, pk, habitante_id):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)

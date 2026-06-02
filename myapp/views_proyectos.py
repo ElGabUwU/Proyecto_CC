@@ -65,7 +65,7 @@ def comites(request):
 
 
 @login_required
-@admin_required
+# @admin_required 
 def crear_comite(request):
     if request.method == 'POST':
         form = ComiteForm(request.POST)
@@ -83,7 +83,7 @@ def crear_comite(request):
 
 
 @login_required
-@admin_required
+#@admin_required
 def editar_comite(request, id):
     comite = get_object_or_404(Comite, id=id, is_deleted=False)
     
@@ -103,7 +103,7 @@ def editar_comite(request, id):
 
 
 @login_required
-@admin_required
+#@admin_required
 @require_POST
 def eliminar_comite(request, id):
     comite = get_object_or_404(Comite, id=id, is_deleted=False)
@@ -204,7 +204,7 @@ def proyectos(request):
 
 
 @login_required
-@admin_required
+#@admin_required
 def crear_proyecto(request):
     if request.method == 'POST':
         form = ProyectoForm(request.POST, user=request.user)
@@ -247,7 +247,7 @@ def detalle_proyecto(request, pk):
 
 
 @login_required
-@admin_required
+#@admin_required
 def editar_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
     
@@ -266,7 +266,7 @@ def editar_proyecto(request, pk):
 
 
 @login_required
-@admin_required
+#@admin_required
 @require_POST
 def eliminar_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
@@ -344,7 +344,7 @@ def buscar_habitantes_proyecto(request):
 
 
 @login_required
-@admin_required
+#@admin_required
 def asignar_habitante(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
     
@@ -365,7 +365,7 @@ def asignar_habitante(request, pk):
 
 
 @login_required
-@admin_required
+#@admin_required
 @require_POST
 def remover_habitante(request, pk, habitante_id):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
