@@ -373,10 +373,10 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
+<script>
     // Lógica para modales de finanzas
     document.addEventListener('DOMContentLoaded', function() {
-      // 🔹 TU CÓDIGO ORIGINAL: Inicializar pestañas
+      // 🔹 Inicializar pestañas
       const triggerTabList = [].slice.call(document.querySelectorAll('#finanzasTab button'));
       triggerTabList.forEach(function (triggerEl) {
         const tabTrigger = new bootstrap.Tab(triggerEl);
@@ -392,24 +392,23 @@
       const inputFin = document.getElementById('fecha_fin');
 
       function verificarFechas() {
-        // Habilitar solo si AMBOS inputs tienen valor
-        if (inputInicio.value && inputFin.value) {
-          btnExport.disabled = false;
-          btnExport.title = "Exportar datos filtrados";
-          btnExport.classList.remove('disabled');
-          btnExport.style.opacity = '1';
-        } else {
-          btnExport.disabled = true;
-          btnExport.title = "Selecciona ambas fechas para habilitar la exportación";
-          btnExport.classList.add('disabled');
-          btnExport.style.opacity = '0.65';
+        if (inputInicio && inputFin && btnExport) {
+          if (inputInicio.value && inputFin.value) {
+            btnExport.disabled = false;
+            btnExport.title = "Exportar datos filtrados";
+            btnExport.classList.remove('disabled');
+            btnExport.style.opacity = '1';
+          } else {
+            btnExport.disabled = true;
+            btnExport.title = "Selecciona ambas fechas para habilitar la exportación";
+            btnExport.classList.add('disabled');
+            btnExport.style.opacity = '0.65';
+          }
         }
       }
 
-      // Ejecutar al cargar (por si hay fechas en la URL)
       verificarFechas();
 
-      // Escuchar cambios en los inputs
       if (inputInicio) inputInicio.addEventListener('change', verificarFechas);
       if (inputFin) inputFin.addEventListener('change', verificarFechas);
 
@@ -419,48 +418,44 @@
           const fechaInicio = inputInicio.value;
           const fechaFin = inputFin.value;
           
-          // Validación extra de seguridad
           if (!fechaInicio || !fechaFin) {
-            alert('⚠️ Por favor selecciona ambas fechas antes de exportar.');
+            Swal.fire({
+              icon: 'warning',
+              title: 'Atención',
+              text: '⚠️ Por favor selecciona ambas fechas antes de exportar.'
+            });
             return;
           }
           
           let url = "{% url 'exportar_finanzas' %}?";
           const params = [];
-          
           if (fechaInicio) params.push(`fecha_inicio=${encodeURIComponent(fechaInicio)}`);
           if (fechaFin) params.push(`fecha_fin=${encodeURIComponent(fechaFin)}`);
           
-          if (params.length > 0) {
-            url += params.join('&');
-          } else {
-            url = url.slice(0, -1);
-          }
-          
+          url += params.join('&');
           window.open(url, '_blank');
         });
       }
 
-  // 🔹 (Opcional) Tu lógica existente de modales iría aquí...
-
-      // Lógica para modal de ingreso
+      // 🔹 MODAL INGRESO: Lógica de Carga y Envío Asíncrono (AJAX)
       const ingresoModal = document.getElementById('ingresoModal');
-      if (ingresoModal) {
+      const formIngreso = document.getElementById('ingresoForm');
+      
+      if (ingresoModal && formIngreso) {
         ingresoModal.addEventListener('show.bs.modal', function(event) {
           const button = event.relatedTarget;
           const ingresoId = button ? button.getAttribute('data-ingreso-id') : null;
-          const form = document.getElementById('ingresoForm');
           const title = document.getElementById('modalIngresoTitle');
           
           if (ingresoId) {
             title.textContent = 'Editar Ingreso';
-            form.action = `/finanzas/ingresos/editar/${ingresoId}/`;
-            // AJAX para cargar datos
+            formIngreso.action = `/finanzas/ingresos/editar/${ingresoId}/`;
+            
             fetch(`/finanzas/ingresos/api/${ingresoId}/`)
               .then(response => response.json())
               .then(data => {
                 for (const [key, value] of Object.entries(data)) {
-                  const input = form.querySelector(`[name="${key}"]`);
+                  const input = formIngreso.querySelector(`[name="${key}"]`);
                   if (input) {
                     input.value = value !== null ? value : '';
                   }
@@ -468,30 +463,79 @@
               });
           } else {
             title.textContent = 'Registrar Ingreso';
-            form.action = "{% url 'crear_ingreso' %}";
-            form.reset();
+            formIngreso.action = "{% url 'crear_ingreso' %}";
+            formIngreso.reset();
           }
+        });
+
+        // CONTROLADOR AJAX: Envío de Ingresos
+        formIngreso.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const urlTarget = this.action;
+          const formData = new FormData(this);
+          
+          fetch(urlTarget, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          })
+          .then(response => response.json().then(data => ({ status: response.status, body: data })))
+          .then(res => {
+            if (res.status === 200 || res.body.success) {
+              const modalInstance = bootstrap.Modal.getInstance(ingresoModal);
+              if (modalInstance) modalInstance.hide();
+              
+              Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: res.body.message || 'Operación realizada correctamente.',
+                confirmButtonColor: '#198754'
+              }).then(() => { window.location.reload(); });
+            } else {
+              let msgError = "Por favor corrija los errores en el formulario.";
+              if (res.body.errors) {
+                if (res.body.errors.fecha_ingreso) {
+                  let err = res.body.errors.fecha_ingreso;
+                  msgError = Array.isArray(err) ? err[0] : (typeof err === 'object' ? err.message : err);
+                } else {
+                  const primerCampoConError = Object.keys(res.body.errors)[0];
+                  let errGeneral = res.body.errors[primerCampoConError];
+                  msgError = Array.isArray(errGeneral) ? errGeneral[0] : (typeof errGeneral === 'object' ? errGeneral.message : errGeneral);
+                }
+              }
+              Swal.fire({
+                icon: 'error',
+                title: 'Restricción de Validación',
+                text: msgError,
+                confirmButtonColor: '#dc3545'
+              });
+            }
+          })
+          .catch(err => {
+            console.error("Error en ingresos:", err);
+          });
         });
       }
 
-      // Lógica para modal de egreso
+      // 🔹 MODAL EGRESO: Lógica de Carga y Envío Asíncrono (AJAX)
       const egresoModal = document.getElementById('egresoModal');
-      if (egresoModal) {
+      const formEgreso = document.getElementById('egresoForm');
+      
+      if (egresoModal && formEgreso) {
         egresoModal.addEventListener('show.bs.modal', function(event) {
           const button = event.relatedTarget;
           const egresoId = button ? button.getAttribute('data-egreso-id') : null;
-          const form = document.getElementById('egresoForm');
           const title = document.getElementById('modalEgresoTitle');
           
           if (egresoId) {
             title.textContent = 'Editar Egreso';
-            form.action = `/finanzas/egresos/editar/${egresoId}/`;
-            // AJAX para cargar datos
+            formEgreso.action = `/finanzas/egresos/editar/${egresoId}/`;
+            
             fetch(`/finanzas/egresos/api/${egresoId}/`)
               .then(response => response.json())
               .then(data => {
                 for (const [key, value] of Object.entries(data)) {
-                  const input = form.querySelector(`[name="${key}"]`);
+                  const input = formEgreso.querySelector(`[name="${key}"]`);
                   if (input) {
                     input.value = value !== null ? value : '';
                   }
@@ -499,17 +543,89 @@
               });
           } else {
             title.textContent = 'Registrar Egreso';
-            form.action = "{% url 'crear_egreso' %}";
-            form.reset();
+            formEgreso.action = "{% url 'crear_egreso' %}";
+            formEgreso.reset();
           }
+        });
+
+        // 🚀 CONTROLADOR AJAX: Envío de Egresos sin borrar el historial
+        formEgreso.addEventListener('submit', function(e) {
+          e.preventDefault(); // 🚫 Detiene el refresco forzado de la página
+          
+          const urlTarget = this.action;
+          const formData = new FormData(this);
+          
+          fetch(urlTarget, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(response => {
+            // Unificamos el estatus de la respuesta y el cuerpo JSON correctamente
+            return response.json().then(data => ({ status: response.status, body: data }));
+          })
+          .then(res => {
+            if (res.status === 200 || res.body.success) {
+              const modalInstance = bootstrap.Modal.getInstance(egresoModal);
+              if (modalInstance) modalInstance.hide();
+              
+              Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: res.body.message || 'Egreso registrado correctamente.',
+                confirmButtonColor: '#198754'
+              }).then(() => {
+                window.location.reload(); 
+              });
+            } else {
+              // ============================================================
+              // 🔍 DETECCIÓN ESPECÍFICA DE ERRORES PARA EGRESOS
+              // ============================================================
+              let msgError = "Por favor corrija los errores en el formulario.";
+              
+              if (res.body.errors) {
+                // Evaluamos de forma precisa el campo 'fecha' de egresos
+                if (res.body.errors.fecha) {
+                  let err = res.body.errors.fecha;
+                  msgError = Array.isArray(err) ? err[0] : (typeof err === 'object' ? err.message : err);
+                } 
+                // Si el error pertenece a monto o concepto, tomamos el primero
+                else {
+                  const primerCampoConError = Object.keys(res.body.errors)[0];
+                  let errGeneral = res.body.errors[primerCampoConError];
+                  msgError = Array.isArray(errGeneral) ? errGeneral[0] : (typeof errGeneral === 'object' ? errGeneral.message : errGeneral);
+                }
+              }
+              
+              Swal.fire({
+                icon: 'error',
+                title: 'Restricción de Validación',
+                text: msgError,
+                confirmButtonColor: '#dc3545'
+              });
+              // ============================================================
+            }
+          })
+          .catch(err => {
+            console.error("Error en la solicitud HTTP de egresos:", err);
+            Swal.fire({
+              icon: 'error',
+              title: 'Error del Sistema',
+              text: 'Ocurrió un problema al procesar la transacción financiera.'
+            });
+          });
         });
       }
       
       // Calcular saldo inicial
-      calcularSaldoEnTiempoReal();
+      if (typeof calcularSaldoEnTiempoReal === 'function') {
+        calcularSaldoEnTiempoReal();
+      }
     });
     
-    // Mensajes de Django
+    // Mensajes de Django heredados (Para flujos GET/Redirects normales)
     $(document).ready(function () {
       {% if messages %}
       {% for message in messages %}
@@ -522,6 +638,6 @@
       {% endfor %}
       {% endif %}
     });
-  </script>
+</script>
 </body>
 </html>

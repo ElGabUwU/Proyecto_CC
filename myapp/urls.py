@@ -3,7 +3,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from . import views
-from . import views_export
 from . import views_comunidad
 from . import views_proyectos
 from . import views_censos

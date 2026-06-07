@@ -1396,50 +1396,50 @@ class MisNotasView(LoginRequiredMixin, View):
             }
         
         return render(request, self.template_name, context)
-# class MisNotasView(StudentDataOnlyMixin, View):
-#     """
-#     Vista para que los estudiantes vean sus propias notas.
-#     Los estudiantes ven solo sus notas, profesores y admin ven todas.
-#     """
+class MisNotasView(StudentDataOnlyMixin, View):
+    """
+    Vista para que los estudiantes vean sus propias notas.
+    Los estudiantes ven solo sus notas, profesores y admin ven todas.
+    """
         
-#     template_name = 'mis_notas.html'
-#     login_url = 'login'
+    template_name = 'mis_notas.html'
+    login_url = 'login'
 
-#     def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         
-#         # Si es estudiante, mostrar solo sus notas
-#         if request.student_filter:
-#             try:
-#                 estudiante_obj = Students.objects.get(user=request.user)
-#             except Students.DoesNotExist:
-#                 return render(request, "mis_notas.html", {
-#                     'error': 'No se encontró un perfil de estudiante asociado a tu cuenta.'
-#                 })
+        # Si es estudiante, mostrar solo sus notas
+        if request.student_filter:
+            try:
+                estudiante_obj = Students.objects.get(user=request.user)
+            except Students.DoesNotExist:
+                return render(request, "mis_notas.html", {
+                    'error': 'No se encontró un perfil de estudiante asociado a tu cuenta.'
+                })
             
-#             # Obtener notas del estudiante
-#             notas_qs = Grade_Students.objects.filter(
-#                 student=estudiante_obj
-#             ).select_related('evaluacion', 'evaluacion__seccion').order_by('-evaluacion__date')
+            # Obtener notas del estudiante
+            notas_qs = Grade_Students.objects.filter(
+                student=estudiante_obj
+            ).select_related('evaluacion', 'evaluacion__seccion').order_by('-evaluacion__date')
             
-#             context = {
-#                 'estudiante': estudiante_obj,
-#                 'notas': notas_qs,
-#                 'total_notas': notas_qs.count(),
-#                 'es_estudiante': True
-#             }
-#         else:
-#             # Admin o profesor: mostrar todas las notas
-#             notas_qs = Grade_Students.objects.all().select_related(
-#                 'student', 'student__user', 'evaluacion', 'evaluacion__seccion'
-#             ).order_by('-evaluacion__date')
+            context = {
+                'estudiante': estudiante_obj,
+                'notas': notas_qs,
+                'total_notas': notas_qs.count(),
+                'es_estudiante': True
+            }
+        else:
+            # Admin o profesor: mostrar todas las notas
+            notas_qs = Grade_Students.objects.all().select_related(
+                'student', 'student__user', 'evaluacion', 'evaluacion__seccion'
+            ).order_by('-evaluacion__date')
             
-#             context = {
-#                 'notas': notas_qs,
-#                 'total_notas': notas_qs.count(),
-#                 'es_estudiante': False
-#             }
+            context = {
+                'notas': notas_qs,
+                'total_notas': notas_qs.count(),
+                'es_estudiante': False
+            }
         
-#         return render(request, "mis_notas.html", context)
+        return render(request, "mis_notas.html", context)
         
 
 class CalificarEvaluacionView(TeacherRequiredMixin, View):

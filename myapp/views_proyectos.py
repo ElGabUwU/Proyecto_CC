@@ -28,7 +28,6 @@ from .decorators import admin_required
 # Vistas para Comités
 # ============================================
 
-@login_required
 def comites(request):
     """
     Vista para listar y gestionar comités.
@@ -64,8 +63,6 @@ def comites(request):
     return render(request, 'comites.html', context)
 
 
-@login_required
-@admin_required
 def crear_comite(request):
     if request.method == 'POST':
         form = ComiteForm(request.POST)
@@ -82,8 +79,6 @@ def crear_comite(request):
     return render(request, 'comites.html', context)
 
 
-@login_required
-@admin_required
 def editar_comite(request, id):
     comite = get_object_or_404(Comite, id=id, is_deleted=False)
     
@@ -102,8 +97,6 @@ def editar_comite(request, id):
     return render(request, 'comites.html', context)
 
 
-@login_required
-@admin_required
 @require_POST
 def eliminar_comite(request, id):
     comite = get_object_or_404(Comite, id=id, is_deleted=False)
@@ -118,7 +111,6 @@ def eliminar_comite(request, id):
     return redirect('comites')
 
 
-@login_required
 @require_GET
 def api_comite(request, id):
     comite = get_object_or_404(Comite, id=id, is_deleted=False)
@@ -145,7 +137,6 @@ def api_comite(request, id):
 # Vistas para Proyectos
 # ============================================
 
-@login_required
 def proyectos(request):
     """
     Vista para listar y buscar proyectos comunitarios.
@@ -203,8 +194,6 @@ def proyectos(request):
     return render(request, 'proyectos/proyecto_list.html', context)
 
 
-@login_required
-@admin_required
 def crear_proyecto(request):
     if request.method == 'POST':
         form = ProyectoForm(request.POST, user=request.user)
@@ -220,7 +209,6 @@ def crear_proyecto(request):
     return render(request, 'proyectos/proyecto_list.html', {'form': form})
 
 
-@login_required
 def detalle_proyecto(request, pk):
     proyecto = get_object_or_404(
         Proyecto.objects.filter(is_deleted=False).prefetch_related(
@@ -246,8 +234,6 @@ def detalle_proyecto(request, pk):
     return render(request, 'proyectos/proyecto_detail.html', context)
 
 
-@login_required
-@admin_required
 def editar_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
     
@@ -265,8 +251,6 @@ def editar_proyecto(request, pk):
     return render(request, 'proyectos/proyecto_form.html', {'form': form, 'proyecto': proyecto})
 
 
-@login_required
-@admin_required
 @require_POST
 def eliminar_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
@@ -276,7 +260,6 @@ def eliminar_proyecto(request, pk):
     return redirect('proyectos')
 
 
-@login_required
 @require_GET
 def api_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
@@ -304,7 +287,6 @@ def api_proyecto(request, pk):
 # Vistas para Gestión de Integrantes
 # ============================================
 
-@login_required
 def buscar_habitantes_proyecto(request):
     query = request.GET.get('q', '')
     proyecto_id = request.GET.get('proyecto_id', '')
@@ -343,8 +325,6 @@ def buscar_habitantes_proyecto(request):
     return JsonResponse({'habitantes': resultados})
 
 
-@login_required
-@admin_required
 def asignar_habitante(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
     
@@ -364,8 +344,6 @@ def asignar_habitante(request, pk):
     return render(request, 'proyectos/proyecto_detail.html', {'form': form, 'proyecto': proyecto})
 
 
-@login_required
-@admin_required
 @require_POST
 def remover_habitante(request, pk, habitante_id):
     proyecto = get_object_or_404(Proyecto, pk=pk, is_deleted=False)
@@ -381,7 +359,6 @@ def remover_habitante(request, pk, habitante_id):
     return redirect('detalle_proyecto', pk=proyecto.pk)
 
 
-@login_required
 @require_GET
 def api_integrante(request, integrante_id):
     integrante = get_object_or_404(ProyectoIntegrante, id=integrante_id)
@@ -406,7 +383,6 @@ def api_integrante(request, integrante_id):
 # Vistas para Dashboard de Proyectos
 # ============================================
 
-@login_required
 def dashboard_proyectos(request):
     total_proyectos = Proyecto.objects.filter(is_deleted=False).count()
     

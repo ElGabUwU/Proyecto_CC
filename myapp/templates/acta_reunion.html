@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* 📄 Configuración de página limpia y compatible */
+    @page {
+      size: letter;
+      margin: 1.5cm 2.5cm 2.5cm 2.5cm; /* Ajustado el margen superior para el flujo natural */
+    }
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #111111;
+      line-height: 1.8;
+    }
+    /* El encabezado se renderiza al inicio del flujo del PDF sin romper el compilador */
+    .header-container {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .header-text {
+      font-size: 10px; 
+      font-weight: bold; 
+      text-align: center; 
+      line-height: 1.4;
+    }
+    .title {
+      text-align: center; 
+      font-size: 13px; 
+      font-weight: bold;
+      margin-top: 15px; 
+      margin-bottom: 25px; 
+      text-decoration: underline;
+    }
+    /* 🔑 Formato continuo exacto del formato del Ministerio */
+    .legal-text {
+      text-align: justify;
+      text-indent: 1.5cm; /* Sangría reglamentaria */
+    }
+    .signatures-table {
+      width: 100%; 
+      margin-top: 60px;
+    }
+    .signature-cell {
+      width: 50%; 
+      text-align: center; 
+      vertical-align: top; 
+      font-size: 11px;
+    }
+    .line {
+      width: 75%; 
+      margin: 0 auto 5px auto; 
+      border-top: 1px solid #000;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-container">
+    <div class="header-text">
+      REPÚBLICA BOLIVARIANA DE VENEZUELA<br>
+      MINISTERIO DEL PODER POPULAR PARA LAS COMUNAS Y LOS MOVIMIENTOS SOCIALES<br>
+      CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ<br>
+      SISTEMA DE INTEGRACIÓN COMUNAL (SINCO)
+    </div>
+    <hr style="border: 0; border-top: 1.5px solid #000; margin-top: 6px; margin-bottom: 0px;">
+  </div>
+
+  <div class="title">
+    {{ acta.titulo|upper }}
+  </div>
+
+  <div class="legal-text">
+    {{ acta.contenido }}
+  </div>
+
+  <table class="signatures-table">
+    <tr>
+      <td class="signature-cell">
+        <br><br><br> <div class="line"></div>
+        <strong>Dirección del Debate</strong><br>
+        Vocero(a) Elector Delegado
+      </td>
+      <td class="signature-cell">
+        <br><br><br>
+        <div class="line"></div>
+        <strong>{{ acta.generado_por.get_full_name|default:acta.generado_por.username }}</strong><br>
+        Vocero(a) Registrador de Actas<br>
+        C.I. V-{{ acta.generado_por.cedula|default:"___________" }}
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

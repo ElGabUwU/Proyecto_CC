@@ -47,6 +47,14 @@ class Familia(SoftDeleteModel):
 
 
 class Habitante(SoftDeleteModel):
+    
+    TIPO_CEDULA_CHOICES = [
+    ('V', 'Venezolano/a'),
+    ('E', 'Extranjero/a'),
+    ]
+    tipo_cedula = models.CharField(max_length=1, choices=TIPO_CEDULA_CHOICES, default='V')
+    cedula = models.CharField(max_length=15, unique=True) # Tu campo existente
+    
     """
     Representa a un ciudadano de la comunidad. 
     Funde los datos de identidad personal con los datos socio-comunitarios.
@@ -433,8 +441,7 @@ class ProyectoIntegrante(models.Model):
         ordering = ['proyecto', 'rol', 'habitante__nombre']
     
     def __str__(self):
-        return f"{self.habitante.persona.name} - {self.get_rol_display()} en {self.proyecto.nombre}"
-    
+        return f"{self.habitante.nombre} {self.habitante.apellido} - {self.get_rol_display()} en {self.proyecto.nombre}"
     @property
     def nombre_habitante(self):
         return f"{self.habitante.nombre} {self.habitante.apellido}"
@@ -596,8 +603,7 @@ class CensoParticipante(models.Model):
         ordering = ['censo', 'fecha_registro', 'habitante__nombre']
     
     def __str__(self):
-        return f"{self.habitante.persona.name} {self.habitante.persona.surname} - {self.censo.nombre_censo}"
-    
+        return f"{self.habitante.nombre} {self.habitante.apellido} - {self.censo.nombre_censo}"
     @property
     def nombre_habitante(self):
         return f"{self.habitante.nombre} {self.habitante.apellido}"
