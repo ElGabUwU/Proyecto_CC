@@ -236,7 +236,7 @@ class FamiliaDetalleSerializer(serializers.ModelSerializer):
     """
     Serializer detallado para lectura de una familia.
     """
-    habitantes = HabitanteSerializer(many=True, read_only=True)
+    habitantes = serializers.SerializerMethodField()
     jefe_familia = serializers.SerializerMethodField()
     cantidad_habitantes = serializers.ReadOnlyField()
     
@@ -250,6 +250,12 @@ class FamiliaDetalleSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'fecha_registro', 'is_deleted']
     
+    def get_habitantes(self, obj):
+        """Retorna solo los habitantes activos (no eliminados)."""
+        habitantes_activos = obj.habitantes.filter(is_deleted=False)
+        serializer = HabitanteSerializer(habitantes_activos, many=True)
+        return serializer.data
+
     def get_jefe_familia(self, obj):
         jefe = obj.jefe_familia
         if jefe:
