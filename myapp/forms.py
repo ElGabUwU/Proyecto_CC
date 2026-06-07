@@ -1,212 +1,185 @@
 
-# ============================================
-# 🆕 NUEVO: Formularios para Gestión Comunitaria
-# ============================================
 from django import forms
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+from django.db.models import Sum
+from datetime import date
 import datetime
 import re
-from .models import Familia, Habitante, IngresoComunal, EgresoComunal, ConstanciaResidencia, ActaReunion
-import re
-from django.core.exceptions import ValidationError
+from .models import Comite, Proyecto, ProyectoIntegrante
+from .models import (
+    Familia, Habitante, IngresoComunal, EgresoComunal, 
+    ConstanciaResidencia, ActaReunion, CensoParticipante
+)
+
+# ============================================
+# 🏠 FORMULARIOS DE GESTIÓN HABITACIONAL
+# ============================================
+
 class FamiliaForm(forms.ModelForm):
-    """
-    Formulario para crear y editar familias (viviendas) en la comunidad.
-    Sincronizado con el nuevo modelo unificado.
-    """
+    """Formulario unificado para la gestión de inmuebles familiares."""
     nombre_familia = forms.CharField(
         label="Nombre de la Familia / Grupo",
         max_length=100,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Ej: Familia Rodríguez Peña'
-        }),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Familia Rodríguez Peña'}),
         help_text="Un nombre identificativo para el grupo familiar o vivienda"
     )
-    
     vivienda = forms.CharField(
         label="Número o Tipo de Vivienda",
         max_length=50,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Ej: Casa Nro. 45 / Apto 3-B'
-        }),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Casa Nro. 45 / Apto 3-B'}),
         help_text="Identificación física del inmueble"
     )
-    
     direccion = forms.CharField(
         label="Dirección Completa",
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 3,
-            'placeholder': 'Calle, avenida, sector, punto de referencia...'
-        }),
-        help_text="Ubicación detallada dentro del ámbito geográfico del consejo comunal"
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Calles, veredas, puntos de referencia...'}),
+        help_text="Ubicación exacta dentro de la comunidad"
     )
-    
     catastro = forms.CharField(
-        label="Código Catastral",
+        label="Código Catastral (Opcional)",
+        required=False,
         max_length=50,
-        required=False,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Ej: CL-2026-XXXX (Opcional)'
-        }),
-        help_text="Código catastral o de registro de la propiedad si se posee"
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: CAT-12345-TACH'}),
+        help_text="Código de registro catastral si aplica"
     )
-    
     observaciones = forms.CharField(
-        label="Observaciones",
+        label="Observaciones Generales",
         required=False,
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 2,
-            'placeholder': 'Condición de la vivienda, hacinamiento, observaciones adicionales...'
-        }),
-        help_text="Notas importantes sobre el núcleo familiar"
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Notas sobre la vivienda...'}),
+        help_text="Detalles adicionales relevantes"
     )
-    
+
     class Meta:
         model = Familia
-        fields = ['nombre_familia', 'vivienda', 'direccion', 'catastro', 'observaciones']   
-         
+        fields = ['nombre_familia', 'vivienda', 'direccion', 'catastro', 'observaciones']
 
+    def clean_vivienda(self):
+        vivienda = self.cleaned_data.get('vivienda', '').strip().upper()
+        if not vivienda:
+            raise ValidationError("El identificador de la vivienda no puede estar vacío.")
+        return vivienda
 
 class HabitanteForm(forms.ModelForm):
-    """
-    Formulario refactorizado para crear y editar habitantes.
-    Integra los datos de identidad y socioeconómicos, eliminando la tabla Person.
-    """
-    
-    # Relación con la vivienda, filtrando solo las familias activas
-    familia = forms.ModelChoiceField(
-        queryset=Familia.objects.filter(is_deleted=False),
-        label="Familia / Hogar",
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        help_text="Seleccione la familia a la que pertenece el habitante"
+    tipo_cedula = forms.ChoiceField(
+        label="Nacionalidad",
+        choices=[('V', 'Venezolano/a'), ('E', 'Extranjero/a')],
+        initial='V',
+        widget=forms.Select(attrs={'class': 'form-select'})
     )
-    
-    # -------------------------------------------------------------------------
-    # CAMPOS DE IDENTIDAD (Anteriormente heredados de Person)
-    # -------------------------------------------------------------------------
-    cedula = forms.CharField(
-        max_length=20,
-        label="Cédula de Identidad",
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Ej: V-12345678'
-        }),
-        help_text="Ingrese el documento de identidad del ciudadano"
-    )
-    
-    nombre = forms.CharField(
-        max_length=100,
-        label="Nombres",
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Nombres completos'
-        })
-    )
-    
-    apellido = forms.CharField(
-        max_length=100,
-        label="Apellidos",
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Apellidos completos'
-        })
-    )
-    
+
     fecha_nacimiento = forms.DateField(
         label="Fecha de Nacimiento",
         widget=forms.DateInput(attrs={
             'class': 'form-control',
             'type': 'date'
-        })
-    )
-    
-    genero = forms.ChoiceField(
-        choices=Habitante.GENERO_CHOICES,
-        label="Género / Sexo",
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-    
-    es_jefe_familia = forms.BooleanField(
-        required=False,
-        label="¿Es Jefe de Familia?",
-        widget=forms.CheckboxInput(attrs={
-            'class': 'form-check-input'
         }),
-        help_text="Marque esta casilla si esta persona es el sustento o líder principal de la vivienda"
+        help_text="Seleccione la fecha de nacimiento del habitante"
     )
-    
-    # -------------------------------------------------------------------------
-    # CAMPOS SOCIOECONÓMICOS (Datos del Habitante)
-    # -------------------------------------------------------------------------
-    nivel_educativo = forms.ChoiceField(
-        choices=Habitante.NIVEL_EDUCATIVO_CHOICES,
-        required=False,
-        label="Nivel Educativo",
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        help_text="Último nivel educativo alcanzado"
-    )
-    
-    ocupacion = forms.CharField(
-        max_length=100,
-        required=False,
-        label="Ocupación",
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Ej: Estudiante, Agricultor, Ama de casa, Comerciante...'
-        }),
-        help_text="Ocupación o profesión principal"
-    )
-    
-    ingresos_mensuales = forms.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        required=False,
-        label="Ingresos Mensuales (Bs.)",
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'placeholder': '0.00',
-            'step': '0.01'
-        }),
-        help_text="Ingresos mensuales aproximados del habitante (opcional)"
-    )
-    
-    condiciones_salud = forms.CharField(
-        required=False,
-        label="Condiciones de Salud",
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 2,
-            'placeholder': 'Ej: Hipertensión, Diabetes, Asma, Discapacidad motora o ninguna...'
-        }),
-        help_text="Condiciones de salud o patologías crónicas importantes (opcional)"
-    )
-    
+
     class Meta:
         model = Habitante
-        # Mapeo exacto de los campos reales que se guardarán en la tabla 'habitantes'
+        # ⬇️ Quitamos 'telefono', 'correo' y 'observaciones' porque no existen en el modelo
         fields = [
-            'familia', 'cedula', 'nombre', 'apellido', 'fecha_nacimiento', 
-            'genero', 'es_jefe_familia', 'nivel_educativo', 'ocupacion', 
-            'ingresos_mensuales', 'condiciones_salud'
+            'tipo_cedula', 'cedula', 'nombre', 'apellido', 'genero', 
+            'fecha_nacimiento', 'es_jefe_familia'
         ]
-    
-    def clean_cedula(self):
-        cedula = self.cleaned_data.get('cedula')
-        if cedula:
-            cedula_clean = cedula.strip().upper()
-            # Valida formato V-12345678 o E-12345678
-            if not re.match(r'^[VE]-\d{6,8}$', cedula_clean):
-                raise ValidationError(
-                    "Formato de cédula inválido. Use: V-12345678 o E-12345678"
-                )
-            self.cleaned_data['cedula'] = cedula_clean
-        return cedula
+        widgets = {
+            'cedula': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 25123456'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Juan Carlos'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Pérez Rodríguez'}),
+            'genero': forms.Select(attrs={'class': 'form-select'}),
+            'es_jefe_familia': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
+    # (Mantén tus funciones clean_cedula, clean_nombre, clean_apellido y clean tal cual las armamos)
+    # =========================================================================
+    # 1. VALIDACIÓN Y LIMPIEZA DE CÉDULA
+    # =========================================================================
+    def clean_cedula(self):
+        cedula_raw = self.cleaned_data.get('cedula', '').strip()
+        
+        # Eliminar puntos, guiones o letras accidentales que meta el usuario
+        cedula_limpia = re.sub(r'\D', '', cedula_raw)
+        
+        if not cedula_limpia:
+            raise forms.ValidationError("La cédula debe contener caracteres numéricos válidos.")
+            
+        # Longitud coherente en Venezuela (mínimo 5 para adultos mayores, máximo 9)
+        if not (5 <= len(cedula_limpia) <= 9):
+            raise forms.ValidationError("La cédula de identidad debe tener entre 5 y 9 dígitos.")
+            
+        # Validar unicidad (Verificamos si ya existe excluyendo el registro actual si es edición)
+        queryset = Habitante.objects.filter(cedula=cedula_limpia, is_deleted=False)
+        if self.instance and self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+            
+        if queryset.exists():
+            raise forms.ValidationError("Ya existe un habitante activo registrado con esta Cédula de Identidad.")
+            
+        return cedula_limpia
+    
+    # =========================================================================
+    # 2. SENSIBILIDAD A MAYÚSCULAS (Conversión automática e institucional)
+    # =========================================================================
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        # Filtro: Solo permitir letras y espacios (atendiendo acentos y la Ñ)
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$', nombre):
+            raise forms.ValidationError("El nombre solo debe contener letras y espacios.")
+        # Guardar en Mayúsculas Sostenidas para uniformidad en constancias impresas
+        return nombre.upper()
+
+    def clean_apellido(self):
+        apellido = self.cleaned_data.get('apellido', '').strip()
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$', apellido):
+            raise forms.ValidationError("El apellido solo debe contener letras y espacios.")
+        return apellido.upper()
+
+    # =========================================================================
+    # 3. INTERDEPENDENCIAS CRÍTICAS (Fecha de Nacimiento vs Jefe de Familia)
+    # =========================================================================
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_nacimiento = cleaned_data.get('fecha_nacimiento')
+        es_jefe_familia = cleaned_data.get('es_jefe_familia', False)
+        
+        if fecha_nacimiento:
+            hoy = datetime.date.today()
+            
+            # Control del futuro
+            if fecha_nacimiento >= hoy:
+                self.add_error('fecha_nacimiento', "La fecha de nacimiento no puede ser igual o posterior al día de hoy.")
+                return cleaned_data
+            
+            # Calcular edad exacta en años
+            edad = hoy.year - fecha_nacimiento.year - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
+            
+            # Cota de coherencia biológica extrema
+            if edad > 115:
+                self.add_error('fecha_nacimiento', "Por favor, verifique el año ingresado. Excede el límite de coherencia de edad.")
+            
+            # Jefe de Familia debe ser Mayor de Edad
+            if es_jefe_familia and edad < 18:
+                raise forms.ValidationError(
+                    f"Conflicto en Roles: El habitante tiene {edad} años. No se puede designar como Jefe de Familia a un menor de edad."
+                )
+                
+        return cleaned_data
+    
+    def clean_vivienda(self):
+        vivienda = self.cleaned_data.get('vivienda', '').strip().upper()
+        
+        # Verificar si ya existe esa casa registrada (excluyendo si estamos editando la misma)
+        queryset = Familia.objects.filter(vivienda__iexact=vivienda, is_deleted=False)
+        if self.instance and self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+            
+        if queryset.exists():
+            raise forms.ValidationError(
+                f"Error de Censo: La vivienda o número de inmueble '{vivienda}' ya se encuentra registrada en el sistema."
+            )
+            
+        return vivienda
 
 class IngresoComunalForm(forms.ModelForm):
     """
@@ -226,7 +199,7 @@ class IngresoComunalForm(forms.ModelForm):
         max_length=200,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Ej: Aporte mensual familia Pérez'
+            'placeholder': 'Ej: APORTE MENSUAL FAMILIA PÉREZ'
         }),
         help_text="Descripción del ingreso"
     )
@@ -244,7 +217,8 @@ class IngresoComunalForm(forms.ModelForm):
         help_text="Monto del ingreso en bolívares"
     )
     
-    soporte_digital = forms.FileField(
+    # Sincronizado con el nombre exacto del campo en tu models.py para evitar colisiones
+    soporte = forms.FileField(
         required=False,
         label="Soporte Digital",
         widget=forms.ClearableFileInput(attrs={
@@ -267,7 +241,7 @@ class IngresoComunalForm(forms.ModelForm):
     
     class Meta:
         model = IngresoComunal
-        fields = ['fecha', 'tipo_ingreso', 'concepto', 'monto', 'soporte_digital', 'observaciones']
+        fields = ['fecha', 'tipo_ingreso', 'concepto', 'monto', 'soporte', 'observaciones']
         widgets = {
             'tipo_ingreso': forms.Select(attrs={'class': 'form-control'}),
         }
@@ -289,11 +263,25 @@ class IngresoComunalForm(forms.ModelForm):
             instance.save()
         return instance
     
+    def clean_concepto(self):
+        """Sanitiza el concepto a mayúsculas y quita espacios extra"""
+        return self.cleaned_data.get('concepto', '').strip().upper()
+    
     def clean_fecha(self):
         """Validar que la fecha no sea futura"""
         fecha = self.cleaned_data.get('fecha')
-        if fecha and fecha > datetime.date.today():
-            raise ValidationError("La fecha del ingreso no puede ser futura.")
+        # Asegurar la extracción de la fecha sin importar si es datetime o date
+        if hasattr(fecha, 'date'):
+            fecha_evaluar = fecha.date()
+        else:
+            fecha_evaluar = fecha
+
+        if fecha_evaluar and fecha_evaluar > date.today():
+            # 🔑 ASIGNAMOS UN NOMBRE ESPECÍFICO AL ERROR USANDO 'code'
+            raise ValidationError(
+                "No se pueden registrar transacciones financieras en una fecha futura.",
+                code='fecha_futura_prohibida'
+            )
         return fecha
     
     def clean_monto(self):
@@ -397,10 +385,21 @@ class EgresoComunalForm(forms.ModelForm):
         return instance
     
     def clean_fecha(self):
-        """Validar que la fecha no sea futura"""
+        """Validar que la fecha no sea futura con código de error explícito"""
         fecha = self.cleaned_data.get('fecha')
-        if fecha and fecha > datetime.date.today():
-            raise ValidationError("La fecha del egreso no puede ser futura.")
+        
+        # Garantizar extracción de la fecha plana si viene como datetime
+        if hasattr(fecha, 'date'):
+            fecha_evaluar = fecha.date()
+        else:
+            fecha_evaluar = fecha
+
+        if fecha_evaluar and fecha_evaluar > datetime.date.today():
+            # 🔑 LE DA IDENTIDAD TÉCNICA AL ERROR ESPECÍFICO
+            raise ValidationError(
+                "No se pueden registrar transacciones financieras en una fecha futura.",
+                code='fecha_futura_prohibida'
+            )
         return fecha
     
     def clean_monto(self):
@@ -420,7 +419,7 @@ class ConstanciaResidenciaForm(forms.ModelForm):
         queryset=Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
         label="Familia / Núcleo Familiar",
         widget=forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary', 'id': 'select_familia'}),
-        help_text="Seleccione la familia para emitir la constancia."
+        help_text="Seleccione la familia para filtrar u obtener apoyo visual si es necesario."
     )
     
     fecha_documento = forms.DateField(
@@ -438,7 +437,7 @@ class ConstanciaResidenciaForm(forms.ModelForm):
         widget=forms.Textarea(attrs={
             'class': 'form-control bg-dark text-white border-secondary',
             'rows': 3,
-            'placeholder': 'Ej: Para tramitar apertura de cuenta bancaria / Inscripción universitaria...'
+            'placeholder': 'Ej: PARA TRAMITAR APERTURA DE CUENTA BANCARIA / INSCRIPCIÓN UNIVERSITARIA...'
         }),
         help_text="Especifique el motivo de la solicitud."
     )
@@ -446,18 +445,34 @@ class ConstanciaResidenciaForm(forms.ModelForm):
     class Meta:
         model = ConstanciaResidencia
         fields = ['habitante', 'fecha_documento', 'finalidad']
+        widgets = {
+            'habitante': forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary select2'}),
+        }
     
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        # Filtro de seguridad: Solo permitir emitir constancias a habitantes activos
+        self.fields['habitante'].queryset = Habitante.objects.filter(is_deleted=False).order_by('apellido', 'nombre')
+    
+    def clean_finalidad(self):
+        """Sanitiza el motivo a mayúsculas limpias para el documento legal"""
+        return self.cleaned_data.get('finalidad', '').strip().upper()
+
+    def clean_fecha_documento(self):
+        """Validar que la fecha del documento no sea una incoherencia futura"""
+        fecha_doc = self.cleaned_data.get('fecha_documento')
+        if fecha_doc and fecha_doc > datetime.date.today():
+            raise ValidationError("La fecha formal de la constancia no puede ser una fecha futura.")
+        return fecha_doc
     
     def save(self, commit=True):
         instance = super().save(commit=False)
         if self.user:
             instance.generado_por = self.user
         
-        # 💡 SOLUCIÓN: Usar campos correctos (nombre, apellido, cedula) y evitar caídas en la BD
-        instance.contenido = self.generar_contenido_constancia(instance)
+        # 🔑 CORRECCIÓN DE MAPEO: El campo real en tu models.py es 'texto_constancia'
+        instance.texto_constancia = self.generar_contenido_constancia(instance)
         
         if commit:
             instance.save()
@@ -465,19 +480,19 @@ class ConstanciaResidenciaForm(forms.ModelForm):
     
     def generar_contenido_constancia(self, constancia):
         """Generar el contenido HTML seguro con la semántica del modelo actual"""
-        # 🆕 CORRECCIÓN: Accedemos a la familia a través del habitante solicitante
+        # Accedemos a la familia a través de la relación del habitante solicitante
         familia = constancia.habitante.familia 
-        
-        # Obtenemos directamente los datos del habitante que solicita la constancia
-        # para que sea verdaderamente nominal e individual
         solicitante = constancia.habitante
-        nombre_solicitante = f"{solicitante.nombre} {solicitante.apellido}"
-        cedula_solicitante = solicitante.cedula
         
-        # Mantenemos las estadísticas de la familia para el contenido
-        total_integrantes = familia.habitantes.filter(is_deleted=False).count() if familia else 0
-        nombre_familia = familia.nombre_familia if familia else "S/D"
-        direccion_familia = getattr(familia, 'direccion', 'Comunidad Manuel Pulido Méndez') if familia else "Comunidad Manuel Pulido Méndez"
+        nombre_solicitante = f"{solicitante.nombre} {solicitante.apellido}".upper()
+        
+        # CORRECCIÓN: Si la cédula ya tiene el prefijo 'V-' o 'E-', lo dejamos intacto
+        cedula_raw = solicitante.cedula if solicitante.cedula else "S/C"
+        cedula_solicitante = cedula_raw if "-" in cedula_raw or len(cedula_raw) > 9 else f"V-{cedula_raw}"
+        
+        total_integrantes = familia.habitantes.filter(is_deleted=False).count() if familia else 1
+        nombre_familia = familia.nombre_familia.upper() if familia else "S/D"
+        direccion_familia = getattr(familia, 'direccion', 'Comunidad Manuel Pulido Méndez').upper() if familia else "COMUNIDAD MANUEL PULIDO MÉNDEZ"
         
         contenido = f"""
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1a1a1a;">
@@ -493,7 +508,7 @@ class ConstanciaResidenciaForm(forms.ModelForm):
             
             <div style="margin-left: 20px; margin-bottom: 20px; background: #f8fafc; padding: 10px; border-radius: 4px;">
                 <p style="margin: 4px 0;"><strong>NOMBRES Y APELLIDOS:</strong> {nombre_solicitante}</p>
-                <p style="margin: 4px 0;"><strong>CÉDULA DE IDENTIDAD:</strong> V-{cedula_solicitante}</p>
+                <p style="margin: 4px 0;"><strong>CÉDULA DE IDENTIDAD:</strong> {cedula_solicitante}</p>
                 <p style="margin: 4px 0;"><strong>NÚCLEO FAMILIAR:</strong> {nombre_familia}</p>
                 <p style="margin: 4px 0;"><strong>DIRECCIÓN COMPLETA:</strong> {direccion_familia}</p>
             </div>
@@ -510,61 +525,159 @@ class ConstanciaResidenciaForm(forms.ModelForm):
         """
         return contenido
 
+from django import forms
+from django.utils import timezone
+from .models import ActaReunion
+
 class ActaReunionForm(forms.ModelForm):
-    """
-    Formulario depurado para asambleas del consejo comunal.
-    """
+    # 1. Campos explícitos para la interfaz estética del formulario (No alteran el modelo)
+    titulo = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': 'Ej. Acta de Asamblea General Extraordinaria'
+        })
+    )
+    fecha_reunion = forms.DateTimeField(
+        initial=timezone.now,
+        widget=forms.DateTimeInput(attrs={
+            'type': 'datetime-local',
+            'class': 'form-control bg-dark text-white border-secondary'
+        })
+    )
+    lugar = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': 'Ej. Cancha Techada del Sector Manuel Pulido Méndez'
+        })
+    )
+    director_debate = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': 'Nombre del vocero que dirige el debate'
+        })
+    )
+    tipo_asamblea = forms.ChoiceField(
+        choices=[('ORDINARIA', 'Ordinaria'), ('EXTRAORDINARIA', 'Extraordinaria')],
+        widget=forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary'})
+    )
+    problema_identificado = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'rows': '3',
+            'placeholder': 'Describa detalladamente la problemática planteada por la comunidad...'
+        })
+    )
+    propuesta_solucion = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'rows': '3',
+            'placeholder': 'Detalle el nombre del proyecto o acciones aprobadas para solventar...'
+        })
+    )
+    monto_estimado = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': '0.00 (Dejar vacío si no requiere financiamiento)'
+        })
+    )
+    banco_receptor = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': 'Ej. Banco de Venezuela (Si aplica)'
+        })
+    )
+    cuenta_bancaria = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': '20 dígitos de la cuenta comunal'
+        })
+    )
+    votos_favor = forms.IntegerField(
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': 'Cantidad de ciudadanos que aprobaron'
+        })
+    )
+    asistentes = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'rows': '3',
+            'placeholder': 'Nombre y apellido de los asistentes separados por comas...'
+        })
+    )
+
     class Meta:
         model = ActaReunion
-        fields = ['titulo', 'fecha_reunion', 'lugar', 'asistentes', 'contenido', 'acuerdos']
-        widgets = {
-            'titulo': forms.TextInput(attrs={'class': 'form-control bg-dark text-white border-secondary', 'placeholder': 'Ej: Asamblea General Extraordinaria'}),
-            'fecha_reunion': forms.DateTimeInput(attrs={'class': 'form-control bg-dark text-white border-secondary', 'type': 'datetime-local'}),
-            'lugar': forms.TextInput(attrs={'class': 'form-control bg-dark text-white border-secondary', 'placeholder': 'Ej: Cancha Deportiva del Sector'}),
-            'asistentes': forms.Textarea(attrs={'class': 'form-control bg-dark text-white border-secondary', 'rows': 3, 'placeholder': 'Nombres o número de cédulas de los voceros...'}),
-            'contenido': forms.Textarea(attrs={'class': 'form-control bg-dark text-white border-secondary', 'rows': 5, 'placeholder': 'Describa los puntos clave tratados...'}),
-            'acuerdos': forms.Textarea(attrs={'class': 'form-control bg-dark text-white border-secondary', 'rows': 3, 'placeholder': 'Decisiones tomadas en la asamblea...'}),
-        }
+        # Mapeamos únicamente los campos reales que existen en la base de datos de tu modelo
+        fields = ['titulo', 'fecha_reunion', 'lugar', 'asistentes']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
     def save(self, commit=True):
-        instance = super().save(commit=False)
-        if self.user:
-            instance.generado_por = self.user
+        # 1. Instanciamos el objeto sin guardarlo en la base de datos todavía
+        acta = super().save(commit=False)
         
-        # Mantenemos el formateador dinámico para el PDF histórico
-        instance.contenido_formateado = self.formatear_contenido_acta(instance)
+        # 2. Asociamos el usuario validador que extrajimos de la vista
+        acta.generado_por = self.user
         
+        # 3. Extraemos de forma segura los valores del formulario limpitos (cleaned_data)
+        titulo = self.cleaned_data.get('titulo', 'REUNIÓN')
+        lugar = self.cleaned_data.get('lugar', 'Comunidad')
+        fecha_reunion = self.cleaned_data.get('fecha_reunion')
+        tipo_asamblea = self.cleaned_data.get('tipo_asamblea', 'Ordinaria')
+        director_debate = self.cleaned_data.get('director_debate', 'Vocero Autorizado')
+        problematica = self.cleaned_data.get('problematica', 'No especificada')
+        proyecto = self.cleaned_data.get('proyecto', 'No especificado')
+        votos_favor = self.cleaned_data.get('votos_favor', 0)
+        asistentes = self.cleaned_data.get('asistentes', '') # Nombres separados por comas
+        
+        # 🔑 AQUÍ EXTRAEMOS LOS CAMPOS DE LA INTERFAZ SIN ASIGNARLOS AL MODELO DIRECTAMENTE
+        monto_estimado = self.cleaned_data.get('monto_estimado', '0,00')
+        banco_receptor = self.cleaned_data.get('banco_receptor', 'No asignado')
+        cuenta_comunal = self.cleaned_data.get('cuenta_comunal', 'No asignada')
+        
+        # Formatear la fecha para la redacción legal venezolana
+        if fecha_reunion:
+            fecha_texto = fecha_reunion.strftime("Hoy %d del mes de %B del año %Y, siendo las %I:%M %p")
+        else:
+            fecha_texto = "En la fecha correspondiente"
+
+        # 🔑 COMPILACIÓN REDACCIONAL CONTEXTUAL (Formato Ministerio / SINCO)
+        # Aquí incrustamos el monto, banco y cuenta directamente en la narrativa unificada
+        acta.contenido = (
+            f"{fecha_texto}, constituidos en asamblea de ciudadanos y ciudadanas en el lugar: {lugar}, "
+            f"como Máxima Instancia de Deliberación y Decisión para el ejercicio del Poder Popular; reunidos "
+            f"en mayoría simple de conformidad con el artículo 22 de la Ley Orgánica de los Consejos Comunales. "
+            f"La presente sesión de carácter {tipo_asamblea.upper()} fue dirigida por el Director de Debate: {director_debate}, "
+            f"procediendo a evaluar los puntos aprobados. Se identificó el problema central enfocado en '{problematica}', "
+            f"determinando que la solución idónea es la ejecución del proyecto denominado '{proyecto}', por un monto "
+            f"estimado de Bs. {monto_estimado}. Para los fines de la carga y asignación del recurso financiero en el "
+            f"Sistema de Integración Comunal (SINCO), se ratifica que la cuenta bancaria de la organización "
+            f"corresponde al banco {banco_receptor}, N° {cuenta_comunal}. Finalmente, evaluados los aportes de los "
+            f"miembros mayoritarios del sector, y con la presencia de los ciudadanos ({asistentes}), los puntos de la "
+            f"agenda quedan plenamente APROBADOS por una votación de {votos_favor} votos a favor."
+        )
+
         if commit:
-            instance.save()
-        return instance
-
-    def formatear_contenido_acta(self, acta):
-        """Formatear de forma elegante la asamblea"""
-        return f"""
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h3 style="margin-bottom: 2px;">CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ</h3>
-                <h4 style="margin-top: 0; color: #475569;">{acta.titulo}</h4>
-            </div>
-            <p><strong>LUGAR Y FECHA:</strong> {acta.lugar} - {acta.fecha_reunion.strftime('%d/%m/%Y %I:%M %p')}</p>
-            <hr style="border: 0; border-top: 1px solid #cbd5e1;">
-            <p><strong>PUNTOS DISCUTIDOS:</strong></p>
-            <div style="white-space: pre-line; text-align: justify; padding-left: 10px;">{acta.contenido}</div>
-        </div>
-        """
-        
-        return contenido
-
+            acta.save()
+        return acta
 
 # ============================================
 # 🆕 NUEVO: Formularios para Gestión de Proyectos
 # ============================================
-
-from .models import Comite, Proyecto, ProyectoIntegrante
 
 class ComiteForm(forms.ModelForm):
     """
@@ -705,7 +818,6 @@ class ProyectoForm(forms.ModelForm):
         
         # Si es un nuevo proyecto, preestablecer la fecha de inicio
         if not self.instance.pk:
-            from datetime import date
             self.fields['fecha_inicio'].initial = date.today()
     
     def clean_fecha_fin(self):
@@ -882,7 +994,6 @@ class CensoForm(forms.ModelForm):
         
         # Si es un nuevo censo, preestablecer la fecha de inicio
         if not self.instance.pk:
-            from datetime import date
             self.fields['fecha_inicio'].initial = date.today()
     
     def clean_fecha_fin(self):

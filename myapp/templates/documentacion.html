@@ -16,7 +16,7 @@
 
 <body class="m-0 p-0">
   {% include 'partials/header.html' %}
-  <div class="bg-my-background-color d-flex text-white">
+  <div class="bg-my-background-color d-flex text-black">
     {% include 'partials/sidebar.html' %}
 
     <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
@@ -41,7 +41,7 @@
                   <form id="formConstancia" method="POST" action="{% url 'generar_constancia' %}">
                     {% csrf_token %}
                     <div class="mb-3">
-                      <label for="familia_constancia" class="form-label text-white">Seleccione el grupo Familiar</label>
+                      <label for="familia_constancia" class="form-label text-black">Seleccione el grupo Familiar</label>
                       <select class="form-select" id="select_familia" name="familia" required>
                         <option value="">Seleccionar una familia...</option>
                         {% for familia in familias %}
@@ -55,7 +55,7 @@
                     </div>
                     
                     <div class="mb-3">
-                      <label for="select_habitante" class="form-label text-white">Seleccione el Ciudadano (Solicitante)</label>
+                      <label for="select_habitante" class="form-label text-black">Seleccione el Ciudadano (Solicitante)</label>
                       <select class="form-select" id="select_habitante" name="habitante" disabled>
                         <option value="">-- Seleccione primero una familia --</option>
                       </select>
@@ -128,33 +128,76 @@
                   <h6 class="card-title">Nueva Acta</h6>
                   <form id="formActa" method="POST" action="{% url 'generar_acta' %}">
                     {% csrf_token %}
-                    <div class="mb-3">
-                      <label for="titulo_acta" class="form-label">Título del Acta</label>
-                      <input type="text" class="form-control" id="titulo_acta" name="titulo" 
-                             placeholder="Ej: Acta de Asamblea General" required>
-                    </div>
                     
-                    <div class="mb-3">
-                      <label for="fecha_acta" class="form-label">Fecha de la Reunión</label>
-                      <input type="datetime-local" class="form-control" id="fecha_acta" name="fecha_reunion" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label for="lugar_acta" class="form-label">Lugar</label>
-                      <input type="text" class="form-control" id="lugar_acta" name="lugar" 
-                             placeholder="Ej: Salón Comunal" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label for="asistentes_acta" class="form-label">Asistentes (separados por comas)</label>
-                      <textarea class="form-control" id="asistentes_acta" name="asistentes" 
-                                rows="3" placeholder="Nombre y apellido de los asistentes..." required></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label for="contenido_acta" class="form-label">Contenido del Acta</label>
-                      <textarea class="form-control" id="contenido_acta" name="contenido" 
-                                rows="5" placeholder="Describa los puntos tratados en la reunión..." required></textarea>
+                    <div class="row">
+                      <div class="col-12 mb-3">
+                        <label for="titulo_acta" class="form-label">Título del Acta</label>
+                        <input type="text" class="form-control text-black border-secondary" id="titulo_acta" name="titulo" 
+                              placeholder="Ej: Acta de Asamblea General" required>
+                      </div>
+                      
+                      <div class="col-md-6 mb-3">
+                        <label for="fecha_acta" class="form-label">Fecha y Hora</label>
+                        <input type="datetime-local" class="form-control text-black border-secondary" id="fecha_acta" name="fecha_reunion" required>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="tipo_asamblea" class="form-label">Tipo de Asamblea</label>
+                        <select class="form-select text-black border-secondary" id="tipo_asamblea" name="tipo_asamblea" required>
+                          <option value="ORDINARIA">Ordinaria</option>
+                          <option value="EXTRAORDINARIA" selected>Extraordinaria</option>
+                        </select>
+                      </div>
+
+                      <div class="col-md-6 mb-3">
+                        <label for="lugar_acta" class="form-label">Lugar de la Asamblea</label>
+                        <input type="text" class="form-control text-black border-secondary" id="lugar_acta" name="lugar" 
+                              placeholder="Ej: Cancha del Sector" required>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="director_debate" class="form-label">Director del Debate</label>
+                        <input type="text" class="form-control text-black border-secondary" id="director_debate" name="director_debate" 
+                              placeholder="Nombre del vocero que dirige" required>
+                      </div>
+
+                      <div class="col-12 mb-3">
+                        <label for="problema_identificado" class="form-label">Problemática Planteada</label>
+                        <textarea class="form-control text-black border-secondary" id="problema_identificado" name="problema_identificado" 
+                                  rows="3" placeholder="Describa la problemática de la comunidad..." required></textarea>
+                      </div>
+
+                      <div class="col-12 mb-3">
+                        <label for="propuesta_solucion" class="form-label">Proyecto o Acciones Aprobadas</label>
+                        <textarea class="form-control text-black border-secondary" id="propuesta_solucion" name="propuesta_solucion" 
+                                  rows="3" placeholder="Detalle la solución o proyecto aprobado..." required></textarea>
+                      </div>
+
+                      <div class="col-md-4 mb-3">
+                        <label for="monto_estimado" class="form-label">Monto Estimado</label>
+                        <input type="number" step="0.01" class="form-control text-black border-secondary" id="monto_estimado" name="monto_estimado" 
+                              placeholder="Ej: 2000">
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label for="banco_receptor" class="form-label">Banco Receptor</label>
+                        <input type="text" class="form-control text-black border-secondary" id="banco_receptor" name="banco_receptor" 
+                              placeholder="Ej: Banco de Venezuela">
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label for="cuenta_bancaria" class="form-label">Cuenta Comunal</label>
+                        <input type="text" class="form-control text-black border-secondary" id="cuenta_bancaria" name="cuenta_bancaria" 
+                              placeholder="20 dígitos de la cuenta">
+                      </div>
+
+                      <div class="col-12 mb-3">
+                        <label for="votos_favor" class="form-label">Votos Registrados a Favor</label>
+                        <input type="number" class="form-control text-black border-secondary" id="votos_favor" name="votos_favor" 
+                              placeholder="Cantidad de votos" required>
+                      </div>
+
+                      <div class="col-12 mb-4">
+                        <label for="asistentes_acta" class="form-label">Asistentes (Nombres separados por comas)</label>
+                        <textarea class="form-control text-black border-secondary" id="asistentes_acta" name="asistentes" 
+                                  rows="3" placeholder="Pedro Pérez, María Gómez, Juan Rodríguez..." required></textarea>
+                      </div>
                     </div>
                     
                     <button type="submit" class="btn btn-primary w-100">
@@ -207,156 +250,178 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-    $(document).ready(function () {
-        // 1. Manejo dinámico del Selection List (Familias -> Habitantes)
-        $('#select_familia').on('change', function() {
-            const familiaId = $(this).val();
-            const selectHabitante = $('#select_habitante');
-            
-            if (!familiaId) {
-                selectHabitante.html('<option value="">-- Seleccione primero una familia --</option>').prop('disabled', true);
-                return;
-            }
-            
-            selectHabitante.html('<option value=""><i class="fas fa-spinner fa-spin"></i> Cargando habitantes...</option>').prop('disabled', true);
-            
-            // Consumimos tu API REST transaccional que reparamos ayer
-            fetch(`/api/familias/${familiaId}/`)
-                .then(response => {
-                    if (!response.ok) throw new Error("Error en el servidor");
-                    return response.json();
-                })
-                .then(data => {
-                    selectHabitante.empty().prop('disabled', false);
-                    if (!data.habitantes || data.habitantes.length === 0) {
-                        selectHabitante.html('<option value="">No hay habitantes registrados en esta familia</option>');
-                        return;
-                    }
-                    selectHabitante.append('<option value="">-- Seleccione el Ciudadano (Solicitante) --</option>');
-                    data.habitantes.forEach(h => {
-                        selectHabitante.append(`<option value="${h.id}">${h.nombre} ${h.apellido} (C.I: ${h.cedula})</option>`);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    selectHabitante.html('<option value="">Error al cargar los integrantes</option>').prop('disabled', true);
-                });
-        });
-
-        // 🌟 NUEVO AJUSTE CRÍTICO: Asegurar que el navegador envíe el habitante en el POST
-        $('#formConstancia').on('submit', function() {
-            $('#select_habitante').prop('disabled', false);
-        });
-
-        const fechaActaInput = document.getElementById('fecha_acta');
-        if (fechaActaInput) {
-            const now = new Date();
-            const formatted = now.toISOString().slice(0, 16);
-            fechaActaInput.value = formatted;
+$(document).ready(function () {
+    // =========================================================================
+    // 1. MANEJO DINÁMICO DEL SELECTION LIST (FAMILIAS -> HABITANTES)
+    // =========================================================================
+    $('#select_familia').on('change', function() {
+        const familiaId = $(this).val();
+        const selectHabitante = $('#select_habitante');
+        
+        if (!familiaId) {
+            selectHabitante.html('<option value="">-- Seleccione primero una familia --</option>').prop('disabled', true);
+            return;
         }
-
-        // 4. Mostrar Mensajes flash de Django mediante SweetAlert2
-        {% if messages %}
-            {% for message in messages %}
-            Swal.fire({
-                icon: '{% if message.tags == "error" %}error{% else %}success{% endif %}',
-                title: '{% if message.tags == "error" %}Error{% else %}¡Éxito!{% endif %}',
-                html: '{{ message.message|safe }}',
-                background: '#1e293b',
-                color: '#fff',
-                showConfirmButton: true
+        
+        selectHabitante.html('<option value=""><i class="fas fa-spinner fa-spin"></i> Cargando habitantes...</option>').prop('disabled', true);
+        
+        fetch(`/api/familias/${familiaId}/`, { credentials: 'include' })
+            .then(response => {
+                if (!response.ok) throw new Error("Error en el servidor");
+                return response.json();
+            })
+            .then(data => {
+                selectHabitante.empty().prop('disabled', false);
+                if (!data.habitantes || data.habitantes.length === 0) {
+                    selectHabitante.html('<option value="">No hay habitantes registrados en esta familia</option>');
+                    return;
+                }
+                selectHabitante.append('<option value="">-- Seleccione el Ciudadano (Solicitante) --</option>');
+                data.habitantes.forEach(h => {
+                    selectHabitante.append(`<option value="${h.id}">${h.nombre} ${h.apellido} (C.I: ${h.cedula})</option>`);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                selectHabitante.html('<option value="">Error al cargar los integrantes</option>').prop('disabled', true);
             });
-            {% endfor %}
-        {% endif %}
     });
 
-    // 5. Función para previsualizar constancias desde el historial (mantiene tu lógica previa)
-    function verPreviaConstancia(constanciaId) {
+    // =========================================================================
+    // 🔑 2. ENVÍO TRADICIONAL SEGURO (EVITA EL ANONYMOUS USER POR AJAX)
+    // =========================================================================
+    // Al remover el preventDefault() de AJAX, el navegador procesa la petición POST de 
+    // forma nativa, asegurando que las cookies de sesión viajen de manera limpia.
+    // Antes de irse la petición, nos aseguramos de habilitar el campo "habitante" 
+    // para que su valor sea recolectado y enviado al back.
+    $('#formConstancia, #formActa').on('submit', function() {
+        $('#select_habitante').prop('disabled', false);
+    });
+
+    // =========================================================================
+    // 3. INICIALIZACIÓN POR DEFECTO DE LA FECHA DEL ACTA
+    // =========================================================================
+    const fechaActaInput = document.getElementById('fecha_acta');
+    if (fechaActaInput && !fechaActaInput.value) {
+        const now = new Date();
+        const formatted = now.toISOString().slice(0, 16);
+        fechaActaInput.value = formatted;
+    }
+
+    // =========================================================================
+    // 4. ALERTAS POR MENSAJES FLASH DE DJANGO (POST-RELOAD NATIVO)
+    // =========================================================================
+    // Cuando la página se recarga tras guardar con éxito el formulario tradicional,
+    // Django inyecta los mensajes en el contexto y SweetAlert los levanta automáticamente.
+    {% if messages %}
+        {% for message in messages %}
         Swal.fire({
-            title: 'Cargando previsualización...',
-            allowOutsideClick: false,
+            icon: '{% if message.tags == "error" %}error{% else %}success{% endif %}',
+            title: '{% if message.tags == "error" %}Error{% else %}¡Éxito!{% endif %}',
+            html: '{{ message.message|safe }}',
             background: '#1e293b',
             color: '#fff',
-            didOpen: () => { Swal.showLoading(); }
+            showConfirmButton: true,
+            confirmButtonColor: '{% if message.tags == "error" %}#ef4444{% else %}#10b981{% endif %}'
         });
-        
-        fetch(`/documentacion/constancia/previa/${constanciaId}/`)
-            .then(response => response.json())
-            .then(data => {
-                Swal.fire({
-                    title: `Constancia #${constanciaId}`,
-                    background: '#1e293b',
-                    color: '#fff',
-                    html: `
-                        <div class="text-start text-white">
-                            <p><strong>Familia:</strong> ${data.familia}</p>
-                            <p><strong>Fecha:</strong> ${data.fecha}</p>
-                            <p><strong>Finalidad:</strong> ${data.finalidad}</p>
-                            <hr class="border-secondary">
-                            <p><strong>Contenido:</strong></p>
-                            <div class="border p-3 bg-dark text-white rounded">${data.contenido}</div>
-                        </div>
-                    `,
-                    showConfirmButton: true,
-                    confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
-                    showCancelButton: true,
-                    cancelButtonText: 'Cerrar',
-                    confirmButtonColor: '#0ea5e9'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = `/documentacion/constancia/descargar/${constanciaId}/`;
-                    }
-                });
-            })
-            .catch(error => {
-                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
-            });
-    }
+        {% endfor %}
+    {% endif %}
+});
+
+// =============================================================================
+// 5. HISTORIAL: PREVISUALIZAR CONSTANCIAS
+// =============================================================================
+function verPreviaConstancia(constanciaId) {
+    Swal.fire({
+        title: 'Cargando previsualización...',
+        allowOutsideClick: false,
+        background: '#1e293b',
+        color: '#fff',
+        didOpen: () => { Swal.showLoading(); }
+    });
     
-    // 6. Función para previsualizar actas desde el historial (mantiene tu lógica previa)
-    function verPreviaActa(actaId) {
-        Swal.fire({
-            title: 'Cargando previsualización...',
-            allowOutsideClick: false,
-            background: '#1e293b',
-            color: '#fff',
-            didOpen: () => { Swal.showLoading(); }
-        });
-        
-        fetch(`/documentacion/acta/previa/${actaId}/`)
-            .then(response => response.json())
-            .then(data => {
-                Swal.fire({
-                    title: data.titulo,
-                    background: '#1e293b',
-                    color: '#fff',
-                    html: `
-                        <div class="text-start text-white">
-                            <p><strong>Fecha:</strong> ${data.fecha_reunion}</p>
-                            <p><strong>Lugar:</strong> ${data.lugar}</p>
-                            <p><strong>Asistentes:</strong> ${data.asistentes_count} personas</p>
-                            <hr class="border-secondary">
-                            <p><strong>Contenido:</strong></p>
-                            <div class="border p-3 bg-dark text-white rounded">${data.contenido}</div>
+    fetch(`/documentacion/constancia/previa/${constanciaId}/`, { credentials: 'include' })
+        .then(response => response.json())
+        .then(data => {
+            Swal.fire({
+                title: `Constancia #${constanciaId}`,
+                background: '#1e293b',
+                color: '#fff',
+                html: `
+                    <div class="text-start text-white">
+                        <p><strong>Familia:</strong> ${data.familia}</p>
+                        <p><strong>Fecha:</strong> ${data.fecha}</p>
+                        <p><strong>Finalidad:</strong> ${data.finalidad}</p>
+                        <hr class="border-secondary">
+                        <p><strong>Contenido:</strong></p>
+                        <div class="border p-3 bg-dark text-white rounded" style="max-height:200px; overflow-y:auto; font-size:13px; text-align:justify;">
+                            ${data.contenido}
                         </div>
-                    `,
-                    showConfirmButton: true,
-                    confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
-                    showCancelButton: true,
-                    cancelButtonText: 'Cerrar',
-                    confirmButtonColor: '#0ea5e9'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = `/documentacion/acta/descargar/${actaId}/`;
-                    }
-                });
-            })
-            .catch(error => {
-                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
+                    </div>
+                `,
+                showConfirmButton: true,
+                confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
+                showCancelButton: true,
+                cancelButtonText: 'Cerrar',
+                confirmButtonColor: '#0ea5e9'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `/documentacion/constancia/descargar/${constanciaId}/`;
+                }
             });
-    }
+        })
+        .catch(error => {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
+        });
+}
+
+// =============================================================================
+// 6. HISTORIAL: PREVISUALIZAR ACTAS
+// =============================================================================
+function verPreviaActa(actaId) {
+    Swal.fire({
+        title: 'Cargando previsualización...',
+        allowOutsideClick: false,
+        background: '#1e293b',
+        color: '#fff',
+        didOpen: () => { Swal.showLoading(); }
+    });
+    
+    fetch(`/documentacion/acta/previa/${actaId}/`, { credentials: 'include' })
+        .then(response => response.json())
+        .then(data => {
+            Swal.fire({
+                title: data.titulo,
+                background: '#1e293b',
+                color: '#fff',
+                html: `
+                    <div class="text-start text-white">
+                        <p><strong>Fecha Reunión:</strong> ${data.fecha_reunion}</p>
+                        <p><strong>Lugar:</strong> ${data.lugar}</p>
+                        <p><strong>Asistentes:</strong> ${data.asistentes_count} ciudadanos</p>
+                        <hr class="border-secondary">
+                        <p><strong>Texto Redactado (Formato Ministerio):</strong></p>
+                        <div class="border p-3 bg-dark text-white rounded" style="max-height:220px; overflow-y:auto; font-size:13px; text-align:justify; line-height:1.5;">
+                            ${data.contenido}
+                        </div>
+                    </div>
+                `,
+                showConfirmButton: true,
+                confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
+                showCancelButton: true,
+                cancelButtonText: 'Cerrar',
+                confirmButtonColor: '#0ea5e9'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `/documentacion/acta/descargar/${actaId}/`;
+                }
+            });
+        })
+        .catch(error => {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
+        });
+}
 </script>
 
 </body>

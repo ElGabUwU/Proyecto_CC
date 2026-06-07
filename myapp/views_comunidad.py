@@ -2,7 +2,6 @@
 Vistas para la gestión comunitaria del Consejo Comunal.
 ARQUITECTURA NUEVA: Vista unificada maestro-detalle para Familias y Habitantes.
 """
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.contrib import messages
@@ -29,7 +28,7 @@ from .forms import (
     FamiliaForm, HabitanteForm, IngresoComunalForm, 
     EgresoComunalForm, ConstanciaResidenciaForm, ActaReunionForm
 )
-from .decorators import admin_required, vocero_finanzas_required, vocero_secretaria_required
+from .decorators import admin_required
 from .serializers import (
     FamiliaListSerializer, FamiliaDetalleSerializer, 
     FamiliaConHabitantesSerializer, HabitanteSerializer
@@ -205,7 +204,6 @@ class FamiliaAPIView(View):
 # ============================================
 from .serializers import HabitanteSerializer
 
-@login_required
 def familias(request):
     """
     Vista Maestro: Muestra el listado de todas las familias con sus habitantes precargados.
@@ -238,15 +236,14 @@ def familias(request):
     }
     return render(request, 'familias.html', context)
 
-@login_required
 def familia_unificada(request, familia_id=None):
     """
     Vista Detalle: Renderiza la interfaz unificada de registro y edición masiva.
     """
-    # Evitar bloqueos de acceso si eres el administrador del sistema
-    es_autorizado = request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', None) in ['admin', 'vocero_secretaria']
+    # Solo administradores pueden acceder
+    es_autorizado = request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', None) == 'admin'
     if not es_autorizado:
-        messages.error(request, "No tienes permisos para acceder a esta sección.")
+        messages.error(request, "No tienes permisos para acceder a esta sección. Solo administradores pueden acceder.")
         return redirect('welcome')
 
     familia = None
@@ -265,7 +262,7 @@ def familia_unificada(request, familia_id=None):
     }
     return render(request, 'familia_unificada.html', context)
 
-@login_required
+
 @require_POST
 def eliminar_familia(request, id):
     """
@@ -286,7 +283,7 @@ def eliminar_familia(request, id):
 # Vistas para Habitantes (Lista y Detalle)
 # ============================================
 
-@login_required
+
 def habitantes(request):
     """
     Vista de listado general de habitantes.
@@ -323,7 +320,6 @@ def habitantes(request):
     return render(request, 'habitantes.html', context)
 
 
-@login_required
 def detalle_habitante(request, id):
     """
     Vista de detalle de un habitante individual.
@@ -336,7 +332,6 @@ def detalle_habitante(request, id):
     return render(request, 'detalle_habitante.html', context)
 
 
-@login_required
 @require_GET
 def api_familia(request, id):
     """
@@ -359,7 +354,6 @@ def api_familia(request, id):
 # Vistas para Finanzas
 # ============================================
 
-@login_required
 def finanzas(request):
     # Obtener fechas para filtro
     fecha_inicio_str = request.GET.get('fecha_inicio', '')
@@ -420,29 +414,44 @@ def finanzas(request):
     return render(request, 'finanzas.html', context)
 
 
-@login_required
-@vocero_finanzas_required
 def crear_ingreso(request):
-    """
-    Vista para crear un nuevo ingreso.
-    """
     if request.method == 'POST':
         form = IngresoComunalForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             ingreso = form.save()
+            # Si es AJAX, devolvemos JSON exitoso
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Ingreso de Bs. {ingreso.monto} registrado exitosamente.'
+                })
             messages.success(request, f'Ingreso de Bs. {ingreso.monto} registrado exitosamente.')
             return redirect('finanzas')
         else:
+            # Si falla y es AJAX, capturamos el diccionario de errores con sus códigos específicos
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errores_dict = {}
+                for campo, lista_errores in form.errors.get_json_data().items():
+                    # Tomamos solo el texto del primer error de cada campo
+                    errores_dict[campo] = lista_errores[0]['message']
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
+            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = IngresoComunalForm(user=request.user)
     
-    context = {'form': form}
+    # Este bloque solo se ejecutará en solicitudes GET comunes
+    from .models import IngresoComunal
+    context = {
+        'form': form,
+        'ingresos': IngresoComunal.objects.filter(is_deleted=False).order_by('-fecha_ingreso')
+    }
     return render(request, 'finanzas.html', context)
 
 
-@login_required
-@vocero_finanzas_required
 def editar_ingreso(request, id):
     """
     Vista para editar un ingreso existente.
@@ -467,8 +476,6 @@ def editar_ingreso(request, id):
     return render(request, 'finanzas.html', context)
 
 
-@login_required
-@vocero_finanzas_required
 @require_POST
 def eliminar_ingreso(request, id):
     """
@@ -481,30 +488,50 @@ def eliminar_ingreso(request, id):
     messages.success(request, f'Ingreso de Bs. {monto} eliminado exitosamente.')
     return redirect('finanzas')
 
-
-@login_required
-@vocero_finanzas_required
 def crear_egreso(request):
     """
-    Vista para crear un nuevo egreso.
+    Vista optimizada para AJAX: Registra egresos y especifica 
+    los errores sin alterar el historial.
     """
     if request.method == 'POST':
         form = EgresoComunalForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             egreso = form.save()
+            
+            # Si es una petición asíncrona (AJAX)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Egreso de Bs. {egreso.monto} registrado exitosamente.'
+                }, status=200)
+                
             messages.success(request, f'Egreso de Bs. {egreso.monto} registrado exitosamente.')
             return redirect('finanzas')
         else:
+            # Si falla y es AJAX, extraemos los mensajes del diccionario de forma limpia
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errores_dict = {}
+                for campo, lista_errores in form.errors.get_json_data().items():
+                    # Extraemos el primer texto de error para simplificar la lectura en JS
+                    errores_dict[campo] = lista_errores[0]['message']
+                
+                return JsonResponse({
+                    'success': False,
+                    'errors': errores_dict
+                }, status=400)
+            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = EgresoComunalForm(user=request.user)
     
-    context = {'form': form}
+    # Flujo de respaldo para peticiones GET convencionales
+    context = {
+        'form_egreso': form,
+        'egresos': EgresoComunal.objects.filter(is_deleted=False).order_by('-fecha')
+    }
     return render(request, 'finanzas.html', context)
 
 
-@login_required
-@vocero_finanzas_required
 def editar_egreso(request, id):
     """
     Vista para editar un egreso existente.
@@ -529,8 +556,6 @@ def editar_egreso(request, id):
     return render(request, 'finanzas.html', context)
 
 
-@login_required
-@vocero_finanzas_required
 @require_POST
 def eliminar_egreso(request, id):
     """
@@ -544,7 +569,6 @@ def eliminar_egreso(request, id):
     return redirect('finanzas')
 
 
-@login_required
 @require_GET
 def api_ingreso(request, id):
     """
@@ -565,7 +589,6 @@ def api_ingreso(request, id):
     return JsonResponse(data)
 
 
-@login_required
 @require_GET
 def api_egreso(request, id):
     """
@@ -587,7 +610,6 @@ def api_egreso(request, id):
     return JsonResponse(data)
 
 
-@login_required
 def exportar_finanzas(request):
     fecha_inicio_str = request.GET.get('fecha_inicio', '')
     fecha_fin_str = request.GET.get('fecha_fin', '')
@@ -635,11 +657,10 @@ def exportar_finanzas(request):
 # Vistas para Documentación
 # ============================================
 
-# Nota: Conserva o ajusta tus decoradores de permisos según los manejes en tu app
-def vocero_secretaria_required(view_func):
-    return view_func  # Si usas @login_required, puedes dejarlo pasar para la beta
+# # Nota: Conserva o ajusta tus decoradores de permisos según los manejes en tu app
+# def vocero_secretaria_required(view_func):
+#     return view_func  # Si usas @admin_required, puedes dejarlo pasar para la beta
 
-@login_required
 def documentacion(request):
     """
     Vista principal para la gestión de documentación y actas.
@@ -660,60 +681,58 @@ def documentacion(request):
     return render(request, 'documentacion.html', context)
 
 
-@login_required
 def generar_constancia(request):
     """
-    Vista que procesa el formulario enviado desde el HTML de manera síncrona.
+    Vista optimizada para AJAX: Procesa la constancia, retorna JSON de éxito 
+    para actualizar la tabla histórica sin abrir pestañas automáticas.
     """
     if request.method == 'POST':
         form = ConstanciaResidenciaForm(request.POST, user=request.user)
         
         if form.is_valid():
-            # Aquí se guarda correctamente en PostgreSQL
             constancia = form.save()
-            
-            # 💡 CORRECCIÓN AQUÍ: Navegamos correctamente a través del habitante para buscar la familia
-            familia_objeto = constancia.habitante.familia if hasattr(constancia.habitante, 'familia') else None
-            
-            if familia_objeto:
-                # Buscamos el jefe de hogar de forma segura dentro de la relación inversa de habitantes
-                jefe = familia_objeto.habitantes.filter(es_jefe_familia=True, is_deleted=False).first()
-            else:
-                jefe = None
-            
-            # Extraemos el nombre completo del ciudadano solicitante
             nombre_ciudadano = f"{constancia.habitante.nombre} {constancia.habitante.apellido}"
             
-            messages.success(
-                request, 
-                f'¡Excelente! La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito.'
-            )
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito y se ha añadido al historial.'
+                }, status=200)
+                
+            messages.success(request, f'¡Excelente! La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito.')
             return redirect('documentacion')
+            
         else:
-            print("Errores en validación de constancia:", form.errors)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errores_dict = {}
+                for campo, lista_errores in form.errors.get_json_data().items():
+                    errores_dict[campo] = lista_errores[0]['message']
+                
+                return JsonResponse({
+                    'success': False,
+                    'errors': errores_dict
+                }, status=400)
+                
             messages.error(request, 'Por favor, verifique los datos del formulario de constancia.')
+            return redirect('documentacion')
             
     return redirect('documentacion')
 
 
-@login_required
 @transaction.atomic
 def generar_acta(request):
-    """
-    Vista para procesar la creación de actas de asambleas.
-    """
     if request.method == 'POST':
+        # Pasamos el usuario explícitamente al formulario
         form = ActaReunionForm(request.POST, user=request.user)
         if form.is_valid():
             acta = form.save()
-            messages.success(request, f'Acta "{acta.titulo}" asentada dinámicamente en Postgres.')
-            return redirect('documentacion')
+            messages.success(request, f'Acta "{acta.titulo}" creada con éxito de forma tradicional.')
+            return redirect('documentacion') # Redirecciona a la vista principal del módulo
         else:
-            messages.error(request, 'Por favor corrija los errores en el formulario del acta.')
+            messages.error(request, 'Hubo errores al validar el formulario del Acta.')
     return redirect('documentacion')
 
 
-@login_required
 @require_GET
 def descargar_constancia(request, id):
     constancia = get_object_or_404(ConstanciaResidencia, id=id)
@@ -753,38 +772,31 @@ def descargar_constancia(request, id):
     messages.error(request, 'Ocurrió un error técnico al compilar el PDF de la constancia.')
     return redirect('documentacion')
 
-@login_required
 @require_GET
 def descargar_acta(request, id):
-    """
-    Descarga el PDF formal del acta de reunión.
-    """
+    # 1. Recuperamos el acta
     acta = get_object_or_404(ActaReunion, id=id)
     
-    # Renderizamos usando el HTML estructurado guardado dinámicamente por tu formulario
-    html_string = f"""
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"></head>
-    <body style="padding: 40px; font-family: Arial, sans-serif; color: #334155;">
-        {acta.contenido_formateado if hasattr(acta, 'contenido_formateado') else acta.contenido}
-    </body>
-    </html>
-    """
+    # 2. Tu contexto con el nombre de tu plantilla corregido
+    context = {'acta': acta}
+    html = render_to_string('acta_reunion.html', context) # 👈 Tu plantilla real
     
+    # 3. Creamos un buffer de bytes en memoria (Evita heredar tipos no iterables)
     result = io.BytesIO()
-    pisa_status = pisa.pisaDocument(io.BytesIO(html_string.encode("UTF-8")), result)
     
-    if not pisa_status.err:
+    # 4. Compilamos el PDF dentro del buffer de memoria
+    pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result)
+    
+    # 5. Si no hubo errores, extraemos los bytes del buffer y respondemos
+    if not pdf.err:
         response = HttpResponse(result.getvalue(), content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename="Acta_Asamblea_{acta.id}.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="Acta_Asamblea_{acta.id}.pdf"'
         return response
-        
-    messages.error(request, 'No se pudo exportar el acta seleccionada.')
-    return redirect('documentacion')
+    
+    # 6. Si falla xhtml2pdf por algún tag de HTML inválido, te lo dirá en texto plano
+    return HttpResponse('Error al estructurar los elementos del PDF de la Asamblea.', status=500)
 
 
-@login_required
 def previa_constancia(request, constancia_id):
     try:
         constancia = ConstanciaResidencia.objects.get(id=constancia_id)
@@ -811,7 +823,6 @@ def previa_constancia(request, constancia_id):
         return JsonResponse({'error': 'La constancia no existe'}, status=404)
 
 
-@login_required
 @require_GET
 def previa_acta(request, id):
     """
@@ -840,7 +851,6 @@ def previa_acta(request, id):
 # Vistas para Dashboard Comunitario
 # ============================================
 
-@login_required
 def dashboard_comunitario(request):
     """
     Vista del dashboard principal de la comunidad.

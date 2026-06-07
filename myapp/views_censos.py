@@ -1,7 +1,6 @@
 """
 Vistas para la gestión de censos comunitarios del Consejo Comunal.
 """
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -28,7 +27,6 @@ from .decorators import admin_required
 # Vistas para Censos
 # ============================================
 
-@login_required
 def censos(request):
     """
     Vista para listar y buscar censos comunitarios.
@@ -80,8 +78,6 @@ def censos(request):
     return render(request, 'censos/censo_list.html', context)
 
 
-@login_required
-#@admin_required
 def crear_censo(request):
     if request.method == 'POST':
         form = CensoForm(request.POST, user=request.user)
@@ -97,7 +93,6 @@ def crear_censo(request):
     return render(request, 'censos/censo_list.html', {'form': form})
 
 
-@login_required
 def detalle_censo(request, pk):
     """
     Vista para ver el detalle completo de un censo.
@@ -136,8 +131,6 @@ def detalle_censo(request, pk):
     return render(request, 'censos/censo_detail.html', context)
 
 
-@login_required
-#@admin_required
 def editar_censo(request, pk):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
     
@@ -155,8 +148,6 @@ def editar_censo(request, pk):
     return render(request, 'censos/censo_form.html', {'form': form, 'censo': censo})
 
 
-@login_required
-#@admin_required
 @require_POST
 def eliminar_censo(request, pk):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
@@ -166,7 +157,6 @@ def eliminar_censo(request, pk):
     return redirect('censos')
 
 
-@login_required
 @require_GET
 def api_censo(request, pk):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
@@ -193,7 +183,6 @@ def api_censo(request, pk):
 # Vistas para Gestión de Participantes
 # ============================================
 
-@login_required
 def buscar_habitantes_censo(request):
     """
     API para buscar habitantes para registrar en un censo.
@@ -234,9 +223,6 @@ def buscar_habitantes_censo(request):
     
     return JsonResponse({'habitantes': resultados})
 
-
-@login_required
-#@admin_required
 def asignar_participante(request, pk):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
     
@@ -256,8 +242,6 @@ def asignar_participante(request, pk):
     return render(request, 'censos/censo_detail.html', {'form': form, 'censo': censo})
 
 
-@login_required
-#@admin_required
 @require_POST
 def remover_participante(request, pk, habitante_id):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
@@ -276,7 +260,6 @@ def remover_participante(request, pk, habitante_id):
     return redirect('detalle_censo', pk=censo.pk)
 
 
-@login_required
 @require_GET
 def api_participante(request, participante_id):
     participante = get_object_or_404(CensoParticipante, id=participante_id)
@@ -299,7 +282,6 @@ def api_participante(request, participante_id):
 # Vistas para Exportación
 # ============================================
 
-@login_required
 def exportar_participantes_censo(request, pk):
     """
     Vista para exportar la lista de participantes de un censo a CSV.
@@ -347,7 +329,6 @@ def exportar_participantes_censo(request, pk):
 # Vistas para Dashboard de Censos
 # ============================================
 
-@login_required
 def dashboard_censos(request):
     total_censos = Censo.objects.filter(is_deleted=False).count()
     
