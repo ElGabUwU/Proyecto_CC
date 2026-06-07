@@ -251,6 +251,85 @@
       new bootstrap.Modal(document.getElementById('habitanteModal')).show();
     }
 
+    function validarCedulaFormato(cedula) {
+      // Limpia caracteres no numéricos
+      const cedulaLimpia = cedula.replace(/\D/g, '');
+      // Verifica longitud entre 5 y 9 dígitos
+      if (cedulaLimpia.length < 5 || cedulaLimpia.length > 9) {
+        return { valido: false, mensaje: 'La cédula de identidad debe tener entre 5 y 9 dígitos.' };
+      }
+      return { valido: true, cedulaLimpia: cedulaLimpia };
+    }
+
+    function validarFechaNacimiento(fechaNacimiento, esJefeFamilia) {
+      if (!fechaNacimiento) {
+        return { valido: true }; // Se valida como campo requerido aparte
+      }
+      
+      const hoy = new Date();
+      const fechaNac = new Date(fechaNacimiento);
+      
+      // No puede ser igual o posterior al día de hoy
+      if (fechaNac >= hoy) {
+        return { valido: false, mensaje: 'La fecha de nacimiento no puede ser igual o posterior al día de hoy.' };
+      }
+      
+      // Calcular edad
+      let edad = hoy.getFullYear() - fechaNac.getFullYear();
+      const mesDiff = hoy.getMonth() - fechaNac.getMonth();
+      if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < fechaNac.getDate())) {
+        edad--;
+      }
+      
+      // No mayor a 115 años
+      if (edad > 115) {
+        return { valido: false, mensaje: `La edad calculada es de ${edad} años. Por favor verifique el año de nacimiento.` };
+      }
+      
+      // Si es jefe de familia, debe ser mayor de 18
+      if (esJefeFamilia && edad < 18) {
+        return { valido: false, mensaje: `No se puede designar como Jefe de Familia a un menor de edad (Tiene ${edad} años).` };
+      }
+      
+      return { valido: true, edad: edad };
+    }
+
+    function validarCoherenciaAcademica(nivelEducativo, edad) {
+      if (!nivelEducativo || !edad) {
+        return { valido: true };
+      }
+      
+      const nivelUpper = nivelEducativo.toUpperCase();
+      
+      // Técnico o universitario con menos de 16 años
+      if ((nivelUpper.includes('UNIVERSITARIO') || nivelUpper.includes('TECNICO')) && edad < 16) {
+        return { valido: false, mensaje: `Posee ${edad} años. No es lógico asignar un nivel educativo superior o técnico a esa edad.` };
+      }
+      
+      // Menor de 4 años con nivel escolar (excepto maternal o ninguno)
+      if (edad < 4 && nivelUpper && !nivelUpper.includes('MATERNAL') && !nivelUpper.includes('NINGUNO')) {
+        return { valido: false, mensaje: `Un infante de ${edad} años no cumple con el rango mínimo de edad para el nivel escolar '${nivelEducativo}'.` };
+      }
+      
+      return { valido: true };
+    }
+
+    function validarCoherenciaLaboral(ocupacion, edad) {
+      if (!ocupacion || !edad) {
+        return { valido: true };
+      }
+      
+      const ocupacionUpper = ocupacion.toUpperCase();
+      const ocupacionesExcluidas = ['NINGUNA', 'ESTUDIANTE', 'HOGAR', 'N/A'];
+      
+      // Si tiene una ocupación laboral activa y es menor de 14
+      if (!ocupacionesExcluidas.some(exc => ocupacionUpper.includes(exc)) && edad < 14) {
+        return { valido: false, mensaje: `El menor posee ${edad} años y registra una ocupación laboral activa. Verifique los datos filiales según la normativa legal vigente.` };
+      }
+      
+      return { valido: true };
+    }
+
     function guardarFilaHabitante() {
       const index = parseInt($('#habitante_index').val());
       
@@ -266,17 +345,72 @@
         es_jefe_familia: $('#h_es_jefe_familia').is(':checked')
       };
 
+      // 1. Validación de campos obligatorios
       if (!habitanteData.cedula || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento) {
         Swal.fire('Campos vacíos', 'Por favor complete los campos obligatorios del ciudadano.', 'warning');
         return;
       }
 
+      // 2. Validación de formato de cédula
+      const validacionCedula = validarCedulaFormato(habitanteData.cedula);
+      if (!validacionCedula.valido) {
+        $('#h_cedula').focus();
+        Swal.fire('Cédula Inválida', validacionCedula.mensaje, 'error');
+        return;
+      }
+      // Actualizar la cédula con el valor limpio
+      habitanteData.cedula = validacionCedula.cedulaLimpia;
+
+      // 3. Validación de fecha de nacimiento y edad
+      const validacionFecha = validarFechaNacimiento(habitanteData.fecha_nacimiento, habitanteData.es_jefe_familia);
+      if (!validacionFecha.valido) {
+        $('#h_fecha_nacimiento').focus();
+        Swal.fire('Fecha Inválida', validacionFecha.mensaje, 'error');
+        return;
+      }
+      const edadCalculada = validacionFecha.edad;
+
+      // 4. Validación de coherencia académica
+      const validacionAcademica = validarCoherenciaAcademica(habitanteData.nivel_educativo, edadCalculada);
+      if (!validacionAcademica.valido) {
+        $('#h_nivel_educativo').focus();
+        Swal.fire('Incoherencia Académica', validacionAcademica.mensaje, 'warning');
+        return;
+      }
+
+      // 5. Validación de coherencia laboral
+      const validacionLaboral = validarCoherenciaLaboral(habitanteData.ocupacion, edadCalculada);
+      if (!validacionLaboral.valido) {
+        $('#h_ocupacion').focus();
+        Swal.fire('Inconsistencia Laboral', validacionLaboral.mensaje, 'warning');
+        return;
+      }
+
+      // 6. Validación de duplicidad de cédula dentro de la lista temporal
+      const cedulaRepetida = habitantesList.some((h, idx) => 
+        h.cedula === habitanteData.cedula && idx !== index
+      );
+      if (cedulaRepetida) {
+        $('#h_cedula').focus();
+        Swal.fire('Cédula Duplicada', `La cédula num. '${habitanteData.cedula}' ya se encuentra en la lista de integrantes de esta ficha.`, 'error');
+        return;
+      }
+
+      // 7. Validación de único jefe de familia en la lista
       if (habitanteData.es_jefe_familia) {
+        const hayOtroJefe = habitantesList.some((h, idx) => h.es_jefe_familia && idx !== index);
+        if (hayOtroJefe) {
+          $('#h_es_jefe_familia').focus();
+          Swal.fire('Conflicto de Estructura', 'Solo puede existir un (1) jefe por cada hogar. Ya existe otro integrante marcado como Jefe de Familia.', 'error');
+          return;
+        }
+        // Remover jefatura de otros si se está editando
         habitantesList.forEach((h, idx) => {
           if (idx !== index) h.es_jefe_familia = false;
         });
       }
 
+      // Todas las validaciones pasaron, agregar o actualizar el miembro
       if (index === -1) {
         habitantesList.push(habitanteData);
       } else {
