@@ -150,7 +150,13 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label label-comunal">CÉDULA DE IDENTIDAD</label>
-                <input type="text" id="h_cedula" class="form-control form-control-comunal" placeholder="Ej: V-26123456" required>
+                <div class="input-group">
+                  <select id="h_cedula_tipo" class="form-select form-select-comunal" style="max-width: 80px; border-top-right-radius: 0; border-bottom-right-radius: 0;" required>
+                    <option value="V">V-</option>
+                    <option value="E">E-</option>
+                  </select>
+                  <input type="text" id="h_cedula_numero" class="form-control form-control-comunal" placeholder="Ej: 26123456" inputmode="numeric" pattern="[0-9]*" required style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                </div>
               </div>
               <div class="col-md-6">
                 <label class="form-label label-comunal">GÉNERO / SEXO</label>
@@ -213,6 +219,33 @@
 
     $(document).ready(function() {
       renderHabitantesTable();
+      
+      // Restringir solo números en el campo de cédula
+      $('#h_cedula_numero').on('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+      });
+      
+      // También prevenir pegar caracteres no numéricos
+      $('#h_cedula_numero').on('paste', function(e) {
+        e.preventDefault();
+        const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+        this.value = text.replace(/[^0-9]/g, '');
+      });
+      
+      // Prevenir escribir caracteres no numéricos con teclado
+      $('#h_cedula_numero').on('keydown', function(e) {
+        // Permitir: backspace, delete, tab, escape, enter, flechas
+        if ([8, 9, 13, 27, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+            (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1)) {
+          return;
+        }
+        // Verificar que sea un número (teclas 0-9 del teclado principal y numérico)
+        if ((e.shiftKey === false && e.keyCode >= 48 && e.keyCode <= 57) || 
+            (e.keyCode >= 96 && e.keyCode <= 105)) {
+          return;
+        }
+        e.preventDefault();
+      });
     });
 
     function renderHabitantesTable() {
@@ -247,10 +280,13 @@
       $('#habitanteForm')[0].reset();
       $('#habitante_index').val(-1);
       $('#habitante_id').val('');
+      $('#h_cedula_tipo').val('V'); // Valor por defecto: Venezolano
+      $('#h_cedula_numero').val('');
       $('#habitanteModalLabel').html('<i class="fas fa-user-plus text-primary me-2"></i>Agregar Miembro Familiar');
       new bootstrap.Modal(document.getElementById('habitanteModal')).show();
     }
 
+    // Función auxiliar para validar formato de cédula (5-9 dígitos)
     function validarCedulaFormato(cedula) {
       // Limpia caracteres no numéricos
       const cedulaLimpia = cedula.replace(/\D/g, '');
@@ -333,9 +369,14 @@
     function guardarFilaHabitante() {
       const index = parseInt($('#habitante_index').val());
       
+      // Construir cédula con prefijo V- o E-
+      const cedulaTipo = $('#h_cedula_tipo').val();
+      const cedulaNumero = $('#h_cedula_numero').val().trim();
+      const cedulaCompleta = `${cedulaTipo}-${cedulaNumero}`;
+      
       const habitanteData = {
         id: $('#habitante_id').val() ? parseInt($('#habitante_id').val()) : null,
-        cedula: $('#h_cedula').val().trim(),
+        cedula: cedulaCompleta,
         nombre: $('#h_nombre').val().trim(),
         apellido: $('#h_apellido').val().trim(),
         fecha_nacimiento: $('#h_fecha_nacimiento').val(),
@@ -346,20 +387,17 @@
       };
 
       // 1. Validación de campos obligatorios
-      if (!habitanteData.cedula || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento) {
+      if (!cedulaNumero || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento) {
         Swal.fire('Campos vacíos', 'Por favor complete los campos obligatorios del ciudadano.', 'warning');
         return;
       }
 
-      // 2. Validación de formato de cédula
-      const validacionCedula = validarCedulaFormato(habitanteData.cedula);
-      if (!validacionCedula.valido) {
-        $('#h_cedula').focus();
-        Swal.fire('Cédula Inválida', validacionCedula.mensaje, 'error');
+      // 2. Validación de formato de cédula (5-9 dígitos)
+      if (cedulaNumero.length < 5 || cedulaNumero.length > 9) {
+        $('#h_cedula_numero').focus();
+        Swal.fire('Cédula Inválida', 'La cédula de identidad debe tener entre 5 y 9 dígitos.', 'error');
         return;
       }
-      // Actualizar la cédula con el valor limpio
-      habitanteData.cedula = validacionCedula.cedulaLimpia;
 
       // 3. Validación de fecha de nacimiento y edad
       const validacionFecha = validarFechaNacimiento(habitanteData.fecha_nacimiento, habitanteData.es_jefe_familia);
@@ -391,8 +429,8 @@
         h.cedula === habitanteData.cedula && idx !== index
       );
       if (cedulaRepetida) {
-        $('#h_cedula').focus();
-        Swal.fire('Cédula Duplicada', `La cédula num. '${habitanteData.cedula}' ya se encuentra en la lista de integrantes de esta ficha.`, 'error');
+        $('#h_cedula_numero').focus();
+        Swal.fire('Cédula Duplicada', `La cédula ${habitanteData.cedula} ya se encuentra en la lista de integrantes de esta ficha.`, 'error');
         return;
       }
 
@@ -423,9 +461,24 @@
 
     function editarFilaHabitante(index) {
       const h = habitantesList[index];
+      
+      // Parsear cédula para separar tipo y número (ej: "V-26123456")
+      let cedulaTipo = 'V';
+      let cedulaNumero = h.cedula;
+      
+      if (h.cedula && h.cedula.includes('-')) {
+        const partes = h.cedula.split('-');
+        cedulaTipo = partes[0].toUpperCase();
+        cedulaNumero = partes[1] || '';
+      } else if (h.cedula) {
+        // Si no tiene guión, asumir que son solo números (Venezolano)
+        cedulaNumero = h.cedula.replace(/[^0-9]/g, '');
+      }
+      
       $('#habitante_index').val(index);
       $('#habitante_id').val(h.id || '');
-      $('#h_cedula').val(h.cedula);
+      $('#h_cedula_tipo').val(cedulaTipo);
+      $('#h_cedula_numero').val(cedulaNumero);
       $('#h_nombre').val(h.nombre);
       $('#h_apellido').val(h.apellido);
       $('#h_fecha_nacimiento').val(h.fecha_nacimiento);
