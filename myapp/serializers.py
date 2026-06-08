@@ -112,6 +112,8 @@ class FechaToleranteMixin:
 class HabitanteSerializer(serializers.ModelSerializer):
     # Campo combinado para mostrar cédula completa (ej: "V-26123456")
     cedula_completa = serializers.SerializerMethodField()
+    # Campo ID explícito para permitir identificar habitantes existentes en actualizaciones
+    id = serializers.IntegerField(required=False, allow_null=True)
     
     class Meta:
         model = Habitante
@@ -285,6 +287,19 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Familia
         fields = ['id', 'nombre_familia', 'vivienda', 'direccion', 'catastro', 'observaciones', 'habitantes']
+    
+    def get_child_serializer_instance(self, child_serializer, data, instance=None):
+        """
+        Crea una instancia del serializer hijo con la instancia correcta
+        para que las validaciones de unicidad funcionen en modo edición.
+        """
+        # Si hay un ID en los datos, buscamos la instancia existente
+        if instance is None and 'id' in data and data['id']:
+            try:
+                instance = Habitante.objects.get(pk=data['id'], is_deleted=False)
+            except Habitante.DoesNotExist:
+                pass
+        return child_serializer(instance=instance, data=data)
     
     def validate(self, attrs):
         """
