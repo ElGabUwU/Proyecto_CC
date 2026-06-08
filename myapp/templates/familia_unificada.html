@@ -258,8 +258,22 @@
       }
 
       habitantesList.forEach((h, index) => {
-        // Construir cédula completa: usar cedula_completa si existe, o construirla desde tipo_cedula + cedula
-        let cedulaMostrar = h.cedula_completa || `${h.tipo_cedula || 'V'}-${h.cedula}`;
+        // Construir cédula completa de forma segura: usar cedula_completa si existe, 
+        // o construirla desde tipo_cedula + cedula (solo si cedula no tiene prefijo)
+        let cedulaMostrar;
+        if (h.cedula_completa) {
+          cedulaMostrar = h.cedula_completa;
+        } else if (h.tipo_cedula && h.cedula) {
+          // Verificar si h.cedula ya tiene prefijo para evitar duplicación
+          const cedulaStr = String(h.cedula);
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaMostrar = cedulaStr;
+          } else {
+            cedulaMostrar = `${h.tipo_cedula}-${cedulaStr}`;
+          }
+        } else {
+          cedulaMostrar = h.cedula || '';
+        }
         
         const jefeBadge = h.es_jefe_familia ? '<span class="badge bg-success">JEFE(A)</span>' : '<span class="badge bg-secondary">Carga</span>';
         tbody.append(`
@@ -468,15 +482,18 @@
       
       // Parsear cédula para separar tipo y número (ej: "V-26123456")
       let cedulaTipo = 'V';
-      let cedulaNumero = h.cedula;
+      let cedulaNumero = '';
       
-      if (h.cedula && h.cedula.includes('-')) {
-        const partes = h.cedula.split('-');
+      // Determinar la fuente del valor de cédula: puede venir en h.cedula o h.cedula_completa
+      let cedulaFuente = h.cedula || '';
+      
+      if (cedulaFuente && cedulaFuente.includes('-')) {
+        const partes = cedulaFuente.split('-');
         cedulaTipo = partes[0].toUpperCase();
         cedulaNumero = partes[1] || '';
-      } else if (h.cedula) {
+      } else if (cedulaFuente) {
         // Si no tiene guión, asumir que son solo números (Venezolano)
-        cedulaNumero = h.cedula.replace(/[^0-9]/g, '');
+        cedulaNumero = cedulaFuente.replace(/[^0-9]/g, '');
       }
       
       $('#habitante_index').val(index);
