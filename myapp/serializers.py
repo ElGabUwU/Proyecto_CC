@@ -130,8 +130,14 @@ class HabitanteSerializer(serializers.ModelSerializer):
         # Verificar duplicados excluyendo el registro actual si se está editando
         instance_id = self.instance.id if self.instance else None
         queryset = Habitante.objects.filter(cedula=cedula_limpia, is_deleted=False)
+        
         if instance_id:
+            # Si tenemos una instancia, excluimos ese habitante específico
             queryset = queryset.exclude(id=instance_id)
+        elif hasattr(self.parent, 'instance') and self.parent.instance:
+            # Si estamos en modo edición de familia y no tenemos instancia propia aún,
+            # excluimos todos los habitantes que ya pertenecen a esta familia
+            queryset = queryset.exclude(familia=self.parent.instance)
             
         if queryset.exists():
             raise serializers.ValidationError("Esta cédula ya pertenece a un habitante activo.")
