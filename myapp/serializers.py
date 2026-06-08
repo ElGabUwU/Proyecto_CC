@@ -115,7 +115,7 @@ class HabitanteSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Habitante
-        fields = ['id', 'tipo_cedula', 'cedula', 'cedula_completa', 'nombre', 'apellido', 'genero', 'fecha_nacimiento', 'es_jefe_familia']
+        fields = ['id', 'tipo_cedula', 'cedula', 'cedula_completa', 'nombre', 'apellido', 'genero', 'fecha_nacimiento', 'es_jefe_familia', 'nivel_educativo', 'ocupacion']
 
     def get_cedula_completa(self, obj):
         """Retorna la cédula con formato completo: V-12345678 o E-12345678"""

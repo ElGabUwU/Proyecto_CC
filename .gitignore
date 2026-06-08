@@ -1,2 +1,1 @@
-Nothing should be ignored based on the provided file changes. The modification of 'myapp/templates/familia_unificada.html' is a standard HTML template file that should be tracked in version control. No build artifacts, dependencies, temporary files, or other ignorable items are present in the change list.
-.env
+Nothing should be ignored in this case, as only a Python source file (`myapp/serializers.py`) was modified and no build artifacts, dependencies, or temporary files were included in the changes.
