@@ -115,6 +115,7 @@
                     <th>Género</th>
                     <th>Filiación / Rol</th>
                     <th>Ocupación</th>
+                    <th>Nivel Educativo</th>
                     <th class="text-center">Operaciones</th>
                   </tr>
                 </thead>
@@ -178,14 +179,15 @@
                 <input type="date" id="h_fecha_nacimiento" class="form-control form-control-comunal" required>
               </div>
               <div class="col-md-6">
-                <label class="form-label label-comunal">NIVEL EDUCATIVO</label>
-                <select id="h_nivel_educativo" class="form-select form-select-comunal">
+                <label class="form-label label-comunal">NIVEL EDUCATIVO <span class="text-danger">*</span></label>
+                <select id="h_nivel_educativo" class="form-select form-select-comunal" required>
+                  <option value="">Seleccione...</option>
+                  <option value="ninguno">Ninguno</option>
                   <option value="primaria">Primaria</option>
                   <option value="secundaria">Secundaria</option>
-                  <option value="tecnico">Técnico</option>
+                  <option value="tecnico">Técnico Medio</option>
                   <option value="universitario">Universitario</option>
                   <option value="postgrado">Postgrado</option>
-                  <option value="ninguno">Ninguno</option>
                 </select>
               </div>
               <div class="col-md-12">
@@ -284,6 +286,7 @@
         }
         
         const jefeBadge = h.es_jefe_familia ? '<span class="badge bg-success">JEFE(A)</span>' : '<span class="badge bg-secondary">Carga</span>';
+        const nivelEducativo = h.nivel_educativo ? h.nivel_educativo.toUpperCase() : 'SIN ESPECIFICAR';
         tbody.append(`
           <tr>
             <td>${cedulaMostrar}</td>
@@ -292,6 +295,7 @@
             <td>${h.genero === 'M' ? 'M' : 'F'}</td>
             <td>${jefeBadge}</td>
             <td>${h.ocupacion || 'N/A'}</td>
+            <td><small class="text-info">${nivelEducativo}</small></td>
             <td class="text-center">
               <button class="btn btn-sm btn-warning text-dark me-1" onclick="editarFilaHabitante(${index})"><i class="fas fa-edit"></i></button>
               <button class="btn btn-sm btn-danger" onclick="eliminarFilaHabitante(${index})"><i class="fas fa-user-minus"></i></button>
@@ -414,8 +418,8 @@
       };
 
       // 1. Validación de campos obligatorios
-      if (!cedulaNumero || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento) {
-        Swal.fire('Campos vacíos', 'Por favor complete los campos obligatorios del ciudadano.', 'warning');
+      if (!cedulaNumero || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento || !habitanteData.nivel_educativo) {
+        Swal.fire('Campos vacíos', 'Por favor complete los campos obligatorios del ciudadano, incluyendo el NIVEL EDUCATIVO.', 'warning');
         return;
       }
 

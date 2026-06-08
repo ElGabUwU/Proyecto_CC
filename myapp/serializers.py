@@ -115,7 +115,7 @@ class HabitanteSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Habitante
-        fields = ['id', 'tipo_cedula', 'cedula', 'cedula_completa', 'nombre', 'apellido', 'genero', 'fecha_nacimiento', 'es_jefe_familia']
+        fields = ['id', 'tipo_cedula', 'cedula', 'cedula_completa', 'nombre', 'apellido', 'genero', 'fecha_nacimiento', 'es_jefe_familia', 'nivel_educativo', 'ocupacion']
 
     def get_cedula_completa(self, obj):
         """Retorna la cédula con formato completo: V-12345678 o E-12345678"""
@@ -193,8 +193,35 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
         }
     
     def validate_cedula(self, value):
-        """Valida únicamente el formato de la cédula."""
-        return validar_cedula_venezolana(value)
+        """
+        Valida únicamente el formato de la cédula.
+        La validación de unicidad se maneja en el validate() del serializer padre
+        para poder excluir correctamente los habitantes de la misma familia en edición.
+        """
+        # Normalizar cédula: quitar espacios y convertir a mayúsculas
+        cedula = str(value).strip().upper()
+        
+        # Si el usuario metió solo números, le añadimos la V- por defecto
+        if cedula.isdigit():
+            cedula = f"V-{cedula}"
+        
+        # Patrones válidos
+        patron_con_guion = r'^[VE]-\d{6,8}$'
+        patron_sin_guion = r'^[VE]\d{6,8}$'
+        
+        if not (re.match(patron_con_guion, cedula) or re.match(patron_sin_guion, cedula)):
+            raise serializers.ValidationError(
+                "Formato de cédula inválido. Use: V-12345678 o E-12345678"
+            )
+        
+        # Normalizar con guion si venía pegado
+        if re.match(patron_sin_guion, cedula):
+            cedula = f"{cedula[0]}-{cedula[1:]}"
+        
+        # Extraer solo la parte numérica para retorno
+        cedula_numerica = re.sub(r'\D', '', cedula)
+        
+        return cedula_numerica
     
     def validate_fecha_nacimiento(self, value):
         """Valida que la fecha de nacimiento no sea futura."""
@@ -202,6 +229,12 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'La fecha de nacimiento no puede ser futura.'
             )
+        return value
+    
+    def validate_nivel_educativo(self, value):
+        """Valida que el nivel educativo no esté vacío."""
+        if not value:
+            raise serializers.ValidationError('El campo NIVEL EDUCATIVO es obligatorio.')
         return value
 
 # ============================================
@@ -279,8 +312,9 @@ import re
 import json
 
 class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
-    # Usamos tu serializador de habitantes maestro-detalle
-    habitantes = HabitanteSerializer(many=True, required=False)
+    # Usamos el serializer anidado diseñado para operaciones maestro-detalle
+    # Este serializer declara explícitamente el campo 'id' como opcional
+    habitantes = HabitanteNestedSerializer(many=True, required=False)
     
     class Meta:
         model = Familia
