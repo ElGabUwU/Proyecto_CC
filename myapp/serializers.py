@@ -115,7 +115,7 @@ class HabitanteSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Habitante
-        fields = ['id', 'tipo_cedula', 'cedula', 'cedula_completa', 'nombre', 'apellido', 'genero', 'fecha_nacimiento', 'es_jefe_familia']
+        fields = ['id', 'tipo_cedula', 'cedula', 'cedula_completa', 'nombre', 'apellido', 'genero', 'fecha_nacimiento', 'es_jefe_familia', 'nivel_educativo', 'ocupacion']
 
     def get_cedula_completa(self, obj):
         """Retorna la cédula con formato completo: V-12345678 o E-12345678"""
@@ -229,6 +229,12 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'La fecha de nacimiento no puede ser futura.'
             )
+        return value
+    
+    def validate_nivel_educativo(self, value):
+        """Valida que el nivel educativo no esté vacío."""
+        if not value:
+            raise serializers.ValidationError('El campo NIVEL EDUCATIVO es obligatorio.')
         return value
 
 # ============================================
