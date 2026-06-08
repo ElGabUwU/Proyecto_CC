@@ -258,10 +258,13 @@
       }
 
       habitantesList.forEach((h, index) => {
+        // Construir cédula completa: usar cedula_completa si existe, o construirla desde tipo_cedula + cedula
+        let cedulaMostrar = h.cedula_completa || `${h.tipo_cedula || 'V'}-${h.cedula}`;
+        
         const jefeBadge = h.es_jefe_familia ? '<span class="badge bg-success">JEFE(A)</span>' : '<span class="badge bg-secondary">Carga</span>';
         tbody.append(`
           <tr>
-            <td>${h.cedula}</td>
+            <td>${cedulaMostrar}</td>
             <td>${h.nombre} ${h.apellido}</td>
             <td>${h.fecha_nacimiento}</td>
             <td>${h.genero === 'M' ? 'M' : 'F'}</td>
@@ -377,6 +380,7 @@
       const habitanteData = {
         id: $('#habitante_id').val() ? parseInt($('#habitante_id').val()) : null,
         cedula: cedulaCompleta,
+        tipo_cedula: cedulaTipo,  // Agregar tipo_cedula explícitamente
         nombre: $('#h_nombre').val().trim(),
         apellido: $('#h_apellido').val().trim(),
         fecha_nacimiento: $('#h_fecha_nacimiento').val(),
