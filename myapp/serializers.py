@@ -203,6 +203,31 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
                 'La fecha de nacimiento no puede ser futura.'
             )
         return value
+    
+    def validate(self, attrs):
+        """
+        Validación personalizada para verificar unicidad de cédula excluyendo el registro actual en modo edición.
+        """
+        cedula = attrs.get('cedula')
+        instance = self.instance
+        
+        if cedula:
+            # Normalizar cédula a formato numérico
+            cedula_numerica = re.sub(r'\D', '', str(cedula))
+            
+            # Buscar si existe otra instancia con la misma cédula
+            queryset = Habitante.objects.filter(cedula=cedula_numerica, is_deleted=False)
+            
+            # Si estamos editando (hay instancia), excluirla de la búsqueda
+            if instance and instance.pk:
+                queryset = queryset.exclude(pk=instance.pk)
+            
+            if queryset.exists():
+                raise serializers.ValidationError({
+                    'cedula': 'Esta cédula ya pertenece a un habitante activo.'
+                })
+        
+        return attrs
 
 # ============================================
 # Serializers para Familia
@@ -279,8 +304,8 @@ import re
 import json
 
 class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
-    # Usamos tu serializador de habitantes maestro-detalle
-    habitantes = HabitanteSerializer(many=True, required=False)
+    # Usamos el serializer anidado que maneja correctamente IDs en actualizaciones
+    habitantes = HabitanteNestedSerializer(many=True, required=False)
     
     class Meta:
         model = Familia
