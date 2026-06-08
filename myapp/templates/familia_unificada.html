@@ -258,8 +258,30 @@
       }
 
       habitantesList.forEach((h, index) => {
-        // Construir cédula completa: usar cedula_completa si existe, o construirla desde tipo_cedula + cedula
-        let cedulaMostrar = h.cedula_completa || `${h.tipo_cedula || 'V'}-${h.cedula}`;
+        // Construir cédula completa de forma segura con prioridad: 
+        // 1) cedula_completa, 2) tipo_cedula + cedula, 3) fallback
+        let cedulaMostrar;
+        
+        if (h.cedula_completa) {
+          cedulaMostrar = h.cedula_completa;
+        } else if (h.tipo_cedula && h.cedula !== undefined) {
+          const cedulaStr = String(h.cedula);
+          // Verificar si h.cedula ya tiene prefijo para evitar duplicación
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaMostrar = cedulaStr;
+          } else {
+            cedulaMostrar = `${h.tipo_cedula}-${cedulaStr}`;
+          }
+        } else if (h.cedula) {
+          const cedulaStr = String(h.cedula);
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaMostrar = cedulaStr;
+          } else {
+            cedulaMostrar = `V-${cedulaStr}`;
+          }
+        } else {
+          cedulaMostrar = '';
+        }
         
         const jefeBadge = h.es_jefe_familia ? '<span class="badge bg-success">JEFE(A)</span>' : '<span class="badge bg-secondary">Carga</span>';
         tbody.append(`
@@ -379,8 +401,9 @@
       
       const habitanteData = {
         id: $('#habitante_id').val() ? parseInt($('#habitante_id').val()) : null,
-        cedula: cedulaCompleta,
-        tipo_cedula: cedulaTipo,  // Agregar tipo_cedula explícitamente
+        cedula: cedulaNumero,  // Guardar solo la parte numérica para consistencia con la BD
+        tipo_cedula: cedulaTipo,  // Tipo de cédula separado
+        cedula_completa: cedulaCompleta,  // Formato completo para visualización
         nombre: $('#h_nombre').val().trim(),
         apellido: $('#h_apellido').val().trim(),
         fecha_nacimiento: $('#h_fecha_nacimiento').val(),
@@ -429,12 +452,22 @@
       }
 
       // 6. Validación de duplicidad de cédula dentro de la lista temporal
-      const cedulaRepetida = habitantesList.some((h, idx) => 
-        h.cedula === habitanteData.cedula && idx !== index
-      );
+      // Comparar usando solo la parte numérica para evitar falsos positivos
+      const cedulaRepetida = habitantesList.some((h, idx) => {
+        if (idx === index) return false;  // Ignorar el mismo registro que se está editando
+        
+        // Obtener la cédula numérica del habitante existente
+        let cedulaExistenteNum = h.cedula || '';
+        if (cedulaExistenteNum.includes('-')) {
+          cedulaExistenteNum = cedulaExistenteNum.split('-')[1] || '';
+        }
+        
+        return cedulaExistenteNum === cedulaNumero;
+      });
+      
       if (cedulaRepetida) {
         $('#h_cedula_numero').focus();
-        Swal.fire('Cédula Duplicada', `La cédula ${habitanteData.cedula} ya se encuentra en la lista de integrantes de esta ficha.`, 'error');
+        Swal.fire('Cédula Duplicada', `La cédula ${cedulaCompleta} ya se encuentra en la lista de integrantes de esta ficha.`, 'error');
         return;
       }
 
@@ -468,15 +501,39 @@
       
       // Parsear cédula para separar tipo y número (ej: "V-26123456")
       let cedulaTipo = 'V';
-      let cedulaNumero = h.cedula;
+      let cedulaNumero = '';
       
-      if (h.cedula && h.cedula.includes('-')) {
-        const partes = h.cedula.split('-');
-        cedulaTipo = partes[0].toUpperCase();
-        cedulaNumero = partes[1] || '';
-      } else if (h.cedula) {
-        // Si no tiene guión, asumir que son solo números (Venezolano)
-        cedulaNumero = h.cedula.replace(/[^0-9]/g, '');
+      // Prioridad 1: Usar tipo_cedula y cedula por separado si existen (formato normalizado)
+      if (h.tipo_cedula && h.cedula !== undefined) {
+        cedulaTipo = h.tipo_cedula.toUpperCase();
+        // Si h.cedula ya tiene prefijo, extraer solo la parte numérica
+        const cedulaStr = String(h.cedula);
+        if (cedulaStr.includes('-')) {
+          const partes = cedulaStr.split('-');
+          cedulaNumero = partes[1] || '';
+        } else {
+          cedulaNumero = cedulaStr.replace(/[^0-9]/g, '');
+        }
+      } 
+      // Prioridad 2: Usar cedula_completa si existe
+      else if (h.cedula_completa) {
+        const cedulaFuente = h.cedula_completa;
+        if (cedulaFuente && cedulaFuente.includes('-')) {
+          const partes = cedulaFuente.split('-');
+          cedulaTipo = partes[0].toUpperCase();
+          cedulaNumero = partes[1] || '';
+        }
+      }
+      // Prioridad 3: Fallback a h.cedula directamente
+      else {
+        let cedulaFuente = h.cedula || '';
+        if (cedulaFuente && cedulaFuente.includes('-')) {
+          const partes = cedulaFuente.split('-');
+          cedulaTipo = partes[0].toUpperCase();
+          cedulaNumero = partes[1] || '';
+        } else if (cedulaFuente) {
+          cedulaNumero = cedulaFuente.replace(/[^0-9]/g, '');
+        }
       }
       
       $('#habitante_index').val(index);
@@ -522,12 +579,38 @@
         return;
       }
 
+      // Normalizar datos de habitantes antes de enviar al backend
+      const habitantesNormalizados = habitantesList.map(h => {
+        // Construir cedula_completa para el backend si no existe
+        let cedulaCompleta = h.cedula_completa;
+        if (!cedulaCompleta && h.tipo_cedula && h.cedula !== undefined) {
+          const cedulaStr = String(h.cedula);
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaCompleta = cedulaStr;
+          } else {
+            cedulaCompleta = `${h.tipo_cedula}-${cedulaStr}`;
+          }
+        }
+        
+        return {
+          id: h.id,
+          cedula: cedulaCompleta,  // Backend espera formato completo "V-12345678"
+          nombre: h.nombre,
+          apellido: h.apellido,
+          fecha_nacimiento: h.fecha_nacimiento,
+          genero: h.genero,
+          nivel_educativo: h.nivel_educativo,
+          ocupacion: h.ocupacion,
+          es_jefe_familia: h.es_jefe_familia
+        };
+      });
+
       const payload = {
         nombre_familia: nombreFamilia,
         vivienda: vivienda,
         catastro: catastro,
         direccion: direccion,
-        habitantes: habitantesList
+        habitantes: habitantesNormalizados
       };
 
       const url = familiaId ? `/api/familias/${familiaId}/` : '/api/familias/';
