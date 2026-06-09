@@ -136,11 +136,11 @@
                         <tr>
                           <td>
                             <i class="fas fa-user me-2 text-muted"></i>
-                            {{ integrante.habitante.persona.name }} {{ integrante.habitante.persona.surname }}
+                            {{ integrante.habitante.nombre }} {{ integrante.habitante.apellido }}
                           </td>
                           <td>
                             <span class="badge bg-light text-dark">
-                              {{ integrante.habitante.persona.document_number }}
+                              {{ integrante.habitante.cedula }}
                             </span>
                           </td>
                           <td>
@@ -159,7 +159,7 @@
                                   method="post" style="display:inline;">
                               {% csrf_token %}
                               <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                      onclick="return confirm('¿Remover a {{ integrante.habitante.persona.name }} del proyecto?')"
+                                      onclick="return confirm('¿Remover a {{ integrante.habitante.nombre }} del proyecto?')"
                                       title="Remover del proyecto">
                                 <i class="fas fa-user-minus"></i>
                               </button>
@@ -191,7 +191,7 @@
                             <span class="badge bg-secondary float-end">{{ lista|length }}</span>
                             <ul class="list-unstyled mb-0 mt-2 small">
                               {% for intg in lista %}
-                              <li>{{ intg.habitante.persona.name }} {{ intg.habitante.persona.surname }}</li>
+                              <li>{{ intg.habitante.nombre }} {{ intg.habitante.apellido }}</li>
                               {% endfor %}
                             </ul>
                           </div>

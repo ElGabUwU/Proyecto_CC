@@ -125,8 +125,8 @@
                           <th>#</th>
                           <th>Nombre Completo</th>
                           <th>Cédula</th>
-                          <th>Género</th>
-                          <th>Familia</th>
+                          <!-- <th>Género</th>
+                          <th>Familia</th> -->
                           <th>Fecha Registro</th>
                           <th>Acciones</th>
                         </tr>
@@ -137,19 +137,19 @@
                           <td>{{ forloop.counter }}</td>
                           <td>
                             <i class="fas fa-user me-2 text-muted"></i>
-                            {{ participante.habitante.persona.name }} {{ participante.habitante.persona.surname }}
+                            {{ participante.habitante.nombre }} {{ participante.habitante.apellido }}
                           </td>
                           <td>
                             <span class="badge bg-light text-dark">
-                              {{ participante.habitante.persona.document_number }}
+                              {{ participante.habitante.cedula }}
                             </span>
                           </td>
-                          <td>
-                            {{ participante.habitante.persona.get_gender_display }}
+                          <!-- <td>
+                            {{ participante.habitante.get_genero_display }}
                           </td>
                           <td>
-                            <small>{{ participante.habitante.familia.jefe_familia.name }} {{ participante.habitante.familia.jefe_familia.surname }}</small>
-                          </td>
+                            <small>{{ participante.habitante.familia.jefe_familia.apellido }}</small>
+                          </td> -->
                           <td>{{ participante.fecha_registro|date:"d/m/Y H:i" }}</td>
                           <td>
                             {% if censo.estatus == 'activo' %}
@@ -157,7 +157,7 @@
                                   method="post" style="display:inline;">
                               {% csrf_token %}
                               <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                      onclick="return confirm('¿Remover a {{ participante.habitante.persona.name }} del censo?')"
+                                      onclick="return confirm('¿Remover a {{ participante.habitante.nombre }} del censo?')"
                                       title="Remover del censo">
                                 <i class="fas fa-user-minus"></i>
                               </button>
