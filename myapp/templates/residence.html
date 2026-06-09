@@ -5,9 +5,8 @@
   <style>
     @page {
       size: letter;
-      margin: 3cm 2.5cm 2.5cm 2.5cm;
+      margin: 1.5cm 2.5cm 2.5cm 2.5cm;
     }
-    
     body {
       font-family: Arial, sans-serif;
       font-size: 13px;
@@ -15,22 +14,46 @@
       line-height: 1.6;
     }
 
-    /* Estructura segura basada en Tablas para xhtml2pdf (No usar Flexbox) */
+    /* 🏛️ Estructura del Encabezado Institucional Unificado */
     .header-table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 5px;
     }
-
-    .header-text {
-      text-align: center;
-      font-size: 11px;
+    .logo-cell {
+      width: 25%;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .logo-img {
+      width: 70px;
+      height: auto;
+    }
+    .legend-text {
+      font-size: 8px;
       font-weight: bold;
-      text-transform: uppercase;
-      line-height: 1.5;
+      line-height: 1.2;
+      margin-top: 4px;
+      color: #000000;
+    }
+    .header-text-cell {
+      width: 75%;
+      text-align: center;
+      vertical-align: middle;
+      padding-right: 40px;
+    }
+    .header-text {
+      font-size: 9px; 
+      font-weight: bold; 
+      line-height: 1.4;
     }
 
-    /* Título */
+    /* 📄 Estilos de la Estructura de Trámite */
+    .divider {
+      border: none;
+      border-top: 1.5px solid #000;
+      margin: 2px 0 15px;
+    }
     .title {
       text-align: center;
       font-size: 16px;
@@ -39,22 +62,16 @@
       margin: 30px 0 20px;
       text-decoration: underline;
     }
-
-    /* Oficio */
     .oficio {
       margin-bottom: 20px;
       font-size: 13px;
     }
-
-    /* Párrafos */
     .paragraph {
       text-align: justify;
       margin-bottom: 16px;
       font-size: 13px;
       text-indent: 1.5cm;
     }
-
-    /* Firmas organizadas con tablas */
     .signatures-label {
       text-align: center;
       margin-top: 40px;
@@ -62,55 +79,40 @@
       font-size: 13px;
       font-weight: bold;
     }
-
     .signatures-table {
       width: 100%;
       border-collapse: collapse;
     }
-
     .signature-block {
       text-align: center;
       width: 50%;
       vertical-align: top;
     }
-
     .signature-line {
       border-top: 1px solid #333;
       width: 200px;
       margin: 0 auto 8px;
     }
-
     .signature-name {
       font-weight: bold;
       font-size: 11px;
     }
-
     .signature-info {
       font-size: 11px;
       line-height: 1.4;
     }
-
     .signature-role {
       font-size: 10px;
       text-transform: uppercase;
       font-weight: bold;
       margin-top: 4px;
     }
-
-    /* Footer */
     .footer {
       text-align: center;
       font-size: 12px;
       font-weight: bold;
       margin-top: 50px;
       text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .divider {
-      border: none;
-      border-top: 1px solid #ccc;
-      margin: 10px 0 20px;
     }
   </style>
 </head>
@@ -118,10 +120,17 @@
 
   <table class="header-table">
     <tr>
-      <td class="header-text">
-        República Bolivariana de Venezuela<br>
-        Ministerio del Poder Popular para las Comunas y Movimientos Sociales<br>
-        Rubio – Municipio Junín – Estado Táchira
+      <td class="logo-cell">
+        <img src="myapp/static/assets/images/CC_logo.png" class="logo-img"><br>
+        <div class="legend-text">Consejo Comunal Urbanización<br>Manuel Pulido Méndez</div>
+      </td>
+      <td class="header-text-cell">
+        <div class="header-text">
+          REPÚBLICA BOLIVARIANA DE VENEZUELA<br>
+          MINISTERIO DEL PODER POPULAR PARA LAS COMUNAS Y LOS MOVIMIENTOS SOCIALES<br>
+          CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ<br>
+          SISTEMA DE INTEGRACIÓN COMUNAL (SINCO)
+        </div>
       </td>
     </tr>
   </table>
@@ -133,23 +142,18 @@
   <p class="oficio">Oficio/ N° CC-{{ constancia.id }}</p>
 
   <p class="paragraph">
-    Nosotros voceros del <strong>Consejo Comunal La Victoria Parte Baja</strong>, abajo firmantes registrados por ante
-    la Oficina de Registro del Ministerio del Poder Popular para las Comunas y Movimientos Sociales bajo
-    <strong>CODIGO U-CCO-18-06-01-011530, CÓDIGO SITUR Nº: 20-14-01-001-0033, RIF C-299637262,</strong>
-    Sector 01 Código C.L.P.P. 152, ubicados en La Victoria Parte Baja del Municipio Junín del Estado
-    Táchira. En uso de las atribuciones legales que nos confiere la Ley Orgánica del Poder Popular y la
-    Ley Orgánica de los Consejos Comunales.
+    Nosotros voceros del <strong>Consejo Comunal Urbanización Manuel Pulido Méndez</strong>, abajo firmantes registrados por ante
+    la Oficina de Registro del Ministerio del Poder Popular para las Comunas y los Movimientos Sociales, en uso de las atribuciones legales que nos confiere la Ley Orgánica del Poder Popular y la Ley Orgánica de los Consejos Comunales.
   </p>
 
   <p class="paragraph">
     Por medio del presente hacemos constar que el ciudadano(a): <strong>{{ solicitante.apellido|upper }}, {{ solicitante.nombre|upper }}</strong>,
     venezolano, mayor de edad, <strong>Titular de la Cédula de Identidad Nº V- {{ solicitante.cedula }},</strong> residenciado en la
-    <strong>{{ familia.direccion|default:"COMUNIDAD LA VICTORIA PARTE BAJA" }},</strong> Parroquia Capital del Municipio
-    Junín del Estado Táchira, y damos fe que <u>es habitante</u> de nuestra comunidad desde hace {{ tiempo }}.
+    <strong>{{ familia.direccion|default:"URBANIZACIÓN MANUEL PULIDO MÉNDEZ" }},</strong> Parroquia Capital del Municipio San Cristóbal del Estado Táchira, y damos fe que <u>es habitante</u> de nuestra comunidad.
   </p>
 
   <p class="paragraph">
-    Constancia que se expide a solicitud de la parte interesada en Rubio, Municipio Junín, en fecha <strong>{{ fecha_emision|date:"d/m/Y" }}</strong>.
+    Constancia que se expide a solicitud de la parte interesada en San Cristóbal, en fecha <strong>{{ fecha_emision|date:"d/m/Y" }}</strong>.
   </p>
 
   <p class="signatures-label">Por el Consejo Comunal</p>
@@ -157,39 +161,19 @@
   <table class="signatures-table" style="margin-bottom: 40px;">
     <tr>
       <td class="signature-block">
+        <br><br>
         <div class="signature-line"></div>
         <p class="signature-name">Sánchez Roa Marlene Jacqueline</p>
-        <p class="signature-info">
-          C.I. V-9.143.384<br>
-          Telf.: +58 416-6743327
-        </p>
-        <p class="signature-role">Vocera de Niños, Niñas y Adolescentes</p>
+        <p class="signature-info">C.I. V-9.143.384</p>
+        <p class="signature-role">Vocera Principal</p>
       </td>
       <td class="signature-block">
+        <br><br>
         <div class="signature-line"></div>
         <p class="signature-name">Blanco Esteves Sandra Maily</p>
-        <p class="signature-info">
-          C.I. V-9.461.369<br>
-          Telf.: +58 416-1326068
-        </p>
-        <p class="signature-role">Vocera de Alimentación</p>
+        <p class="signature-info">C.I. V-9.461.369</p>
+        <p class="signature-role">Vocera de Finanzas</p>
       </td>
-    </tr>
-  </table>
-
-  <table class="signatures-table">
-    <tr>
-      <td style="width: 25%;"></td>
-      <td class="signature-block" style="width: 50%;">
-        <div class="signature-line"></div>
-        <p class="signature-name">Fonseca Barrientos Rosa Isabel</p>
-        <p class="signature-info">
-          C.I. V-9.140.933<br>
-          Telf.: +58 424-7070849
-        </p>
-        <p class="signature-role">Vocera de Energía y Gas</p>
-      </td>
-      <td style="width: 25%;"></td>
     </tr>
   </table>
 

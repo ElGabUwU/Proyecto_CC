@@ -14,8 +14,10 @@ from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 from django.utils.decorators import method_decorator
+from django.conf import settings
 import json
 from datetime import datetime, timedelta
+import os
 import io
 from xhtml2pdf import pisa
 import csv
@@ -732,77 +734,79 @@ def generar_acta(request):
             messages.error(request, 'Hubo errores al validar el formulario del Acta.')
     return redirect('documentacion')
 
-
-@require_GET
 def descargar_constancia(request, id):
-    constancia = get_object_or_404(ConstanciaResidencia, id=id)
-    solicitante = constancia.habitante
-    
-    # 🆕 BLINDAJE CRÍTICO
-    familia = getattr(solicitante, 'familia', None)
-    
-    if familia is not None:
-        jefe = familia.habitantes.filter(es_jefe_familia=True, is_deleted=False).first()
-        if not jefe:
-            jefe = familia.habitantes.filter(is_deleted=False).first()
-    else:
-        jefe = solicitante  # Si no hay familia, el jefe por defecto es el mismo solicitante
+    try:
+        # 1. Recuperamos la constancia e inspectamos sus relaciones
+        constancia = ConstanciaResidencia.objects.get(id=id)
+        habitante = constancia.habitante
+        familia_obj = getattr(habitante, 'familia', None)
         
-    context = {
-        'constancia': constancia,
-        'solicitante': solicitante,
-        'familia': familia,
-        'jefe': jefe,
-        'tiempo': 'VARIOS AÑOS',
-        'motivo': constancia.finalidad,
-        'fecha_emision': constancia.fecha_documento,
-    }
-    
-    html_string = render_to_string('residence.html', context)
-    
-    result = io.BytesIO()
-    pisa_status = pisa.pisaDocument(io.BytesIO(html_string.encode("UTF-8")), result)
-    
-    if not pisa_status.err:
-        response = HttpResponse(result.getvalue(), content_type='application/pdf')
-        cedula_pdf = jefe.cedula if jefe else constancia.id
-        response['Content-Disposition'] = f'inline; filename="Constancia_{cedula_pdf}.pdf"'
-        return response
+        # 2. Reconstruimos el contexto para residence.html inyectando los objetos puros
+        context = {
+            'constancia': constancia,
+            'motivo': constancia.finalidad,
+            'solicitante': habitante,   # Permite usar {{ solicitante.nombre }} y {{ solicitante.cedula }}
+            'familia': familia_obj,     # Permite usar {{ familia.direccion }} en vez de salir "Nose"
+            'fecha_emision': constancia.fecha_documento,
+        }
         
-    messages.error(request, 'Ocurrió un error técnico al compilar el PDF de la constancia.')
-    return redirect('documentacion')
-
+        # 3. Renderizamos el HTML corregido a cadena de texto
+        html = render_to_string('residence.html', context)
+        
+        # 4. Generamos el flujo de respuesta limpia
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Constancia_Residencia_{id}.pdf"'
+        
+        # 5. Compilación del binario con el callback de imágenes activo
+        pdf = pisa.CreatePDF(
+            src=html,
+            dest=response,
+            encoding='utf-8',
+            link_callback=link_callback
+        )
+        
+        if not pdf.err:
+            return response
+            
+        return HttpResponse('Error interno al compilar la estructura del PDF.', status=500)
+        
+    except ConstanciaResidencia.DoesNotExist:
+        return HttpResponse('La constancia especificada no existe en la base de datos.', status=404)
+    
+    
 @require_GET
 def descargar_acta(request, id):
-    # 1. Recuperamos el acta
+    # 1. Recuperamos el acta de la base de datos
     acta = get_object_or_404(ActaReunion, id=id)
     
-    # 2. Tu contexto con el nombre de tu plantilla corregido
+    # 2. Contexto limpio para la plantilla 'acta_reunion.html'
     context = {'acta': acta}
-    html = render_to_string('acta_reunion.html', context) # 👈 Tu plantilla real
+    html = render_to_string('acta_reunion.html', context)
     
-    # 3. Creamos un buffer de bytes en memoria (Evita heredar tipos no iterables)
-    result = io.BytesIO()
+    # 3. Preparar la respuesta HTTP tipo PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Acta_Asamblea_{acta.id}.pdf"'
     
-    # 4. Compilamos el PDF dentro del buffer de memoria
-    pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result)
+    # 4. Compilamos pasándole el link_callback para que lea el logo en el disco
+    pdf = pisa.CreatePDF(
+        src=html,
+        dest=response,
+        encoding='utf-8',
+        link_callback=link_callback  # 👈 El secreto para cargar la imagen
+    )
     
-    # 5. Si no hubo errores, extraemos los bytes del buffer y respondemos
+    # 5. Si no hubo errores, retornamos el archivo binario descargable
     if not pdf.err:
-        response = HttpResponse(result.getvalue(), content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="Acta_Asamblea_{acta.id}.pdf"'
         return response
     
-    # 6. Si falla xhtml2pdf por algún tag de HTML inválido, te lo dirá en texto plano
     return HttpResponse('Error al estructurar los elementos del PDF de la Asamblea.', status=500)
-
 
 def previa_constancia(request, constancia_id):
     try:
         constancia = ConstanciaResidencia.objects.get(id=constancia_id)
         habitante = constancia.habitante
         
-        # 🆕 BLINDAJE CRÍTICO: Verificamos si realmente existe la relación antes de pedir atributos
+        # Verificamos si realmente existe la relación antes de pedir atributos
         familia_obj = getattr(habitante, 'familia', None)
         
         if familia_obj is not None:
@@ -920,3 +924,20 @@ def obtener_estadisticas_comunidad():
             fecha__year=timezone.now().year
         ).aggregate(Sum('monto'))['monto__sum'] or 0,
     }
+    
+def link_callback(uri, rel):
+    """
+    Traduce las rutas del HTML a rutas absolutas del disco duro
+    para que xhtml2pdf pueda incrustar el logo CC_logo.png de forma nativa.
+    """
+    if uri.startswith(settings.STATIC_URL):
+        path = os.path.join(settings.BASE_DIR, uri.replace(settings.STATIC_URL, ""))
+    elif uri.startswith('static/'):
+        path = os.path.join(settings.BASE_DIR, uri.replace('static/', ''))
+    else:
+        path = os.path.join(settings.BASE_DIR, uri)
+        
+    if not os.path.isfile(path):
+        print(f"[WARNING xhtml2pdf] Archivo no hallado en disco: {path}")
+        
+    return path
