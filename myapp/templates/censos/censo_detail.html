@@ -125,8 +125,8 @@
                           <th>#</th>
                           <th>Nombre Completo</th>
                           <th>Cédula</th>
-                          <th>Género</th>
-                          <th>Familia</th>
+                          <!-- <th>Género</th>
+                          <th>Familia</th> -->
                           <th>Fecha Registro</th>
                           <th>Acciones</th>
                         </tr>
@@ -144,12 +144,12 @@
                               {{ participante.habitante.cedula }}
                             </span>
                           </td>
-                          <td>
+                          <!-- <td>
                             {{ participante.habitante.get_genero_display }}
                           </td>
                           <td>
-                            <small>{{ participante.habitante.familia.nombre_familia|default:"Sin familia" }}</small>
-                          </td>
+                            <small>{{ participante.habitante.familia.jefe_familia.apellido }}</small>
+                          </td> -->
                           <td>{{ participante.fecha_registro|date:"d/m/Y H:i" }}</td>
                           <td>
                             {% if censo.estatus == 'activo' %}
@@ -340,43 +340,43 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // Variables globales
-    const censoId = {{ censo.pk }};
-    
-    // Búsqueda de habitantes con debounce
-    let timeoutBusqueda;
-    document.getElementById('buscar_habitante').addEventListener('input', function() {
-      clearTimeout(timeoutBusqueda);
-      const query = this.value.trim();
+    document.addEventListener('DOMContentLoaded', function() {
+      // Variables globales
+      const censoId = {{ censo.pk }};
       
-      if (query.length >= 2) {
-        timeoutBusqueda = setTimeout(() => buscarHabitantes(query), 300);
-      } else {
-        document.getElementById('resultadosBusqueda').style.display = 'none';
-      }
-    });
-    
-    document.getElementById('btnBuscar').addEventListener('click', function() {
-      const query = document.getElementById('buscar_habitante').value.trim();
-      if (query.length >= 2) {
-        buscarHabitantes(query);
-      }
-    });
-    
-    function buscarHabitantes(query) {
-      fetch(`/censos/api/buscar-habitantes/?q=${encodeURIComponent(query)}&censo_id=${censoId}`)
-        .then(response => response.json())
-        .then(data => {
-          const lista = document.getElementById('listaResultados');
-          lista.innerHTML = '';
-          
-          if (data.habitantes.length === 0) {
-            lista.innerHTML = '<div class="list-group-item text-muted">No se encontraron habitantes.</div>';
-          } else {
-            data.habitantes.forEach(h => {
-              lista.innerHTML += `
-                <button type="button" class="list-group-item list-group-item-action" 
-                        onclick="seleccionarHabitante(${h.id}, '${h.nombre}', '${h.documento}')">
+      // Búsqueda de habitantes con debounce
+      let timeoutBusqueda;
+      const inputBuscar = document.getElementById('buscar_habitante');
+      const btnBuscar = document.getElementById('btnBuscar');
+      const resultadosDiv = document.getElementById('resultadosBusqueda');
+      const listaResultados = document.getElementById('listaResultados');
+      const habitanteSeleccionadoDiv = document.getElementById('habitanteSeleccionado');
+      const nombreHabitanteSpan = document.getElementById('nombreHabitante');
+      const habitanteIdInput = document.getElementById('habitanteId');
+      const btnAgregar = document.getElementById('btnAgregar');
+      
+      // Función para buscar habitantes (conectada con Django via AJAX)
+      function buscarHabitantes(query) {
+        // Mostrar estado de "buscando..."
+        listaResultados.innerHTML = '<div class="list-group-item text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Buscando...</div>';
+        resultadosDiv.style.display = 'block';
+        
+        fetch(`/censos/api/buscar-habitantes/?q=${encodeURIComponent(query)}&censo_id=${censoId}`)
+          .then(response => {
+            if (!response.ok) throw new Error('Error en la respuesta del servidor');
+            return response.json();
+          })
+          .then(data => {
+            listaResultados.innerHTML = '';
+            
+            if (data.habitantes.length === 0) {
+              listaResultados.innerHTML = '<div class="list-group-item text-muted">No se encontraron habitantes.</div>';
+            } else {
+              data.habitantes.forEach(h => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'list-group-item list-group-item-action';
+                btn.innerHTML = `
                   <div class="d-flex justify-content-between">
                     <div>
                       <strong>${h.nombre}</strong><br>
@@ -387,23 +387,67 @@
                       <small>${h.familia}</small>
                     </div>
                   </div>
-                </button>
-              `;
-            });
-          }
+                `;
+                btn.onclick = function() { seleccionarHabitante(h.id, h.nombre, h.documento); };
+                listaResultados.appendChild(btn);
+              });
+            }
+          })
+          .catch(error => {
+            console.error('Error al buscar habitantes:', error);
+            listaResultados.innerHTML = '<div class="list-group-item text-danger">Error al buscar. Intente nuevamente.</div>';
+          });
+      }
+      
+      // Función para seleccionar un habitante de la lista
+      function seleccionarHabitante(id, nombre, documento) {
+        habitanteIdInput.value = id;
+        nombreHabitanteSpan.textContent = `${nombre} (C.I.: ${documento})`;
+        habitanteSeleccionadoDiv.style.display = 'block';
+        btnAgregar.disabled = false;
+        resultadosDiv.style.display = 'none';
+        inputBuscar.value = '';
+      }
+      
+      // Event listener para el input de búsqueda (con debounce de 300ms)
+      if (inputBuscar) {
+        inputBuscar.addEventListener('input', function() {
+          clearTimeout(timeoutBusqueda);
+          const query = this.value.trim();
           
-          document.getElementById('resultadosBusqueda').style.display = 'block';
+          if (query.length >= 2) {
+            timeoutBusqueda = setTimeout(() => buscarHabitantes(query), 300);
+          } else {
+            resultadosDiv.style.display = 'none';
+          }
         });
-    }
-    
-    function seleccionarHabitante(id, nombre, documento) {
-      document.getElementById('habitanteId').value = id;
-      document.getElementById('nombreHabitante').textContent = `${nombre} (C.I.: ${documento})`;
-      document.getElementById('habitanteSeleccionado').style.display = 'block';
-      document.getElementById('btnAgregar').disabled = false;
-      document.getElementById('resultadosBusqueda').style.display = 'none';
-      document.getElementById('buscar_habitante').value = '';
-    }
+      }
+      
+      // Event listener para el botón de búsqueda
+      if (btnBuscar) {
+        btnBuscar.addEventListener('click', function() {
+          const query = inputBuscar.value.trim();
+          if (query.length >= 2) {
+            buscarHabitantes(query);
+          }
+        });
+      }
+      
+      // Resetear el formulario cuando se cierra el modal
+      const participanteModal = document.getElementById('participanteModal');
+      if (participanteModal) {
+        participanteModal.addEventListener('hidden.bs.modal', function() {
+          // Limpiar selección
+          habitanteIdInput.value = '';
+          nombreHabitanteSpan.textContent = '';
+          habitanteSeleccionadoDiv.style.display = 'none';
+          btnAgregar.disabled = true;
+          resultadosDiv.style.display = 'none';
+          inputBuscar.value = '';
+          document.getElementById('id_observaciones').value = '';
+        });
+      }
+    });
     
     // Confirmar eliminación del censo
     function confirmarEliminacionCenso() {

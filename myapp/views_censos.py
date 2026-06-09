@@ -200,13 +200,15 @@ def buscar_habitantes_censo(request):
         Q(nombre__icontains=query) |
         Q(apellido__icontains=query) |
         Q(cedula__icontains=query)
-    ).select_related('familia').order_by('nombre')[:20]
+    ).select_related('familia').order_by('nombre')
     
     if censo_id:
         registrados = CensoParticipante.objects.filter(
             censo_id=censo_id
         ).values_list('habitante_id', flat=True)
         habitantes = habitantes.exclude(id__in=registrados)
+
+    habitantes = habitantes[:20]
     
     resultados = []
     for h in habitantes:
