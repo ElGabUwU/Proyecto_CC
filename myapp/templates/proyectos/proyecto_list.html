@@ -340,11 +340,12 @@
     }
     
     // Confirmar eliminación con SweetAlert2
-    document.querySelectorAll('.eliminar-proyecto-btn').forEach(function(button) {
-      button.addEventListener('click', function(event) {
+    document.querySelectorAll('.eliminar-proyecto-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(event) {
         event.preventDefault();
         const nombre = this.getAttribute('data-proyecto-nombre');
         const url = this.getAttribute('data-delete-url');
+        const form = this.closest('form');
         
         Swal.fire({
           title: '¿Está seguro?',
@@ -358,8 +359,6 @@
           cancelButtonText: 'Cancelar'
         }).then((result) => {
           if (result.isConfirmed) {
-            // Enviar formulario
-            const form = button.closest('form');
             form.submit();
           }
         });
