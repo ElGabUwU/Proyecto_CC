@@ -301,11 +301,13 @@ def buscar_habitantes_proyecto(request):
         Q(nombre__icontains=query) |
         Q(apellido__icontains=query) |
         Q(cedula__icontains=query)
-    ).select_related('familia').order_by('nombre')[:20]
+    ).select_related('familia').order_by('nombre')
     
     if proyecto_id:
         asignados = ProyectoIntegrante.objects.filter(proyecto_id=proyecto_id).values_list('habitante_id', flat=True)
         habitantes = habitantes.exclude(id__in=asignados)
+    
+    habitantes = habitantes[:20]  # Aplicar el slice al final, después de todos los filtros
     
     resultados = []
     for h in habitantes:

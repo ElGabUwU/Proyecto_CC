@@ -34,7 +34,7 @@
             <div class="col-md-9">
               <div class="input-group">
                 <span class="input-group-text bg-transparent text-muted"><i class="fas fa-search"></i></span>
-                <input type="text" name="q" value="{{ query|default:'' }}" class="form-control input-busqueda" placeholder="Buscar por apellido de familia, cédula, nombre, catastro...">
+                <input type="text" name="q" value="{{ query|default:'' }}" class="form-control input-busqueda" placeholder="Buscar por apellido de familia, cédula, nombre,...">
               </div>
             </div>
             <div class="col-md-3">
@@ -48,7 +48,7 @@
                 <tr>
                   <th>Familia / Hogar</th>
                   <th>N° Vivienda</th>
-                  <th>Código Catastro</th>
+                  <th>Calle/Vereda</th>
                   <th>Jefe de Familia</th>
                   <th>Integrantes</th>
                   <th class="text-center">Acciones</th>
@@ -69,7 +69,7 @@
                   </td>
                   <td>
                     <button class="btn btn-sm btn-outline-primary px-3" onclick="cargarIntegrantes('{{ f.id }}', '{{ f.nombre_familia }}')">
-                      <i class="fas fa-users me-1"></i> Ver ({{ f.habitantes.count }})
+                      <i class="fas fa-users me-1"></i> Ver ({{ f.cantidad_habitantes }})
                     </button>
                   </td>
                   <td class="text-center">

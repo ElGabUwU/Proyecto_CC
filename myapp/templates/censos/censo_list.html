@@ -134,8 +134,10 @@
                     </button>
                     <form action="{% url 'eliminar_censo' censo.pk %}" method="post" style="display:inline;">
                       {% csrf_token %}
-                      <button type="submit" class="btn btn-sm btn-danger mb-1" 
-                              onclick="return confirmarEliminacion('{{ censo.nombre_censo }}')" title="Eliminar">
+                      <button type="submit" class="btn btn-sm btn-danger mb-1 eliminar-censo-btn" 
+                              data-censo-nombre="{{ censo.nombre_censo }}" 
+                              data-delete-url="{% url 'eliminar_censo' censo.pk %}"
+                              title="Eliminar">
                         <i class="fas fa-trash"></i>
                       </button>
                     </form>
@@ -317,10 +319,32 @@
       window.location.href = url.toString();
     }
     
-    // Confirmar eliminación
-    function confirmarEliminacion(nombre) {
-      return confirm(`¿Está seguro de eliminar el censo "${nombre}"?\n\nEsta acción no se puede deshacer.`);
-    }
+    // Confirmar eliminación con SweetAlert2
+    document.querySelectorAll('.eliminar-censo-btn').forEach(function(button) {
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+        const nombre = this.getAttribute('data-censo-nombre');
+        const url = this.getAttribute('data-delete-url');
+        
+        Swal.fire({
+          title: '¿Está seguro?',
+          html: `Va a eliminar el censo: <strong>${nombre}</strong><br><br>
+                 <span class="text-danger">Esta acción no se puede deshacer.</span>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Enviar formulario
+            const form = button.closest('form');
+            form.submit();
+          }
+        });
+      });
+    });
     
     // Mensajes de Django
     $(document).ready(function () {
