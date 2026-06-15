@@ -64,8 +64,8 @@ urlpatterns = [
     path('comunidad/documentacion/constancia/descargar/<int:id>/', views_comunidad.descargar_constancia, name='descargar_constancia'),
     path('comunidad/documentacion/acta/descargar/<int:id>/', views_comunidad.descargar_acta, name='descargar_acta'),
     # APIs JSON para las previsualizaciones interactivas de SweetAlert2
-    path('documentacion/constancia/previa/<int:id>/', views_comunidad.previa_constancia, name='previa_constancia'),
-    path('documentacion/acta/previa/<int:id>/', views_comunidad.previa_acta, name='previa_acta'),
+    # path('documentacion/constancia/previa/<int:id>/', views_comunidad.previa_constancia, name='previa_constancia'),
+    # path('documentacion/acta/previa/<int:id>/', views_comunidad.previa_acta, name='previa_acta'),
     
     # ============================================
     # Dashboard Comunitario
@@ -123,6 +123,14 @@ urlpatterns = [
     
     # Dashboard de Censos
     path('censos/dashboard/', views_censos.dashboard_censos, name='dashboard_censos'),
+    
+    # ReportesDemográficos
+    path('documentacion/reportes/panel/', views_comunidad.panel_reportes, name='panel_reportes'),
+    # ReporteExcel
+    path('documentacion/reporte/excel/<int:reporte_id>/', views_comunidad.exportar_reporte_excel, name='exportar_reporte_excel'),
+    
+    # ReportePDF
+    path('documentacion/reporte/pdf/<int:reporte_id>/', views_comunidad.exportar_reporte_pdf, name='exportar_reporte_pdf'),
 
 ]
 

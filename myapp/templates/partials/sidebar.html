@@ -116,16 +116,25 @@
           <i class="fas fa-money-bill-wave me-2"></i>
           <span class="nav-text">Finanzas</span>
         </a>
-        
+
+        <!-- Documentacion -->
         <a class="nav-link" href="{% url 'documentacion' %}"
-          {% if request.resolver_match.url_name == 'documentacion' %}style="background-color: #922323"{% endif %}>
-          <i class="fas fa-file-contract me-2"></i>
+          {% if request.resolver_match.url_name == 'documentacion' %}style="background-color: #922323;"{% endif %}>
+          <i class="fas fa-file-alt me-3"></i>
           <span class="nav-text">Documentación</span>
         </a>
+
+        <!-- Reportes Demográficos -->
+        <a class="nav-link" href="{% url 'panel_reportes' %}"
+          {% if 'reporte' in request.resolver_match.url_name %}style="background-color: #922323;"{% endif %}>
+          <i class="fas fa-chart-pie me-2"></i> 
+          <span class="nav-text">Reportes</span>
+        </a>
+
         <!-- Censos -->
         <a class="nav-link" href="{% url 'censos' %}"
           {% if request.resolver_match.url_name == 'censos' %}style="background-color: #922323"{% endif %}>
-          <i class="fas fa-clipboard-list me-2"></i>
+          <i class="fas fa-clipboard-list me-3"></i>
           <span class="nav-text">Censos</span>
         </a>
       </div>
@@ -190,17 +199,25 @@
       <hr class="border-secondary mx-4 my-3">
       <div class="px-4 mb-3">
       </div>
+
       <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'familias' %}"
         {% if request.resolver_match.url_name == 'familias' %}style="background-color: #922323;"{% endif %}>
         <i class="fas fa-home me-3"></i> Familias
       </a>
+
       <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'finanzas' %}"
         {% if request.resolver_match.url_name == 'finanzas' %}style="background-color: #922323;"{% endif %}>
         <i class="fas fa-money-bill-wave me-3"></i> Finanzas
       </a>
+
       <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'documentacion' %}"
         {% if request.resolver_match.url_name == 'documentacion' %}style="background-color: #922323;"{% endif %}>
-        <i class="fas fa-file-contract me-3"></i> Documentación
+        <i class="fas fa-file-alt me-3"></i> Documentación
+      </a>
+      
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'panel_reportes' %}"
+        {% if 'reporte' in request.resolver_match.url_name %}style="background-color: #922323;"{% endif %}>
+        <i class="fas fa-chart-pie me-3"></i> Reportes
       </a>
       {% endif %}
 

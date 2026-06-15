@@ -98,9 +98,9 @@
                         <a href="{% url 'descargar_constancia' constancia.id %}" class="btn btn-sm btn-success">
                           <i class="fas fa-download me-1"></i>Descargar
                         </a>
-                        <button class="btn btn-sm btn-info" onclick="verPreviaConstancia({{ constancia.id }})">
+                        <!-- <button class="btn btn-sm btn-info" onclick="verPreviaConstancia({{ constancia.id }})">
                           <i class="fas fa-eye me-1"></i>Previsualizar
-                        </button>
+                        </button> -->
                       </div>
                     </div>
                     {% empty %}
@@ -226,9 +226,9 @@
                         <a href="{% url 'descargar_acta' acta.id %}" class="btn btn-sm btn-success">
                           <i class="fas fa-download me-1"></i>Descargar
                         </a>
-                        <button class="btn btn-sm btn-info" onclick="verPreviaActa({{ acta.id }})">
+                        <!-- <button class="btn btn-sm btn-info" onclick="verPreviaActa({{ acta.id }})">
                           <i class="fas fa-eye me-1"></i>Previsualizar
-                        </button>
+                        </button> -->
                       </div>
                     </div>
                     {% empty %}
@@ -329,99 +329,99 @@ $(document).ready(function () {
     {% endif %}
 });
 
-// =============================================================================
-// 5. HISTORIAL: PREVISUALIZAR CONSTANCIAS
-// =============================================================================
-function verPreviaConstancia(constanciaId) {
-    Swal.fire({
-        title: 'Cargando previsualización...',
-        allowOutsideClick: false,
-        background: '#1e293b',
-        color: '#fff',
-        didOpen: () => { Swal.showLoading(); }
-    });
+// // =============================================================================
+// // 5. HISTORIAL: PREVISUALIZAR CONSTANCIAS
+// // =============================================================================
+// function verPreviaConstancia(constanciaId) {
+//     Swal.fire({
+//         title: 'Cargando previsualización...',
+//         allowOutsideClick: false,
+//         background: '#1e293b',
+//         color: '#fff',
+//         didOpen: () => { Swal.showLoading(); }
+//     });
     
-    fetch(`/documentacion/constancia/previa/${constanciaId}/`, { credentials: 'include' })
-        .then(response => response.json())
-        .then(data => {
-            Swal.fire({
-                title: `Constancia #${constanciaId}`,
-                background: '#1e293b',
-                color: '#fff',
-                html: `
-                    <div class="text-start text-white">
-                        <p><strong>Familia:</strong> ${data.familia}</p>
-                        <p><strong>Fecha:</strong> ${data.fecha}</p>
-                        <p><strong>Finalidad:</strong> ${data.finalidad}</p>
-                        <hr class="border-secondary">
-                        <p><strong>Contenido:</strong></p>
-                        <div class="border p-3 bg-dark text-white rounded" style="max-height:200px; overflow-y:auto; font-size:13px; text-align:justify;">
-                            ${data.contenido}
-                        </div>
-                    </div>
-                `,
-                showConfirmButton: true,
-                confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
-                showCancelButton: true,
-                cancelButtonText: 'Cerrar',
-                confirmButtonColor: '#0ea5e9'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = `/documentacion/constancia/descargar/${constanciaId}/`;
-                }
-            });
-        })
-        .catch(error => {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
-        });
-}
+//     fetch(`/documentacion/constancia/previa/${constanciaId}/`, { credentials: 'include' })
+//         .then(response => response.json())
+//         .then(data => {
+//             Swal.fire({
+//                 title: `Constancia #${constanciaId}`,
+//                 background: '#1e293b',
+//                 color: '#fff',
+//                 html: `
+//                     <div class="text-start text-white">
+//                         <p><strong>Familia:</strong> ${data.familia}</p>
+//                         <p><strong>Fecha:</strong> ${data.fecha}</p>
+//                         <p><strong>Finalidad:</strong> ${data.finalidad}</p>
+//                         <hr class="border-secondary">
+//                         <p><strong>Contenido:</strong></p>
+//                         <div class="border p-3 bg-dark text-white rounded" style="max-height:200px; overflow-y:auto; font-size:13px; text-align:justify;">
+//                             ${data.contenido}
+//                         </div>
+//                     </div>
+//                 `,
+//                 showConfirmButton: true,
+//                 confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
+//                 showCancelButton: true,
+//                 cancelButtonText: 'Cerrar',
+//                 confirmButtonColor: '#0ea5e9'
+//             }).then((result) => {
+//                 if (result.isConfirmed) {
+//                     window.location.href = `/documentacion/constancia/descargar/${constanciaId}/`;
+//                 }
+//             });
+//         })
+//         .catch(error => {
+//             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
+//         });
+// }
 
-// =============================================================================
-// 6. HISTORIAL: PREVISUALIZAR ACTAS
-// =============================================================================
-function verPreviaActa(actaId) {
-    Swal.fire({
-        title: 'Cargando previsualización...',
-        allowOutsideClick: false,
-        background: '#1e293b',
-        color: '#fff',
-        didOpen: () => { Swal.showLoading(); }
-    });
+// // =============================================================================
+// // 6. HISTORIAL: PREVISUALIZAR ACTAS
+// // =============================================================================
+// function verPreviaActa(actaId) {
+//     Swal.fire({
+//         title: 'Cargando previsualización...',
+//         allowOutsideClick: false,
+//         background: '#1e293b',
+//         color: '#fff',
+//         didOpen: () => { Swal.showLoading(); }
+//     });
     
-    fetch(`/documentacion/acta/previa/${actaId}/`, { credentials: 'include' })
-        .then(response => response.json())
-        .then(data => {
-            Swal.fire({
-                title: data.titulo,
-                background: '#1e293b',
-                color: '#fff',
-                html: `
-                    <div class="text-start text-white">
-                        <p><strong>Fecha Reunión:</strong> ${data.fecha_reunion}</p>
-                        <p><strong>Lugar:</strong> ${data.lugar}</p>
-                        <p><strong>Asistentes:</strong> ${data.asistentes_count} ciudadanos</p>
-                        <hr class="border-secondary">
-                        <p><strong>Texto Redactado (Formato Ministerio):</strong></p>
-                        <div class="border p-3 bg-dark text-white rounded" style="max-height:220px; overflow-y:auto; font-size:13px; text-align:justify; line-height:1.5;">
-                            ${data.contenido}
-                        </div>
-                    </div>
-                `,
-                showConfirmButton: true,
-                confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
-                showCancelButton: true,
-                cancelButtonText: 'Cerrar',
-                confirmButtonColor: '#0ea5e9'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = `/documentacion/acta/descargar/${actaId}/`;
-                }
-            });
-        })
-        .catch(error => {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
-        });
-}
+//     fetch(`/documentacion/acta/previa/${actaId}/`, { credentials: 'include' })
+//         .then(response => response.json())
+//         .then(data => {
+//             Swal.fire({
+//                 title: data.titulo,
+//                 background: '#1e293b',
+//                 color: '#fff',
+//                 html: `
+//                     <div class="text-start text-white">
+//                         <p><strong>Fecha Reunión:</strong> ${data.fecha_reunion}</p>
+//                         <p><strong>Lugar:</strong> ${data.lugar}</p>
+//                         <p><strong>Asistentes:</strong> ${data.asistentes_count} ciudadanos</p>
+//                         <hr class="border-secondary">
+//                         <p><strong>Texto Redactado (Formato Ministerio):</strong></p>
+//                         <div class="border p-3 bg-dark text-white rounded" style="max-height:220px; overflow-y:auto; font-size:13px; text-align:justify; line-height:1.5;">
+//                             ${data.contenido}
+//                         </div>
+//                     </div>
+//                 `,
+//                 showConfirmButton: true,
+//                 confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
+//                 showCancelButton: true,
+//                 cancelButtonText: 'Cerrar',
+//                 confirmButtonColor: '#0ea5e9'
+//             }).then((result) => {
+//                 if (result.isConfirmed) {
+//                     window.location.href = `/documentacion/acta/descargar/${actaId}/`;
+//                 }
+//             });
+//         })
+//         .catch(error => {
+//             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
+//         });
+// }
 </script>
 
 </body>

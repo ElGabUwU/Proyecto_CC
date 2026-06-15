@@ -15,16 +15,20 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.conf import settings
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import os
+import base64
 import io
 from xhtml2pdf import pisa
 import csv
 
 from .models import (
     Familia, Habitante, IngresoComunal, EgresoComunal, 
-    ConstanciaResidencia, ActaReunion
+    ConstanciaResidencia, ActaReunion, ReporteDemografico
 )
 from .forms import (
     FamiliaForm, HabitanteForm, IngresoComunalForm, 
@@ -671,7 +675,7 @@ def documentacion(request):
     familias = Familia.objects.filter(is_deleted=False).order_by('nombre_familia')
     
     constancias_recientes = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:10]
-    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:10]
+    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:5]
     
     context = {
         'familias': familias,
@@ -736,18 +740,19 @@ def generar_acta(request):
 
 def descargar_constancia(request, id):
     try:
-        # 1. Recuperamos la constancia e inspectamos sus relaciones
+        # 1. Recuperamos la constancia e inspeccionamos sus relaciones
         constancia = ConstanciaResidencia.objects.get(id=id)
         habitante = constancia.habitante
         familia_obj = getattr(habitante, 'familia', None)
         
-        # 2. Reconstruimos el contexto para residence.html inyectando los objetos puros
+        # 2. Reconstruimos el contexto inyectando el logo convertido
         context = {
             'constancia': constancia,
             'motivo': constancia.finalidad,
-            'solicitante': habitante,   # Permite usar {{ solicitante.nombre }} y {{ solicitante.cedula }}
-            'familia': familia_obj,     # Permite usar {{ familia.direccion }} en vez de salir "Nose"
+            'solicitante': habitante,   
+            'familia': familia_obj,     
             'fecha_emision': constancia.fecha_documento,
+            'logo_pdf': obtener_logo_base64(), # 👈 Inyección Base64
         }
         
         # 3. Renderizamos el HTML corregido a cadena de texto
@@ -757,12 +762,11 @@ def descargar_constancia(request, id):
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="Constancia_Residencia_{id}.pdf"'
         
-        # 5. Compilación del binario con el callback de imágenes activo
+        # 5. Compilación sin depender de link_callback para imágenes
         pdf = pisa.CreatePDF(
             src=html,
             dest=response,
-            encoding='utf-8',
-            link_callback=link_callback
+            encoding='utf-8'
         )
         
         if not pdf.err:
@@ -773,26 +777,27 @@ def descargar_constancia(request, id):
     except ConstanciaResidencia.DoesNotExist:
         return HttpResponse('La constancia especificada no existe en la base de datos.', status=404)
     
-    
 @require_GET
 def descargar_acta(request, id):
     # 1. Recuperamos el acta de la base de datos
     acta = get_object_or_404(ActaReunion, id=id)
     
-    # 2. Contexto limpio para la plantilla 'acta_reunion.html'
-    context = {'acta': acta}
+    # 2. Contexto limpio incluyendo el logo institucional
+    context = {
+        'acta': acta,
+        'logo_pdf': obtener_logo_base64(), # 👈 Inyección Base64
+    }
     html = render_to_string('acta_reunion.html', context)
     
     # 3. Preparar la respuesta HTTP tipo PDF
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Acta_Asamblea_{acta.id}.pdf"'
     
-    # 4. Compilamos pasándole el link_callback para que lea el logo en el disco
+    # 4. Compilamos el binario de forma directa y segura
     pdf = pisa.CreatePDF(
         src=html,
         dest=response,
-        encoding='utf-8',
-        link_callback=link_callback  # 👈 El secreto para cargar la imagen
+        encoding='utf-8'
     )
     
     # 5. Si no hubo errores, retornamos el archivo binario descargable
@@ -801,54 +806,54 @@ def descargar_acta(request, id):
     
     return HttpResponse('Error al estructurar los elementos del PDF de la Asamblea.', status=500)
 
-def previa_constancia(request, constancia_id):
-    try:
-        constancia = ConstanciaResidencia.objects.get(id=constancia_id)
-        habitante = constancia.habitante
+# def previa_constancia(request, constancia_id):
+#     try:
+#         constancia = ConstanciaResidencia.objects.get(id=constancia_id)
+#         habitante = constancia.habitante
         
-        # Verificamos si realmente existe la relación antes de pedir atributos
-        familia_obj = getattr(habitante, 'familia', None)
+#         # Verificamos si realmente existe la relación antes de pedir atributos
+#         familia_obj = getattr(habitante, 'familia', None)
         
-        if familia_obj is not None:
-            nombre_familia = familia_obj.nombre_familia
-        else:
-            nombre_familia = "SIN GRUPO FAMILIAR REGISTRADO"
+#         if familia_obj is not None:
+#             nombre_familia = familia_obj.nombre_familia
+#         else:
+#             nombre_familia = "SIN GRUPO FAMILIAR REGISTRADO"
             
-        data = {
-            'id': constancia.id,
-            'familia': nombre_familia,
-            'solicitante': f"{habitante.nombre} {habitante.apellido}",
-            'fecha': constancia.fecha_documento.strftime('%d/%m/%Y'),
-            'finalidad': constancia.finalidad,
-            'contenido': constancia.contenido
-        }
-        return JsonResponse(data)
-    except ConstanciaResidencia.DoesNotExist:
-        return JsonResponse({'error': 'La constancia no existe'}, status=404)
+#         data = {
+#             'id': constancia.id,
+#             'familia': nombre_familia,
+#             'solicitante': f"{habitante.nombre} {habitante.apellido}",
+#             'fecha': constancia.fecha_documento.strftime('%d/%m/%Y'),
+#             'finalidad': constancia.finalidad,
+#             'contenido': constancia.contenido
+#         }
+#         return JsonResponse(data)
+#     except ConstanciaResidencia.DoesNotExist:
+#         return JsonResponse({'error': 'La constancia no existe'}, status=404)
 
 
-@require_GET
-def previa_acta(request, id):
-    """
-    API JSON para la previsualización interactiva de actas de asambleas.
-    """
-    acta = get_object_or_404(ActaReunion, id=id)
+# @require_GET
+# def previa_acta(request, id):
+#     """
+#     API JSON para la previsualización interactiva de actas de asambleas.
+#     """
+#     acta = get_object_or_404(ActaReunion, id=id)
     
-    # Controlamos si el conteo es un método o propiedad del modelo
-    try:
-        count = acta.asistentes_count()
-    except TypeError:
-        count = acta.asistentes_count
+#     # Controlamos si el conteo es un método o propiedad del modelo
+#     try:
+#         count = acta.asistentes_count()
+#     except TypeError:
+#         count = acta.asistentes_count
         
-    data = {
-        'id': acta.id,
-        'titulo': acta.titulo,
-        'fecha_reunion': acta.fecha_reunion.strftime('%d/%m/%Y %H:%M'),
-        'lugar': acta.lugar,
-        'asistentes_count': count,
-        'contenido': acta.contenido,
-    }
-    return JsonResponse(data)
+#     data = {
+#         'id': acta.id,
+#         'titulo': acta.titulo,
+#         'fecha_reunion': acta.fecha_reunion.strftime('%d/%m/%Y %H:%M'),
+#         'lugar': acta.lugar,
+#         'asistentes_count': count,
+#         'contenido': acta.contenido,
+#     }
+#     return JsonResponse(data)
 
 
 # ============================================
@@ -924,20 +929,323 @@ def obtener_estadisticas_comunidad():
             fecha__year=timezone.now().year
         ).aggregate(Sum('monto'))['monto__sum'] or 0,
     }
+
+def obtener_logo_base64():
+    """
+    Función auxiliar unificada para leer el logo institucional
+    y retornarlo listo en formato Base64 para cualquier PDF.
+    """
+    logo_base64 = ""
+    # Apuntamos directamente a la ruta real dentro de tus estáticos
+    ruta_logo = os.path.join(settings.STATICFILES_DIRS[0], 'assets', 'images', 'CC_Logo.png')
     
-def link_callback(uri, rel):
-    """
-    Traduce las rutas del HTML a rutas absolutas del disco duro
-    para que xhtml2pdf pueda incrustar el logo CC_logo.png de forma nativa.
-    """
-    if uri.startswith(settings.STATIC_URL):
-        path = os.path.join(settings.BASE_DIR, uri.replace(settings.STATIC_URL, ""))
-    elif uri.startswith('static/'):
-        path = os.path.join(settings.BASE_DIR, uri.replace('static/', ''))
+    if os.path.exists(ruta_logo):
+        with open(ruta_logo, "rb") as image_file:
+            logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
     else:
-        path = os.path.join(settings.BASE_DIR, uri)
+        print(f"⚠️ ALERTA EN ACTAS/CONSTANCIAS: No se encontró el logo en: {ruta_logo}")
         
-    if not os.path.isfile(path):
-        print(f"[WARNING xhtml2pdf] Archivo no hallado en disco: {path}")
+    return logo_base64
+
+# --------------------------------------------------------------
+# ---------------- Funciones ReporteDemográfico ----------------
+# --------------------------------------------------------------
+
+def panel_reportes(request):
+    """
+    Vista controladora principal para el módulo de Reportes Demográficos.
+    Muestra el formulario de filtrado y el listado de reportes generados.
+    """
+    if request.method == 'POST':
+        # Capturamos los datos del formulario de la interfaz
+        titulo = request.POST.get('titulo_reporte')
+        genero = request.POST.get('filtro_genero')
+        edad = request.POST.get('filtro_edad')
         
-    return path
+        if titulo:
+            # Creamos el registro de configuración en la Base de Datos
+            nuevo_reporte = ReporteDemografico.objects.create(
+                titulo_reporte=titulo,
+                filtro_genero=genero,
+                filtro_edad=edad,
+                solicitado_por=request.user
+            )
+            messages.success(request, f"Filtro '{titulo}' creado con éxito. Ya puedes descargar los reportes.")
+            return redirect('panel_reportes')
+        else:
+            messages.error(request, "Debe indicarle un título descriptivo al reporte.")
+
+    # Recuperamos todos los reportes creados para listarlos en una tabla analítica
+    reportes = ReporteDemografico.objects.all()
+    
+    context = {
+        'reportes': reportes,
+    }
+    # Este es el template asociado al controlador:
+    return render(request, 'reportes/panel_reportes.html', context)
+
+def obtener_habitantes_filtrados(reporte):
+    # Condición base: Solo habitantes activos (no eliminados)
+    queryset = Habitante.objects.filter(is_deleted=False)
+    hoy = date.today()
+
+    # 1. Evaluación de la condición de Género
+    if reporte.filtro_genero != 'TODOS':
+        queryset = queryset.filter(genero=reporte.filtro_genero)
+
+    # 2. Evaluación de las condiciones complejas de Edad
+    if reporte.filtro_edad == 'MENOR_12':
+        # Nacidos hace menos de 12 años
+        fecha_limite = hoy - timedelta(days=12*365.25)
+        queryset = queryset.filter(fecha_nacimiento__gt=fecha_limite)
+        
+    elif reporte.filtro_edad == 'MENOR_16':
+        # Nacidos hace menos de 16 años
+        fecha_limite = hoy - timedelta(days=16*365.25)
+        queryset = queryset.filter(fecha_nacimiento__gt=fecha_limite)
+        
+    elif reporte.filtro_edad == 'TERCERA_EDAD':
+        # Nacidos hace 60 años o más
+        fecha_limite = hoy - timedelta(days=60*365.25)
+        queryset = queryset.filter(fecha_nacimiento__lte=fecha_limite)
+
+    # 3. Optimización de Query para incluir las Familias asociadas sin hacer consultas lentas
+    if reporte.incluir_datos_familia:
+        queryset = queryset.select_related('familia')
+
+    return queryset
+
+def obtener_habitantes_filtrados(reporte):
+    """
+    Función auxiliar para aplicar los filtros del reporte sobre 
+    la tabla de habitantes reales registrados en el sistema.
+    """
+    # 1. Traemos todos los habitantes activos en el sistema que tengan un grupo familiar
+    # Usamos select_related('familia') para traer la dirección y el nombre de la familia en una sola consulta SQL (JOIN)
+    queryset = Habitante.objects.filter(is_deleted=False).select_related('familia')
+
+    # 2. Evaluamos y aplicamos el Filtro de Género
+    if reporte.filtro_genero != 'TODOS':
+        queryset = queryset.filter(genero=reporte.filtro_genero)
+
+    # 3. Evaluamos y aplicamos el Filtro de Edad (Calculando según la fecha de nacimiento)
+    hoy = date.today()
+    habitantes_finales = []
+
+    for habitante in queryset:
+        if habitante.fecha_nacimiento:
+            # Cálculo estricto de la edad del habitante
+            edad = hoy.year - habitante.fecha_nacimiento.year - (
+                (hoy.month, hoy.day) < (habitante.fecha_nacimiento.month, habitante.fecha_nacimiento.day)
+            )
+            
+            # Validamos si cumple con la segmentación seleccionada en el panel
+            cumple_edad = False
+            if reporte.filtro_edad == 'TODOS':
+                cumple_edad = True
+            elif reporte.filtro_edad == 'MENOR_12' and edad < 12:
+                cumple_edad = True
+            elif reporte.filtro_edad == 'MENOR_16' and edad < 16:
+                cumple_edad = True
+            elif reporte.filtro_edad == 'TERCERA_EDAD' and edad >= 60:
+                cumple_edad = True
+
+            # Si cumple la condición de edad, lo preparamos para el reporte
+            if cumple_edad:
+                habitantes_finales.append({
+                    'objeto': habitante,
+                    'edad': edad
+                })
+                
+    return habitantes_finales
+
+def exportar_reporte_excel(request, reporte_id):
+    """
+    Genera un archivo Excel profesional (.xlsx) en memoria RAM con los 
+    habitantes clasificados según los parámetros del reporte demográfico.
+    """
+    # 1. Recuperamos la configuración del reporte solicitado
+    reporte = get_object_or_404(ReporteDemografico, id=reporte_id)
+    habitantes = obtener_habitantes_filtrados(reporte)
+    
+    # 2. Inicializamos el libro de openpyxl
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Datos Demográficos"
+    
+    # Habilitar líneas de cuadrícula visibles
+    ws.views.sheetView[0].showGridLines = True
+    
+    # 3. Definición de Estilos Institucionales (Azul y Gris)
+    fuente_titulo = Font(name='Arial', size=14, bold=True, color='0F2027')
+    fuente_subtitulo = Font(name='Arial', size=10, italic=True, color='555555')
+    fuente_cabecera = Font(name='Arial', size=11, bold=True, color='FFFFFF')
+    fuente_datos = Font(name='Arial', size=10)
+    
+    fill_cabecera = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
+    fill_cebra = PatternFill(start_color='F2F4F7', end_color='F2F4F7', fill_type='solid')
+    
+    borde_delgado = Border(
+        left=Side(style='thin', color='CCCCCC'),
+        right=Side(style='thin', color='CCCCCC'),
+        top=Side(style='thin', color='CCCCCC'),
+        bottom=Side(style='thin', color='CCCCCC')
+    )
+    
+    # 4. Construcción del Encabezado del Formato
+    ws['A1'] = "CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ"
+    ws['A1'].font = fuente_titulo
+    ws['A2'] = f"REPORTE: {reporte.titulo_reporte.upper()}"
+    ws['A2'].font = Font(name='Arial', size=12, bold=True, color='1F4E78')
+    
+    # Detalle de las condiciones aplicadas
+    resumen_filtros = f"Filtros aplicados: Género: {reporte.get_filtro_genero_display()} | Rango: {reporte.get_filtro_edad_display()}"
+    ws['A3'] = resumen_filtros
+    ws['A3'].font = fuente_subtitulo
+    ws['A4'] = f"Fecha de exportación: {date.today().strftime('%d/%m/%Y')} | Total registros: {len(habitantes)}"
+    ws['A4'].font = fuente_subtitulo
+    
+    # Espacio en blanco
+    ws.append([]) 
+    
+    # 5. Cabecera de la Tabla de Datos
+    columnas = ['N°', 'Cédula', 'Apellidos y Nombres', 'Edad', 'Género', '¿Es Jefe?', 'Grupo Familiar', 'Dirección de Vivienda']
+    ws.append(columnas)
+    
+    fila_cabecera = 6
+    for col_num, columna in enumerate(columnas, 1):
+        celda = ws.cell(row=fila_cabecera, column=col_num)
+        celda.font = fuente_cabecera
+        celda.fill = fill_cabecera
+        celda.alignment = Alignment(horizontal='center', vertical='center')
+        celda.border = borde_delgado
+    
+    # 6. Llenado Lógico de los Registros Filtrados
+    hoy = date.today()
+    for indice, item in enumerate(habitantes, start=1):
+        # Extraemos el objeto habitante real y la edad precalculada del diccionario
+        h = item['objeto']
+        edad = item['edad']
+        
+        nombre_completo = f"{h.apellido}, {h.nombre}"
+        es_jefe_txt = "SÍ" if h.es_jefe_familia else "NO"
+        
+        # Acceso seguro a la relación de la familia mapeada en la Base de Datos
+        familia_txt = h.familia.nombre_familia if h.familia else "SIN REGISTRO"
+        direccion_txt = h.familia.direccion if h.familia else "No asignada"
+        
+        fila_datos = [
+            indice,
+            f"{h.tipo_cedula}-{h.cedula}",
+            nombre_completo,
+            edad, # 👈 Usamos la edad exacta calculada por la función auxiliar
+            h.get_genero_display(),
+            es_jefe_txt,
+            familia_txt,    # 👈 Ahora sí se rellenará con el censo del sistema
+            direccion_txt   # 👈 Ahora sí se rellenará con la dirección real
+        ]
+        
+        ws.append(fila_datos)
+        num_fila_actual = ws.max_row
+        
+        # Aplicamos estilos a las celdas de datos para que se vea limpio
+        for col_num in range(1, len(fila_datos) + 1):
+            celda = ws.cell(row=num_fila_actual, column=col_num)
+            celda.font = fuente_datos
+            celda.border = borde_delgado
+            
+            # Formato cebra intercalado para lectura ágil
+            if indice % 2 == 0:
+                celda.fill = fill_cebra
+                
+            # Alineación específica según el tipo de dato
+            if col_num in [1, 2, 4, 5, 6]:
+                celda.alignment = Alignment(horizontal='center')
+            else:
+                celda.alignment = Alignment(horizontal='left')
+
+    # 7. Autoajuste automático del ancho de las columnas
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            # Ignoramos las primeras filas de títulos para que no ensanchen de más la columna A
+            if cell.row < 6:
+                continue
+            if cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    # Ajustes manuales mínimos para columnas largas
+    ws.column_dimensions['C'].width = 30  # Nombre
+    ws.column_dimensions['H'].width = 40  # Dirección
+
+    # 8. Guardado en Buffer RAM y respuesta HTTP directa de descarga
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="Reporte_Demografico_{reporte.id}.xlsx"'
+    
+    return response
+
+def exportar_reporte_pdf(request, reporte_id):
+    """
+    Genera un listado demográfico profesional en formato PDF en tiempo real,
+    inyectando el logo institucional en formato Base64 directamente en la memoria RAM.
+    """
+    # 1. Recuperamos la configuración del reporte y su lista de habitantes filtrados
+    reporte = get_object_or_404(ReporteDemografico, id=reporte_id)
+    habitantes = obtener_habitantes_filtrados(reporte)
+    
+    # =========================================================================
+    # PROCESAMIENTO DEL LOGO EN BASE64 (Evita colapsos de rutas locales)
+    # =========================================================================
+    logo_base64 = ""
+    # Construimos la ruta física buscando en tu carpeta de archivos estáticos configurada
+    # Usamos 'assets/images/aguila.png' (Asegúrate de que la extensión coincida: .png o .jpg)
+    ruta_logo = os.path.join(settings.STATICFILES_DIRS[0], 'assets', 'images', 'CC_logo.png')
+    
+    if os.path.exists(ruta_logo):
+        with open(ruta_logo, "rb") as image_file:
+            # Leemos los bytes del archivo y los transformamos en un string UTF-8 plano
+            logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
+    else:
+        # Respaldo impreso en la consola de Django por si escribiste mal el nombre o la extensión
+        print(f"⚠️ ADVERTENCIA: No se encontró el logo en la ruta física: {ruta_logo}")
+    # =========================================================================
+
+    # 2. Construimos el contexto directo para la plantilla incluyendo el logo codificado
+    hoy = date.today()
+    context = {
+        'reporte': reporte,
+        'habitantes': habitantes,
+        'total_registros': len(habitantes),
+        'fecha_actual': hoy,
+        'logo_pdf': logo_base64,  # 👈 Pasamos la cadena Base64 al HTML
+    }
+    
+    # 3. Renderizamos el HTML como un String ordinario
+    html_string = render_to_string('reportes/reporte_demografico_pdf.html', context)
+    
+    # 4. Creamos el objeto de respuesta HTTP configurado como PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Reporte_Demografico_{reporte.id}.pdf"'
+    
+    # 5. Compilamos el PDF directamente (Ya no dependemos críticamente de link_callback para la imagen)
+    pdf = pisa.CreatePDF(
+        src=html_string,
+        dest=response,
+        encoding='utf-8'
+        # Puedes quitar o comentar la línea de link_callback si ya no manejas otros recursos externos
+    )
+    
+    # 6. Si no hay errores lógicos visuales, el navegador inicia la descarga nativa
+    if not pdf.err:
+        return response
+        
+    return HttpResponse('Error al compilar la matriz del reporte demográfico en PDF.', status=500)
