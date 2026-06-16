@@ -515,7 +515,7 @@
       })
       .catch(error => {
         if (error.isValidationError && error.errors) {
-          let errorHtml = '<div class="text-start mt-2" style="font-size: 0.95rem; max-height: 290px; overflow-y: auto;">';
+          let errorHtml = '<div class="text-start mt-2" style="font-size: 0.95rem; max-height: 350px; overflow-y: auto;">';
           
           let contenidoRaw = error.errors.detail || error.errors.non_field_errors || error.errors;
           
@@ -531,13 +531,37 @@
               let listaErrores = JSON.parse(contenidoRaw);
               
               // Al ser un Array de JS, se recorre garantizando el orden exacto del backend
-              listaErrores.forEach(mensaje => {
-                errorHtml += `
-                  <div class="mb-2 p-2 rounded" style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid #f59e0b;">
-                    <span class="text-white">${mensaje}</span>
-                  </div>`;
-              });
-              procesado = true;
+              if (listaErrores.length > 0) {
+                errorHtml += '<h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Se encontraron los siguientes problemas:</h6>';
+                listaErrores.forEach((mensaje, index) => {
+                  // Identificar el tipo de error para mostrar ícono específico
+                  let icono = 'fa-circle';
+                  let color = '#f59e0b';
+                  
+                  if (mensaje.includes('vivienda') || mensaje.includes('Inmueble') || mensaje.includes('registrada')) {
+                    icono = 'fa-home';
+                    color = '#ef4444';
+                  } else if (mensaje.includes('Cédula')) {
+                    icono = 'fa-id-card';
+                    color = '#f59e0b';
+                  } else if (mensaje.includes('edad') || mensaje.includes('años') || mensaje.includes('biológico')) {
+                    icono = 'fa-user-clock';
+                    color = '#3b82f6';
+                  } else if (mensaje.includes('Jefe') || mensaje.includes('jerarquía')) {
+                    icono = 'fa-user-shield';
+                    color = '#10b981';
+                  }
+                  
+                  errorHtml += `
+                    <div class="mb-2 p-3 rounded" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid ${color};">
+                      <div class="d-flex align-items-start">
+                        <i class="fas ${icono} me-2 mt-1" style="color: ${color};"></i>
+                        <span class="text-white">${mensaje}</span>
+                      </div>
+                    </div>`;
+                });
+                procesado = true;
+              }
             } catch (e) {
               console.error("Error al parsear el arreglo seguro:", e);
             }
@@ -546,8 +570,9 @@
           // Respaldo genérico de seguridad si el formato varía
           if (!procesado) {
             errorHtml += `
-              <div class="mb-2 p-2 rounded" style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid #f59e0b;">
-                <span class="text-white">Se detectaron inconsistencias en los datos ingresados. Por favor, verifique las cédulas y campos del formulario.</span>
+              <h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Error de validación:</h6>
+              <div class="mb-2 p-3 rounded" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #f59e0b;">
+                <span class="text-white">Se detectaron inconsistencias en los datos ingresados. Por favor, revise cuidadosamente las cédulas, edades y campos del formulario.</span>
               </div>`;
           }
           
