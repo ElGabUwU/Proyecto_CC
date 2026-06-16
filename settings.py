@@ -119,12 +119,14 @@ WSGI_APPLICATION = 'nomina_estudiantes.wsgi.application'  # Configuración WSGI
 # ==============================
 # BASE DE DATOS
 # ==============================
-# Base de datos: usa DATABASE_URL si existe, sino SQLite (solo en local)
-if 'DATABASE_URL' in os.environ:
+DATABASE_URL = config('DATABASE_URL', default=None)
+
+if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(os.environ['DATABASE_URL'])
+        'default': dj_database_url.parse(DATABASE_URL)
     }
 else:
+    # Fallback a SQLite si no hay DATABASE_URL
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
