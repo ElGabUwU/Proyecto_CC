@@ -60,13 +60,12 @@ urlpatterns = [
     # Procesamiento de Formularios (POST)
     path('comunidad/documentacion/constancia/generar/', views_comunidad.generar_constancia, name='generar_constancia'),
     path('comunidad/documentacion/acta/generar/', views_comunidad.generar_acta, name='generar_acta'),
+    path('documentacion/buena-conducta/', views_comunidad.generar_buena_conducta, name='generar_buena_conducta'),
+    path('documentacion/post-mortem/', views_comunidad.generar_post_mortem, name='generar_post_mortem'),
     # Descarga e Impresión de PDFs Reales
     path('comunidad/documentacion/constancia/descargar/<int:id>/', views_comunidad.descargar_constancia, name='descargar_constancia'),
     path('comunidad/documentacion/acta/descargar/<int:id>/', views_comunidad.descargar_acta, name='descargar_acta'),
-    # APIs JSON para las previsualizaciones interactivas de SweetAlert2
-    # path('documentacion/constancia/previa/<int:id>/', views_comunidad.previa_constancia, name='previa_constancia'),
-    # path('documentacion/acta/previa/<int:id>/', views_comunidad.previa_acta, name='previa_acta'),
-    
+
     # ============================================
     # Dashboard Comunitario
     # ============================================

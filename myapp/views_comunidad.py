@@ -32,7 +32,8 @@ from .models import (
 )
 from .forms import (
     FamiliaForm, HabitanteForm, IngresoComunalForm, 
-    EgresoComunalForm, ConstanciaResidenciaForm, ActaReunionForm
+    EgresoComunalForm, ConstanciaResidenciaForm, ActaReunionForm,
+    BuenaConductaForm, ConstanciaFallecidoForm
 )
 from .decorators import admin_required
 from .serializers import (
@@ -291,10 +292,10 @@ def eliminar_familia(request, id):
 
 
 def habitantes(request):
-    """
-    Vista de listado general de habitantes.
-    Adaptada al modelo unificado (sin tabla Person).
-    """
+    # 
+    # Vista de listado general de habitantes.
+    # Adaptada al modelo unificado (sin tabla Person).
+    # 
     query = request.GET.get('q', '')
     familia_id = request.GET.get('familia', '')
     
@@ -675,7 +676,7 @@ def documentacion(request):
     familias = Familia.objects.filter(is_deleted=False).order_by('nombre_familia')
     
     constancias_recientes = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:10]
-    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:5]
+    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:10]
     
     context = {
         'familias': familias,
@@ -683,6 +684,8 @@ def documentacion(request):
         'actas_recientes': actas_recientes,
         'constancia_form': ConstanciaResidenciaForm(user=request.user),
         'acta_form': ActaReunionForm(user=request.user),
+        'buena_conducta_form': BuenaConductaForm(user=request.user),
+        'fallecido_form': ConstanciaFallecidoForm(user=request.user),
     }
     return render(request, 'documentacion.html', context)
 
@@ -724,6 +727,83 @@ def generar_constancia(request):
             
     return redirect('documentacion')
 
+def generar_buena_conducta(request):
+    if request.method == 'POST':
+        form = BuenaConductaForm(request.POST, user=request.user)
+        if form.is_valid():
+            habitante = form.cleaned_data.get('habitante')
+            familia = habitante.familia
+            tiempo_residencia = form.cleaned_data.get('tiempo_residencia')
+            organismo_destino = form.cleaned_data.get('organismo_destino')
+            
+            logo_base64 = ""
+            ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_Logo.png')
+            if os.path.exists(ruta_logo):
+                with open(ruta_logo, "rb") as image_file:
+                    logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            context = {
+                'habitante': habitante,
+                'familia': familia,
+                'tiempo_residencia': tiempo_residencia,
+                'organismo_destino': organismo_destino,
+                'fecha_emision': date.today(),
+                'logo_pdf': logo_base64,
+            }
+            html_string = render_to_string('reportes/buena_conducta_pdf.html', context)
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="Carta_Buena_Conducta_{habitante.cedula}.pdf"'
+            pisa_status = pisa.CreatePDF(src=html_string, dest=response, encoding='utf-8')
+            if not pisa_status.err:
+                return response
+            messages.error(request, "Error técnico al compilar el PDF de Buena Conducta.")
+            return redirect('documentacion')
+        else:
+            errores = "<br>".join([f"• <b>{form.fields[campo].label}:</b> {msg[0]}" for campo, msg in form.errors.items()])
+            messages.error(request, f"Errores en el formulario de Buena Conducta:<br>{errores}")
+            return redirect('documentacion')
+    return redirect('documentacion')
+
+def generar_post_mortem(request):
+    if request.method == 'POST':
+        form = ConstanciaFallecidoForm(request.POST, user=request.user)
+        if form.is_valid():
+            fallecido = form.cleaned_data.get('habitante')
+            familia = fallecido.familia
+            fecha_deceso = form.cleaned_data.get('fecha_deceso')
+            solicitante_defuncion = form.cleaned_data.get('solicitante_defuncion')
+            solicitante_cedula = form.cleaned_data.get('solicitante_cedula')
+            relacion_parentesco = form.cleaned_data.get('relacion_parentesco')
+            
+            logo_base64 = ""
+            ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_Logo.png')
+            if os.path.exists(ruta_logo):
+                with open(ruta_logo, "rb") as image_file:
+                    logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            context = {
+                'fallecido': fallecido,
+                'familia': familia,
+                'fecha_fallecimiento': fecha_deceso,
+                'solicitante_nombre': solicitante_defuncion,
+                'solicitante_cedula': solicitante_cedula,
+                'relacion_parentesco': relacion_parentesco,
+                'fecha_emision': date.today(),
+                'logo_pdf': logo_base64,
+            }
+            html_string = render_to_string('reportes/post_mortem_pdf.html', context)
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="Constancia_PostMortem_{fallecido.cedula}.pdf"'
+            pisa_status = pisa.CreatePDF(src=html_string, dest=response, encoding='utf-8')
+            if not pisa_status.err:
+                return response
+            messages.error(request, "Error técnico al compilar el PDF Post-Mortem.")
+            return redirect('documentacion')
+        else:
+            errores = "<br>".join([f"• <b>{form.fields[campo].label}:</b> {msg[0]}" for campo, msg in form.errors.items()])
+            messages.error(request, f"Errores en el formulario Post-Mortem:<br>{errores}")
+            return redirect('documentacion')
+    return redirect('documentacion')
 
 @transaction.atomic
 def generar_acta(request):
@@ -805,55 +885,6 @@ def descargar_acta(request, id):
         return response
     
     return HttpResponse('Error al estructurar los elementos del PDF de la Asamblea.', status=500)
-
-# def previa_constancia(request, constancia_id):
-#     try:
-#         constancia = ConstanciaResidencia.objects.get(id=constancia_id)
-#         habitante = constancia.habitante
-        
-#         # Verificamos si realmente existe la relación antes de pedir atributos
-#         familia_obj = getattr(habitante, 'familia', None)
-        
-#         if familia_obj is not None:
-#             nombre_familia = familia_obj.nombre_familia
-#         else:
-#             nombre_familia = "SIN GRUPO FAMILIAR REGISTRADO"
-            
-#         data = {
-#             'id': constancia.id,
-#             'familia': nombre_familia,
-#             'solicitante': f"{habitante.nombre} {habitante.apellido}",
-#             'fecha': constancia.fecha_documento.strftime('%d/%m/%Y'),
-#             'finalidad': constancia.finalidad,
-#             'contenido': constancia.contenido
-#         }
-#         return JsonResponse(data)
-#     except ConstanciaResidencia.DoesNotExist:
-#         return JsonResponse({'error': 'La constancia no existe'}, status=404)
-
-
-# @require_GET
-# def previa_acta(request, id):
-#     """
-#     API JSON para la previsualización interactiva de actas de asambleas.
-#     """
-#     acta = get_object_or_404(ActaReunion, id=id)
-    
-#     # Controlamos si el conteo es un método o propiedad del modelo
-#     try:
-#         count = acta.asistentes_count()
-#     except TypeError:
-#         count = acta.asistentes_count
-        
-#     data = {
-#         'id': acta.id,
-#         'titulo': acta.titulo,
-#         'fecha_reunion': acta.fecha_reunion.strftime('%d/%m/%Y %H:%M'),
-#         'lugar': acta.lugar,
-#         'asistentes_count': count,
-#         'contenido': acta.contenido,
-#     }
-#     return JsonResponse(data)
 
 
 # ============================================

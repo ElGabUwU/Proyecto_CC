@@ -5,7 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Documentación - Consejo Comunal</title>
-  <!-- 🆕 NUEVO: Template para gestión documental -->
   <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
   <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
@@ -16,7 +15,7 @@
 
 <body class="m-0 p-0">
   {% include 'partials/header.html' %}
-  <div class="bg-my-background-color d-flex text-black">
+<div class="bg-my-background-color d-flex text-black">
     {% include 'partials/sidebar.html' %}
 
     <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
@@ -26,86 +25,207 @@
         </div>
         
         <div class="card-body">
-          <!-- Constancias de Residencia -->
           <div class="row mb-5">
             <div class="col-12">
               <h5 class="border-bottom pb-2 mb-3">
-                <i class="fas fa-home me-2"></i>Constancias de Residencia
+                <i class="fas fa-users me-2"></i>Trámites y Constancias Ciudadanas
               </h5>
             </div>
             
             <div class="col-md-6">
-              <div class="card h-100">
-                <div class="card-body">
-                  <h6 class="card-title">Seleccionar Familia</h6>
-                  <form id="formConstancia" method="POST" action="{% url 'generar_constancia' %}">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                      <label for="familia_constancia" class="form-label text-black">Seleccione el grupo Familiar</label>
-                      <select class="form-select" id="select_familia" name="familia" required>
-                        <option value="">Seleccionar una familia...</option>
-                        {% for familia in familias %}
-                        <option value="{{ familia.id }}">
-                            Familia: {{ familia.nombre_familia }} - {{ familia.direccion }}
-                        </option>
-                        {% empty %}
-                        <option value="" disabled>No hay familias registradas</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label for="select_habitante" class="form-label text-black">Seleccione el Ciudadano (Solicitante)</label>
-                      <select class="form-select" id="select_habitante" name="habitante" disabled>
-                        <option value="">-- Seleccione primero una familia --</option>
-                      </select>
-                    </div>
+              <div class="row g-4">
+                <!-- RESIDENCIA -->
+                <div class="col-12">
+                  <div class="card shadow-sm border-start border-primary border-3">
+                    <div class="card-body">
+                      <h6 class="card-title text-primary fw-bold"><i class="fas fa-home me-2"></i>Constancia de Residencia</h6>
+                      <form id="formConstancia" method="POST" action="{% url 'generar_constancia' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                          <label for="select_familia" class="form-label text-black fw-semibold">Seleccione el grupo Familiar</label>
+                          <select class="form-select" id="select_familia" name="familia" required>
+                            <option value="">Seleccionar una familia...</option>
+                            {% for familia in familias %}
+                            <option value="{{ familia.id }}">
+                              Familia: {{ familia.nombre_familia }} - {{ familia.direccion }}
+                            </option>
+                            {% empty %}
+                            <option value="" disabled>No hay familias registradas</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label for="select_habitante" class="form-label text-black fw-semibold">Seleccione el Ciudadano (Solicitante)</label>
+                          <select class="form-select" id="select_habitante" name="habitante" disabled required>
+                            <option value="">-- Seleccione primero una familia --</option>
+                          </select>
+                        </div>
 
-                    <div class="mb-3">
-                      <label for="fecha_constancia" class="form-label">Fecha del Documento</label>
-                      <input type="date" class="form-control" id="fecha_constancia" name="fecha_documento" 
-                             value="{% now 'Y-m-d' %}" required>
+                        <div class="mb-3">
+                          <label for="fecha_constancia" class="form-label text-black fw-semibold">Fecha del Documento</label>
+                          <input type="date" class="form-control" id="fecha_constancia" name="fecha_documento" value="{% now 'Y-m-d' %}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label for="finalidad_constancia" class="form-label text-black fw-semibold">Título</label>
+                          <textarea class="form-control" id="finalidad_constancia" name="finalidad" rows="2" placeholder="Escriba Residencia: [Nombre Apellido de la persona a quién va dirigida la carta]" required></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                          <i class="fas fa-file-pdf me-2"></i>Generar Constancia
+                        </button>
+                      </form>
                     </div>
-                    
-                    <div class="mb-3">
-                      <label for="finalidad_constancia" class="form-label">Finalidad</label>
-                      <textarea class="form-control" id="finalidad_constancia" name="finalidad" 
-                                rows="3" placeholder="Especifique la finalidad de la constancia..." required></textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary w-100">
-                      <i class="fas fa-file-pdf me-2"></i>Generar Constancia
-                    </button>
-                  </form>
+                  </div>
                 </div>
+
+                <!-- Buena Conducta -->
+                <div class="col-12">
+                  <div class="card shadow-sm border-start border-success border-3">
+                    <div class="card-body">
+                      <h6 class="card-title text-success fw-bold"><i class="fas fa-user-check me-2"></i>Emitir Carta de Buena Conducta</h6>
+                      <form id="formBuenaConducta" method="POST" action="{% url 'generar_buena_conducta' %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                          <label for="select_familia_bc" class="form-label text-black fw-semibold">Seleccione el grupo Familiar</label>
+                          <select class="form-select" id="select_familia_bc" name="familia" required>
+                            <option value="">Seleccionar una familia...</option>
+                            {% for familia in familias %}
+                            <option value="{{ familia.id }}">
+                              Familia: {{ familia.nombre_familia }} - {{ familia.direccion }}
+                            </option>
+                            {% empty %}
+                            <option value="" disabled>No hay familias registradas</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="select_habitante_bc" class="form-label text-black fw-semibold">Seleccione el Ciudadano Ejemplar</label>
+                          <select class="form-select" id="select_habitante_bc" name="habitante" disabled required>
+                            <option value="">-- Seleccione primero una familia --</option>
+                          </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tiempo_residencia" class="form-label text-black fw-semibold">Tiempo de Residencia en el Sector</label>
+                            <input type="text" class="form-control text-black" id="tiempo_residencia" name="tiempo_residencia" placeholder="Ej. Cinco (05) años" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="organismo_destino" class="form-label text-black fw-semibold">Organismo o Destino del Trámite</label>
+                            <input type="text" class="form-control text-black" id="organismo_destino" name="organismo_destino" placeholder="Ej. Universidad, Trámites Laborales" required>
+                        </div>
+        
+                        <div class="mb-3">
+                          <label for="fecha_buena_conducta" class="form-label text-black fw-semibold">Fecha de Emisión</label>
+                          <input type="date" class="form-control" id="fecha_buena_conducta" name="fecha_documento" value="{% now 'Y-m-d' %}" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100 fw-bold">
+                          <i class="fas fa-file-pdf me-2"></i>Generar Buena Conducta
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Fallecimiento -->
+                <div class="col-12">
+                  <div class="card shadow-sm border-start border-danger border-3">
+                    <div class="card-body">
+                      <h6 class="card-title text-danger fw-bold"><i class="fas fa-ribbon me-2"></i>Constancia de Residencia Post-Mortem</h6>
+                      <form id="formPostMortem" method="POST" action="{% url 'generar_post_mortem' %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                          <label for="select_familia_pm" class="form-label text-black fw-semibold">Última Residencia del Fallecido (Familia)</label>
+                          <select class="form-select" id="select_familia_pm" name="familia" required>
+                            <option value="">Seleccionar una familia...</option>
+                            {% for familia in familias %}
+                            <option value="{{ familia.id }}">
+                              Familia: {{ familia.nombre_familia }} - {{ familia.direccion }}
+                            </option>
+                            {% empty %}
+                            <option value="" disabled>No hay familias registradas</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="select_habitante_pm" class="form-label text-black fw-semibold">Ciudadano Fallecido (Difunto)</label>
+                          <select class="form-select" id="select_habitante_pm" name="habitante" disabled required>
+                            <option value="">-- Seleccione primero una familia --</option>
+                          </select>
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="fecha_deceso" class="form-label text-black fw-semibold">Fecha del Deceso</label>
+                          <input type="date" class="form-control" id="fecha_deceso" name="fecha_deceso" required>
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="solicitante_defuncion" class="form-label text-black fw-semibold">Nombre del Familiar Solicitante</label>
+                          <input type="text" class="form-control" id="solicitante_defuncion" name="solicitante_defuncion" placeholder="Ej: María Alejandra Pérez" required>
+                        </div>
+
+                        <div class="row">
+                          <div class="col-md-6 mb-3">
+                            <label for="solicitante_cedula" class="form-label text-black fw-semibold">Cédula del Solicitante</label>
+                            <input type="text" class="form-control" id="solicitante_cedula" name="solicitante_cedula" placeholder="Ej: 12345678" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="relacion_parentesco" class="form-label text-black fw-semibold">Parentesco</label>
+                            <select class="form-select" id="relacion_parentesco" name="relacion_parentesco" required>
+                              <option value="">-- Seleccione --</option>
+                              <option value="Hijo(a)">Hijo(a)</option>
+                              <option value="Esposo(a) / Cónyuge">Esposo(a) / Cónyuge</option>
+                              <option value="Hermano(a)">Hermano(a)</option>
+                              <option value="Padre / Madre">Padre / Madre</option>
+                              <option value="Otros familiares directos">Otros familiares directos</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-danger w-100 fw-bold">
+                          <i class="fas fa-file-pdf me-2"></i>Generar Constancia Post-Mortem
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
             
             <div class="col-md-6">
-              <div class="card h-100">
+              <div class="card h-100 shadow-sm">
                 <div class="card-body">
-                  <h6 class="card-title">Constancias Recientes</h6>
+                  <h6 class="card-title fw-bold text-secondary border-bottom pb-2 mb-3">
+                    <i class="fas fa-history me-2"></i>Constancias Recientes
+                  </h6>
                   <div class="list-group">
                     {% for constancia in constancias_recientes %}
-                    <div class="list-group-item">
+                    <div class="list-group-item list-group-item-action flex-column align-items-start mb-2 rounded border shadow-sm">
                       <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">Constancia #{{ constancia.id }}</h6>
-                        <small>{{ constancia.fecha_generacion|date:"d/m/Y" }}</small>
+                        <h6 class="mb-1 text-primary fw-bold">Constancia #{{ constancia.id }}</h6>
+                        <small class="text-muted">{{ constancia.fecha_generacion|date:"d/m/Y" }}</small>
                       </div>
-                      <p class="mb-1"><strong>Solicitante:</strong> {{ constancia.habitante.nombre }} {{ constancia.habitante.apellido }}</p>
-                      <small>Generada por: {{ constancia.generado_por.get_full_name }}</small>
+                      <p class="mb-1 text-dark"><strong>Solicitante:</strong> {{ constancia.habitante.nombre }} {{ constancia.habitante.apellido }}</p>
+                      <small class="text-muted d-block">Generada por: {{ constancia.generado_por.get_full_name|default:constancia.generado_por.username }}</small>
                       <div class="mt-2">
                         <a href="{% url 'descargar_constancia' constancia.id %}" class="btn btn-sm btn-success">
                           <i class="fas fa-download me-1"></i>Descargar
                         </a>
-                        <!-- <button class="btn btn-sm btn-info" onclick="verPreviaConstancia({{ constancia.id }})">
-                          <i class="fas fa-eye me-1"></i>Previsualizar
-                        </button> -->
                       </div>
                     </div>
                     {% empty %}
-                    <div class="list-group-item text-center text-muted">
-                      No hay constancias generadas
+                    <div class="list-group-item text-center text-muted border-0 py-4">
+                      <i class="fas fa-folder-open fa-2x d-block mb-2 text-black-50"></i>
+                      No hay constancias generadas recientemente
                     </div>
                     {% endfor %}
                   </div>
@@ -114,7 +234,6 @@
             </div>
           </div>
           
-          <!-- Actas de Reuniones -->
           <div class="row">
             <div class="col-12">
               <h5 class="border-bottom pb-2 mb-3">
@@ -123,25 +242,24 @@
             </div>
             
             <div class="col-md-6">
-              <div class="card h-100">
+              <div class="card h-100 shadow-sm">
                 <div class="card-body">
-                  <h6 class="card-title">Nueva Acta</h6>
+                  <h6 class="card-title fw-bold text-primary"><i class="fas fa-plus-circle me-2"></i>Nueva Acta</h6>
                   <form id="formActa" method="POST" action="{% url 'generar_acta' %}">
                     {% csrf_token %}
                     
                     <div class="row">
                       <div class="col-12 mb-3">
-                        <label for="titulo_acta" class="form-label">Título del Acta</label>
-                        <input type="text" class="form-control text-black border-secondary" id="titulo_acta" name="titulo" 
-                              placeholder="Ej: Acta de Asamblea General" required>
+                        <label for="titulo_acta" class="form-label text-black fw-semibold">Título del Acta</label>
+                        <input type="text" class="form-control text-black border-secondary" id="titulo_acta" name="titulo" placeholder="Ej: Acta de Asamblea General" required>
                       </div>
                       
                       <div class="col-md-6 mb-3">
-                        <label for="fecha_acta" class="form-label">Fecha y Hora</label>
+                        <label for="fecha_acta" class="form-label text-black fw-semibold">Fecha y Hora</label>
                         <input type="datetime-local" class="form-control text-black border-secondary" id="fecha_acta" name="fecha_reunion" required>
                       </div>
                       <div class="col-md-6 mb-3">
-                        <label for="tipo_asamblea" class="form-label">Tipo de Asamblea</label>
+                        <label for="tipo_asamblea" class="form-label text-black fw-semibold">Tipo de Asamblea</label>
                         <select class="form-select text-black border-secondary" id="tipo_asamblea" name="tipo_asamblea" required>
                           <option value="ORDINARIA">Ordinaria</option>
                           <option value="EXTRAORDINARIA" selected>Extraordinaria</option>
@@ -149,58 +267,49 @@
                       </div>
 
                       <div class="col-md-6 mb-3">
-                        <label for="lugar_acta" class="form-label">Lugar de la Asamblea</label>
-                        <input type="text" class="form-control text-black border-secondary" id="lugar_acta" name="lugar" 
-                              placeholder="Ej: Cancha del Sector" required>
+                        <label for="lugar_acta" class="form-label text-black fw-semibold">Lugar de la Asamblea</label>
+                        <input type="text" class="form-control text-black border-secondary" id="lugar_acta" name="lugar" placeholder="Ej: Cancha del Sector" required>
                       </div>
                       <div class="col-md-6 mb-3">
-                        <label for="director_debate" class="form-label">Director del Debate</label>
-                        <input type="text" class="form-control text-black border-secondary" id="director_debate" name="director_debate" 
-                              placeholder="Nombre del vocero que dirige" required>
+                        <label for="director_debate" class="form-label text-black fw-semibold">Director del Debate</label>
+                        <input type="text" class="form-control text-black border-secondary" id="director_debate" name="director_debate" placeholder="Nombre del vocero que dirige" required>
                       </div>
 
                       <div class="col-12 mb-3">
-                        <label for="problema_identificado" class="form-label">Problemática Planteada</label>
-                        <textarea class="form-control text-black border-secondary" id="problema_identificado" name="problema_identificado" 
-                                  rows="3" placeholder="Describa la problemática de la comunidad..." required></textarea>
+                        <label for="problema_identificado" class="form-label text-black fw-semibold">Problemática Planteada</label>
+                        <textarea class="form-control text-black border-secondary" id="problema_identificado" name="problema_identificado" rows="3" placeholder="Describa la problemática de la comunidad..." required></textarea>
                       </div>
 
                       <div class="col-12 mb-3">
-                        <label for="propuesta_solucion" class="form-label">Proyecto o Acciones Aprobadas</label>
-                        <textarea class="form-control text-black border-secondary" id="propuesta_solucion" name="propuesta_solucion" 
-                                  rows="3" placeholder="Detalle la solución o proyecto aprobado..." required></textarea>
+                        <label for="propuesta_solucion" class="form-label text-black fw-semibold">Proyecto o Acciones Aprobadas</label>
+                        <textarea class="form-control text-black border-secondary" id="propuesta_solucion" name="propuesta_solucion" rows="3" placeholder="Detalle la solución o proyecto aprobado..." required></textarea>
                       </div>
 
                       <div class="col-md-4 mb-3">
-                        <label for="monto_estimado" class="form-label">Monto Estimado</label>
-                        <input type="number" step="0.01" class="form-control text-black border-secondary" id="monto_estimado" name="monto_estimado" 
-                              placeholder="Ej: 2000">
+                        <label for="monto_estimado" class="form-label text-black fw-semibold">Monto Estimado</label>
+                        <input type="number" step="0.01" class="form-control text-black border-secondary" id="monto_estimado" name="monto_estimado" placeholder="Ej: 2000">
                       </div>
                       <div class="col-md-4 mb-3">
-                        <label for="banco_receptor" class="form-label">Banco Receptor</label>
-                        <input type="text" class="form-control text-black border-secondary" id="banco_receptor" name="banco_receptor" 
-                              placeholder="Ej: Banco de Venezuela">
+                        <label for="banco_receptor" class="form-label text-black fw-semibold">Banco Receptor</label>
+                        <input type="text" class="form-control text-black border-secondary" id="banco_receptor" name="banco_receptor" placeholder="Ej: Banco de Venezuela">
                       </div>
                       <div class="col-md-4 mb-3">
-                        <label for="cuenta_bancaria" class="form-label">Cuenta Comunal</label>
-                        <input type="text" class="form-control text-black border-secondary" id="cuenta_bancaria" name="cuenta_bancaria" 
-                              placeholder="20 dígitos de la cuenta">
+                        <label for="cuenta_bancaria" class="form-label text-black fw-semibold">Cuenta Comunal</label>
+                        <input type="text" class="form-control text-black border-secondary" id="cuenta_bancaria" name="cuenta_bancaria" placeholder="20 dígitos de la cuenta">
                       </div>
 
                       <div class="col-12 mb-3">
-                        <label for="votos_favor" class="form-label">Votos Registrados a Favor</label>
-                        <input type="number" class="form-control text-black border-secondary" id="votos_favor" name="votos_favor" 
-                              placeholder="Cantidad de votos" required>
+                        <label for="votos_favor" class="form-label text-black fw-semibold">Votos Registrados a Favor</label>
+                        <input type="number" class="form-control text-black border-secondary" id="votos_favor" name="votos_favor" placeholder="Cantidad de votos" required>
                       </div>
 
                       <div class="col-12 mb-4">
-                        <label for="asistentes_acta" class="form-label">Asistentes (Nombres separados por comas)</label>
-                        <textarea class="form-control text-black border-secondary" id="asistentes_acta" name="asistentes" 
-                                  rows="3" placeholder="Pedro Pérez, María Gómez, Juan Rodríguez..." required></textarea>
+                        <label for="asistentes_acta" class="form-label text-black fw-semibold">Asistentes (Nombres separados por comas)</label>
+                        <textarea class="form-control text-black border-secondary" id="asistentes_acta" name="asistentes" rows="3" placeholder="Pedro Pérez, María Gómez, Juan Rodríguez..." required></textarea>
                       </div>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">
                       <i class="fas fa-file-contract me-2"></i>Generar Acta
                     </button>
                   </form>
@@ -209,31 +318,29 @@
             </div>
             
             <div class="col-md-6">
-              <div class="card h-100">
+              <div class="card h-100 shadow-sm">
                 <div class="card-body">
-                  <h6 class="card-title">Actas Recientes</h6>
+                  <h6 class="card-title fw-bold text-secondary border-bottom pb-2 mb-3"><i class="fas fa-history me-2"></i>Actas Recientes</h6>
                   <div class="list-group">
                     {% for acta in actas_recientes %}
-                    <div class="list-group-item">
+                    <div class="list-group-item list-group-item-action flex-column align-items-start mb-2 rounded border shadow-sm">
                       <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">{{ acta.titulo }}</h6>
-                        <small>{{ acta.fecha_reunion|date:"d/m/Y H:i" }}</small>
+                        <h6 class="mb-1 text-primary fw-bold">{{ acta.titulo }}</h6>
+                        <small class="text-muted">{{ acta.fecha_reunion|date:"d/m/Y H:i" }}</small>
                       </div>
-                      <p class="mb-1">Lugar: {{ acta.lugar }}</p>
-                      <p class="mb-1">Asistentes: {{ acta.asistentes_count }}</p>
-                      <small>Generada por: {{ acta.generado_por.get_full_name }}</small>
+                      <p class="mb-1 text-dark">Lugar: {{ acta.lugar }}</p>
+                      <p class="mb-1 text-muted" style="font-size: 13px;">Asistentes: {{ acta.asistentes_count }}</p>
+                      <small class="text-muted d-block">Generada por: {{ acta.generado_por.get_full_name|default:acta.generado_por.username }}</small>
                       <div class="mt-2">
                         <a href="{% url 'descargar_acta' acta.id %}" class="btn btn-sm btn-success">
                           <i class="fas fa-download me-1"></i>Descargar
                         </a>
-                        <!-- <button class="btn btn-sm btn-info" onclick="verPreviaActa({{ acta.id }})">
-                          <i class="fas fa-eye me-1"></i>Previsualizar
-                        </button> -->
                       </div>
                     </div>
                     {% empty %}
-                    <div class="list-group-item text-center text-muted">
-                      No hay actas generadas
+                    <div class="list-group-item text-center text-muted border-0 py-4">
+                      <i class="fas fa-folder-open fa-2x d-block mb-2 text-black-50"></i>
+                      No hay actas generadas recientemente
                     </div>
                     {% endfor %}
                   </div>
@@ -241,79 +348,118 @@
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </main>
-  </div>
-
+</div>
   <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+
 <script>
 $(document).ready(function () {
+
     // =========================================================================
-    // 1. MANEJO DINÁMICO DEL SELECTION LIST (FAMILIAS -> HABITANTES)
+    // 1. FUNCIÓN REUTILIZABLE PARA ENLAZAR SELECTORES (FAMILIAS -> HABITANTES)
     // =========================================================================
-    $('#select_familia').on('change', function() {
-        const familiaId = $(this).val();
-        const selectHabitante = $('#select_habitante');
-        
-        if (!familiaId) {
-            selectHabitante.html('<option value="">-- Seleccione primero una familia --</option>').prop('disabled', true);
-            return;
-        }
-        
-        selectHabitante.html('<option value=""><i class="fas fa-spinner fa-spin"></i> Cargando habitantes...</option>').prop('disabled', true);
-        
-        fetch(`/api/familias/${familiaId}/`, { credentials: 'include' })
-            .then(response => {
-                if (!response.ok) throw new Error("Error en el servidor");
-                return response.json();
-            })
-            .then(data => {
-                selectHabitante.empty().prop('disabled', false);
-                if (!data.habitantes || data.habitantes.length === 0) {
-                    selectHabitante.html('<option value="">No hay habitantes registrados en esta familia</option>');
-                    return;
-                }
-                selectHabitante.append('<option value="">-- Seleccione el Ciudadano (Solicitante) --</option>');
-                data.habitantes.forEach(h => {
-                    selectHabitante.append(`<option value="${h.id}">${h.nombre} ${h.apellido} (C.I: ${h.cedula})</option>`);
+    /**
+     * Sincroniza dinámicamente un select de Familias con uno de Habitantes.
+     * @param {string} idSelectFamilia - ID del select de familias (ej: '#select_familia')
+     * @param {string} idSelectHabitante - ID del select de habitantes (ej: '#select_habitante')
+     * @param {string} textoPorDefecto - Mensaje placeholder para la opción inicial
+     * @param {function} callbackCambio - [Opcional] Lógica de limpieza extra para inputs relacionados
+     */
+    function configurarSelectorDependiente(idSelectFamilia, idSelectHabitante, textoPorDefecto, callbackCambio) {
+        $(idSelectFamilia).on('change', function() {
+            const familiaId = $(this).val();
+            const selectHabitante = $(idSelectHabitante);
+            
+            // Si existe una función de limpieza para otros inputs, la ejecuta
+            if (typeof callbackCambio === 'function') {
+                callbackCambio();
+            }
+            
+            if (!familiaId) {
+                selectHabitante.html('<option value="">Primero seleccione una familia...</option>').prop('disabled', true);
+                return;
+            }
+            
+            selectHabitante.html('<option value="">⏳ Cargando integrantes...</option>').prop('disabled', true);
+            
+            // 🎯 CORRECCIÓN DE RUTA: Volvemos al endpoint real de tu API con credenciales
+            fetch(`/api/familias/${familiaId}/`, { credentials: 'include' })
+                .then(response => {
+                    if (!response.ok) throw new Error("Error al consultar el servidor.");
+                    return response.json();
+                })
+                .then(data => {
+                    selectHabitante.empty().prop('disabled', false);
+                    
+                    // 🎯 CORRECCIÓN DE ESTRUCTURA: Extrae de data.habitantes tal como lo sirve tu API
+                    const listaHabitantes = data.habitantes || [];
+                    
+                    if (listaHabitantes.length === 0) {
+                        selectHabitante.html('<option value="">⚠️ No hay habitantes registrados en esta familia</option>').prop('disabled', true);
+                        return;
+                    }
+                    
+                    selectHabitante.append(`<option value="">-- ${textoPorDefecto} --</option>`);
+                    listaHabitantes.forEach(h => {
+                        // Formato limpio: Cédula - APELLIDO, NOMBRE
+                        const cedulaFormateada = h.cedula ? h.cedula : 'S/C';
+                        const apellidoFormateado = h.apellido ? h.apellido.toUpperCase() : '';
+                        const nombreFormateado = h.nombre ? h.nombre.toUpperCase() : '';
+                        
+                        selectHabitante.append(`<option value="${h.id}">${cedulaFormateada} - ${apellidoFormateado}, ${nombreFormateado}</option>`);
+                    });
+                })
+                .catch(error => {
+                    console.error('❌ Error en la carga dinámica de habitantes:', error);
+                    selectHabitante.html('<option value="">⚠️ Error al cargar los integrantes</option>').prop('disabled', true);
                 });
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                selectHabitante.html('<option value="">Error al cargar los integrantes</option>').prop('disabled', true);
-            });
+        });
+    }
+
+    // Inicializar el comportamiento en los 3 formularios de trámites unificados
+    configurarSelectorDependiente('#select_familia', '#select_habitante', 'Seleccione el Ciudadano (Solicitante)');
+    configurarSelectorDependiente('#select_familia_bc', '#select_habitante_bc', 'Seleccione el Ciudadano Ejemplar');
+    configurarSelectorDependiente('#select_familia_pm', '#select_habitante_pm', 'Ciudadano Fallecido (Difunto)', function() {
+        $('#fecha_deceso').val('');
+        $('#solicitante_defuncion').val('');
+        $('#solicitante_cedula').val('');
+        $('#relacion_parentesco').val('');
     });
 
-    // =========================================================================
-    // 🔑 2. ENVÍO TRADICIONAL SEGURO (EVITA EL ANONYMOUS USER POR AJAX)
-    // =========================================================================
-    // Al remover el preventDefault() de AJAX, el navegador procesa la petición POST de 
-    // forma nativa, asegurando que las cookies de sesión viajen de manera limpia.
-    // Antes de irse la petición, nos aseguramos de habilitar el campo "habitante" 
-    // para que su valor sea recolectado y enviado al back.
-    $('#formConstancia, #formActa').on('submit', function() {
-        $('#select_habitante').prop('disabled', false);
-    });
 
     // =========================================================================
-    // 3. INICIALIZACIÓN POR DEFECTO DE LA FECHA DEL ACTA
+    // 🔑 2. PREPARACIÓN PRE-SUBMIT (EVITA QUE CAMPOS DISABLED SE QUEDEN VACÍOS)
+    // =========================================================================
+    // Al realizar un envío tradicional nativo, los campos con el atributo 'disabled' 
+    // NO se incluyen en el POST de HTTP. Removemos la restricción justo en el evento submit.
+    $('#formConstancia, #formBuenaConducta, #formPostMortem, #formActa').on('submit', function() {
+        $('#select_habitante, #select_habitante_bc, #select_habitante_pm').prop('disabled', false);
+    });
+
+
+    // =========================================================================
+    // 3. INICIALIZACIÓN POR DEFECTO DE LA FECHA Y HORA DEL ACTA
     // =========================================================================
     const fechaActaInput = document.getElementById('fecha_acta');
     if (fechaActaInput && !fechaActaInput.value) {
         const now = new Date();
-        const formatted = now.toISOString().slice(0, 16);
-        fechaActaInput.value = formatted;
+        const offset = now.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+        fechaActaInput.value = localISOTime;
     }
 
+
     // =========================================================================
-    // 4. ALERTAS POR MENSAJES FLASH DE DJANGO (POST-RELOAD NATIVO)
+    // 4. ALERTAS POR MENSAJES FLASH DE DJANGO (SWEETALERT2 INTEGRADO)
     // =========================================================================
-    // Cuando la página se recarga tras guardar con éxito el formulario tradicional,
-    // Django inyecta los mensajes en el contexto y SweetAlert los levanta automáticamente.
     {% if messages %}
         {% for message in messages %}
         Swal.fire({
@@ -327,101 +473,8 @@ $(document).ready(function () {
         });
         {% endfor %}
     {% endif %}
+
 });
-
-// // =============================================================================
-// // 5. HISTORIAL: PREVISUALIZAR CONSTANCIAS
-// // =============================================================================
-// function verPreviaConstancia(constanciaId) {
-//     Swal.fire({
-//         title: 'Cargando previsualización...',
-//         allowOutsideClick: false,
-//         background: '#1e293b',
-//         color: '#fff',
-//         didOpen: () => { Swal.showLoading(); }
-//     });
-    
-//     fetch(`/documentacion/constancia/previa/${constanciaId}/`, { credentials: 'include' })
-//         .then(response => response.json())
-//         .then(data => {
-//             Swal.fire({
-//                 title: `Constancia #${constanciaId}`,
-//                 background: '#1e293b',
-//                 color: '#fff',
-//                 html: `
-//                     <div class="text-start text-white">
-//                         <p><strong>Familia:</strong> ${data.familia}</p>
-//                         <p><strong>Fecha:</strong> ${data.fecha}</p>
-//                         <p><strong>Finalidad:</strong> ${data.finalidad}</p>
-//                         <hr class="border-secondary">
-//                         <p><strong>Contenido:</strong></p>
-//                         <div class="border p-3 bg-dark text-white rounded" style="max-height:200px; overflow-y:auto; font-size:13px; text-align:justify;">
-//                             ${data.contenido}
-//                         </div>
-//                     </div>
-//                 `,
-//                 showConfirmButton: true,
-//                 confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
-//                 showCancelButton: true,
-//                 cancelButtonText: 'Cerrar',
-//                 confirmButtonColor: '#0ea5e9'
-//             }).then((result) => {
-//                 if (result.isConfirmed) {
-//                     window.location.href = `/documentacion/constancia/descargar/${constanciaId}/`;
-//                 }
-//             });
-//         })
-//         .catch(error => {
-//             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
-//         });
-// }
-
-// // =============================================================================
-// // 6. HISTORIAL: PREVISUALIZAR ACTAS
-// // =============================================================================
-// function verPreviaActa(actaId) {
-//     Swal.fire({
-//         title: 'Cargando previsualización...',
-//         allowOutsideClick: false,
-//         background: '#1e293b',
-//         color: '#fff',
-//         didOpen: () => { Swal.showLoading(); }
-//     });
-    
-//     fetch(`/documentacion/acta/previa/${actaId}/`, { credentials: 'include' })
-//         .then(response => response.json())
-//         .then(data => {
-//             Swal.fire({
-//                 title: data.titulo,
-//                 background: '#1e293b',
-//                 color: '#fff',
-//                 html: `
-//                     <div class="text-start text-white">
-//                         <p><strong>Fecha Reunión:</strong> ${data.fecha_reunion}</p>
-//                         <p><strong>Lugar:</strong> ${data.lugar}</p>
-//                         <p><strong>Asistentes:</strong> ${data.asistentes_count} ciudadanos</p>
-//                         <hr class="border-secondary">
-//                         <p><strong>Texto Redactado (Formato Ministerio):</strong></p>
-//                         <div class="border p-3 bg-dark text-white rounded" style="max-height:220px; overflow-y:auto; font-size:13px; text-align:justify; line-height:1.5;">
-//                             ${data.contenido}
-//                         </div>
-//                     </div>
-//                 `,
-//                 showConfirmButton: true,
-//                 confirmButtonText: '<i class="fas fa-download me-2"></i>Descargar PDF',
-//                 showCancelButton: true,
-//                 cancelButtonText: 'Cerrar',
-//                 confirmButtonColor: '#0ea5e9'
-//             }).then((result) => {
-//                 if (result.isConfirmed) {
-//                     window.location.href = `/documentacion/acta/descargar/${actaId}/`;
-//                 }
-//             });
-//         })
-//         .catch(error => {
-//             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la previsualización.', background: '#1e293b', color: '#fff' });
-//         });
-// }
 </script>
 
 </body>

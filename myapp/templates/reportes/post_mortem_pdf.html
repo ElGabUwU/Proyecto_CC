@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page {
+      size: letter;
+      margin: 1.5cm 2.5cm 2.5cm 2.5cm;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    /* 🏛️ Encabezado Institucional Unificado */
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 5px;
+    }
+    .logo-cell {
+      width: 25%;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .logo-img {
+      width: 70px;
+      height: auto;
+    }
+    .legend-text {
+      font-size: 8px;
+      font-weight: bold;
+      line-height: 1.2;
+      margin-top: 4px;
+      color: #000000;
+    }
+    .header-text-cell {
+      width: 75%;
+      text-align: center;
+      vertical-align: middle;
+      padding-right: 40px;
+    }
+    .header-text {
+      font-size: 9px; 
+      font-weight: bold; 
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+    .title-container {
+      text-align: center;
+      margin-top: 35px;
+      margin-bottom: 35px;
+    }
+    .main-title {
+      font-size: 15px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      text-decoration: underline;
+    }
+    .paragraph {
+      text-align: justify;
+      text-indent: 40px;
+      margin-bottom: 20px;
+    }
+    .signatures-label {
+      text-align: center;
+      font-weight: bold;
+      margin-top: 60px;
+      margin-bottom: 40px;
+    }
+    .signatures-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .signature-block {
+      width: 50%;
+      text-align: center;
+      vertical-align: top;
+      font-size: 11px;
+    }
+    .signature-line {
+      width: 160px;
+      border-top: 1px solid #000;
+      margin: 0 auto 5px auto;
+    }
+    .signature-name {
+      font-weight: bold;
+      margin: 0;
+    }
+    .signature-info, .signature-role {
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <table class="header-table">
+    <tr>
+      <td class="logo-cell">
+        {% if logo_pdf %}
+          <img class="logo-img" src="data:image/png;base64,{{ logo_pdf }}" alt="Logo CC">
+        {% else %}
+          <img class="logo-img" src="{{ settings.BASE_DIR }}/static/assets/images/CC_logo.png" alt="Logo CC">
+        {% endif %}
+        <div class="legend-text">CONSEJO COMUNAL<br>MANUEL PULIDO MÉNDEZ</div>
+      </td>
+      <td class="header-text-cell">
+        <div class="header-text">
+          REPÚBLICA BOLIVARIANA DE VENEZUELA<br>
+          MINISTERIO DEL PODER POPULAR PARA LAS COMUNAS Y LOS MOVIMIENTOS SOCIALES<br>
+          CONSEJO COMUNAL "URBANIZACIÓN MANUEL PULIDO MÉNDEZ"<br>
+          RUBIO - MUNICIPIO JUNÍN - ESTADO TÁCHIRA
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="title-container">
+    <h2 class="main-title">CONSTANCIA DE RESIDENCIA POST-MORTEM</h2>
+  </div>
+
+  <p class="paragraph">
+    Quienes suscriben, voceros de la Unidad Ejecutiva del <strong>Consejo Comunal "Urbanización Manuel Pulido Méndez"</strong>, debidamente registrados ante los órganos competentes, hacemos constar con la debida formalidad que quien en vida se llamara: 
+    <strong>{{ fallecido.apellido|upper }}, {{ fallecido.nombre|upper }}</strong>, de nacionalidad venezolana, mayor de edad, titular de la Cédula de Identidad N° <strong>V-{{ fallecido.cedula }}</strong>, tuvo su último domicilio real y residencia habitual 
+    hasta el momento de su sensible fallecimiento, acaecido el día <strong>{{ fecha_fallecimiento|date:"d/m/Y" }}</strong>, en la siguiente dirección de nuestra comunidad: <strong>{{ familia.direccion|upper }}</strong>, Vivienda N° {{ familia.vivienda }}.
+  </p>
+
+  <p class="paragraph">
+    De igual manera, se hace constar que el ciudadano del cual en vida recibía el trato diario y vecinal, 
+    cumplía fielmente con las normas ciudadanas y comunitarias, siendo un vecino respetable de este sector 
+    geográfico de la Parroquia Rubio, Municipio Junín del Estado Táchira.
+  </p>
+
+  <p class="paragraph">
+    Se expide la presente constancia a solicitud de su familiar directo, el ciudadano(a): 
+    <strong>{{ solicitante_nombre|upper }}</strong>, titular de la Cédula de Identidad N° 
+    <strong>{{ solicitante_cedula }}</strong>, en su carácter de <strong>{{ relacion_parentesco|upper }}</strong> 
+    del difunto, para fines estrictamente legales y administrativos de interés del núcleo familiar. 
+    En Rubio, a los <strong>{{ fecha_emision|date:"d" }}</strong> días del mes de <strong>{{ fecha_emision|date:"F" }}</strong> de <strong>{{ fecha_emision|date:"Y" }}</strong>.
+  </p>
+
+  <p class="signatures-label">Por la Unidad Ejecutiva del Consejo Comunal</p>
+
+  <table class="signatures-table">
+    <tr>
+      <td class="signature-block">
+        <br><br>
+        <div class="signature-line"></div>
+        <p class="signature-name">Sánchez Roa Marlene Jacqueline</p>
+        <p class="signature-info">C.I. V-9.143.384</p>
+        <p class="signature-role">Vocera Principal</p>
+      </td>
+      <td class="signature-block">
+        <br><br>
+        <div class="signature-line"></div>
+        <p class="signature-name">Blanco Esteves Sandra Maily</p>
+        <p class="signature-info">C.I. V-14.234.567</p>
+        <p class="signature-role">Vocera Principal</p>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
