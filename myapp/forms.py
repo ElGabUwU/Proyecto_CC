@@ -675,6 +675,105 @@ class ActaReunionForm(forms.ModelForm):
             acta.save()
         return acta
 
+class BuenaConductaForm(forms.Form):
+    """Formulario unificado para la solicitud de Carta de Buena Conducta"""
+    familia = forms.ModelChoiceField(
+        queryset=Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
+        label="Seleccionar Grupo Familiar",
+        empty_label="Elija una familia..."
+    )
+    habitante = forms.ModelChoiceField(
+        queryset=Habitante.objects.none(),
+        label="Cargar Ciudadano",
+        empty_label="Primero seleccione una familia..."
+    )
+    tiempo_residencia = forms.CharField(
+        label="Tiempo de Residencia en el Sector",
+        max_length=100,
+        widget=forms.TextInput(attrs={'placeholder': 'Ej. Cinco (05) años / Desde su nacimiento'})
+    )
+    organismo_destino = forms.CharField(
+        label="Organismo o Destino del Trámite",
+        max_length=150,
+        widget=forms.TextInput(attrs={'placeholder': 'Ej. Trámites Laborales, Universidad, etc.'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        # Extraemos 'user' de manera segura para mantener consistencia con tus otros forms
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Aplicamos tus mismos estilos visuales Glassmorphism de forma dinámica
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs.update({'class': 'form-select text-black border-secondary', 'style': 'font-size: 14px;'})
+            else:
+                field.widget.attrs.update({'class': 'form-control text-black border-secondary', 'style': 'font-size: 14px;'})
+                
+        # Lógica AJAX para el encadenamiento dinámico de habitantes
+        if 'familia' in self.data:
+            try:
+                familia_id = int(self.data.get('familia'))
+                self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=familia_id, is_deleted=False).order_by('nombre')
+            except (ValueError, TypeError):
+                pass
+        elif self.initial.get('familia'):
+            familia_id = self.initial.get('familia')
+            self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=familia_id, is_deleted=False).order_by('nombre')
+
+class ConstanciaFallecidoForm(forms.Form):
+    """Formulario para la Constancia de Residencia Post-Mortem (Fallecidos)"""
+    familia = forms.ModelChoiceField(
+        queryset=Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
+        label="Seleccionar Grupo Familiar",
+        empty_label="Elija una familia..."
+    )
+    habitante = forms.ModelChoiceField(
+        queryset=Habitante.objects.none(),
+        label="Cargar Ciudadano Fallecido",
+        empty_label="Primero seleccione una familia..."
+    )
+    fecha_deceso = forms.DateField(
+        label="Fecha del Lamentable Deceso",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    solicitante_defuncion = forms.CharField(
+        label="Familiar Solicitante / Declarante",
+        max_length=150,
+        widget=forms.TextInput(attrs={'placeholder': 'Ej. María Pérez'})
+    )
+    # 🆕 AGREGADOS: Requeridos para rellenar de forma dinámica el PDF nativo
+    solicitante_cedula = forms.CharField(
+        label="Cédula del Familiar Solicitante",
+        max_length=15,
+        widget=forms.TextInput(attrs={'placeholder': 'Ej. 14234567'})
+    )
+    relacion_parentesco = forms.CharField(
+        label="Parentesco con el Difunto",
+        max_length=50,
+        widget=forms.TextInput(attrs={'placeholder': 'Ej. ESPOSA, HIJA, HERMANO'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs.update({'class': 'form-select text-black border-secondary', 'style': 'font-size: 14px;'})
+            else:
+                field.widget.attrs.update({'class': 'form-control text-black border-secondary', 'style': 'font-size: 14px;'})
+                
+        if 'familia' in self.data:
+            try:
+                familia_id = int(self.data.get('familia'))
+                self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=familia_id, is_deleted=False).order_by('nombre')
+            except (ValueError, TypeError):
+                pass
+        elif self.initial.get('familia'):
+            family_id = self.initial.get('familia')
+            self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=family_id, is_deleted=False).order_by('nombre')
+            
 # ============================================
 # 🆕 NUEVO: Formularios para Gestión de Proyectos
 # ============================================

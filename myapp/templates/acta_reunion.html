@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    /* 📄 Configuración de página limpia y compatible */
     @page {
       size: letter;
-      margin: 1.5cm 2.5cm 2.5cm 2.5cm; /* Ajustado el margen superior para el flujo natural */
+      margin: 1.5cm 2.5cm 2.5cm 2.5cm;
     }
     body {
       font-family: Arial, sans-serif;
@@ -14,27 +13,50 @@
       color: #111111;
       line-height: 1.8;
     }
-    /* El encabezado se renderiza al inicio del flujo del PDF sin romper el compilador */
-    .header-container {
+    
+    /* 🏛️ Estructura del Encabezado por Tablas (Blindado para xhtml2pdf) */
+    .header-table {
       width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 5px;
+    }
+    .logo-cell {
+      width: 25%;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .logo-img {
+      width: 70px;
+      height: auto;
+    }
+    .legend-text {
+      font-size: 8px;
+      font-weight: bold;
+      line-height: 1.2;
+      margin-top: 4px;
+      color: #000000;
+    }
+    .header-text-cell {
+      width: 75%;
       text-align: center;
-      margin-bottom: 10px;
+      vertical-align: middle;
+      padding-right: 40px; /* Equilibra óptimamente el centrado con respecto al logo */
     }
     .header-text {
-      font-size: 10px; 
+      font-size: 9px; 
       font-weight: bold; 
-      text-align: center; 
       line-height: 1.4;
     }
+
+    /* 📄 Estilos del Cuerpo del Documento */
     .title {
       text-align: center; 
       font-size: 13px; 
       font-weight: bold;
-      margin-top: 15px; 
+      margin-top: 25px; 
       margin-bottom: 25px; 
       text-decoration: underline;
     }
-    /* 🔑 Formato continuo exacto del formato del Ministerio */
     .legal-text {
       text-align: justify;
       text-indent: 1.5cm; /* Sangría reglamentaria */
@@ -58,15 +80,31 @@
 </head>
 <body>
 
-  <div class="header-container">
-    <div class="header-text">
-      REPÚBLICA BOLIVARIANA DE VENEZUELA<br>
-      MINISTERIO DEL PODER POPULAR PARA LAS COMUNAS Y LOS MOVIMIENTOS SOCIALES<br>
-      CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ<br>
-      SISTEMA DE INTEGRACIÓN COMUNAL (SINCO)
-    </div>
-    <hr style="border: 0; border-top: 1.5px solid #000; margin-top: 6px; margin-bottom: 0px;">
-  </div>
+  <table style="width: 100%; border-collapse: collapse; border-bottom: 2px solid #000000; padding-bottom: 6px; margin-bottom: 15px;">
+    <tr>
+      <td style="width: 20%; text-align: left; vertical-align: middle;">
+        {% if logo_pdf %}
+          <img src="data:image/png;base64,{{ logo_pdf }}" style="width: 65px; height: auto;" alt="Logo Escudo">
+        {% else %}
+          <div style="font-size: 7pt; font-weight: bold; color: #555555;">[LOGOTIPO]</div>
+        {% endif %}
+        <div style="font-size: 7.5pt; font-weight: bold; line-height: 1.1; margin-top: 4px; color: #000000;">
+          Consejo Comunal<br>Manuel Pulido Méndez
+        </div>
+      </td>
+      
+      <td style="width: 80%; text-align: center; vertical-align: middle; padding-right: 30px;">
+        <div style="font-size: 9pt; font-weight: bold; line-height: 1.4; color: #000000; letter-spacing: 0.3px;">
+          REPÚBLICA BOLIVARIANA DE VENEZUELA<br>
+          MINISTERIO DEL PODER POPULAR PARA LAS COMUNAS Y LOS MOVIMIENTOS SOCIALES<br>
+          CONSEJO COMUNAL URBANIZACIÓN MANUEL PULIDO MÉNDEZ<br>
+          <span style="font-size: 8pt; font-weight: normal; font-style: italic;">SISTEMA DE INTEGRACIÓN COMUNAL (SINCO)</span>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <hr style="border: 0; border-top: 1.5px solid #000; margin-top: 2px; margin-bottom: 0px;">
 
   <div class="title">
     {{ acta.titulo|upper }}
@@ -79,7 +117,8 @@
   <table class="signatures-table">
     <tr>
       <td class="signature-cell">
-        <br><br><br> <div class="line"></div>
+        <br><br><br>
+        <div class="line"></div>
         <strong>Dirección del Debate</strong><br>
         Vocero(a) Elector Delegado
       </td>

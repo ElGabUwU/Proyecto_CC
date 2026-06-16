@@ -152,8 +152,10 @@
                     </button>
                     <form action="{% url 'eliminar_proyecto' proyecto.pk %}" method="post" style="display:inline;">
                       {% csrf_token %}
-                      <button type="submit" class="btn btn-sm btn-danger mb-1" 
-                              onclick="return confirmarEliminacion('{{ proyecto.nombre }}')" title="Eliminar">
+                      <button type="submit" class="btn btn-sm btn-danger mb-1 eliminar-proyecto-btn" 
+                              data-proyecto-nombre="{{ proyecto.nombre }}" 
+                              data-delete-url="{% url 'eliminar_proyecto' proyecto.pk %}"
+                              title="Eliminar">
                         <i class="fas fa-trash"></i>
                       </button>
                     </form>
@@ -337,10 +339,31 @@
       window.location.href = url.toString();
     }
     
-    // Confirmar eliminación
-    function confirmarEliminacion(nombre) {
-      return confirm(`¿Está seguro de eliminar el proyecto "${nombre}"?\n\nEsta acción no se puede deshacer.`);
-    }
+    // Confirmar eliminación con SweetAlert2
+    document.querySelectorAll('.eliminar-proyecto-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(event) {
+        event.preventDefault();
+        const nombre = this.getAttribute('data-proyecto-nombre');
+        const url = this.getAttribute('data-delete-url');
+        const form = this.closest('form');
+        
+        Swal.fire({
+          title: '¿Está seguro?',
+          html: `Va a eliminar el proyecto: <strong>${nombre}</strong><br><br>
+                 <span class="text-danger">Esta acción no se puede deshacer.</span>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      });
+    });
     
     // Mensajes de Django
     $(document).ready(function () {

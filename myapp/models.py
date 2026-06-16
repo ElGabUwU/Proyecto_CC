@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from datetime import date
+from django.db.models import Q
 from django.core.exceptions import ValidationError
 
 # Nota: Asumo que mantienes tu clase base SoftDeleteModel para borrado lógico.
@@ -615,3 +617,62 @@ class CensoParticipante(models.Model):
     # @property
     # def telefono_habitante(self):
     #     return self.habitante.telefono or ''
+
+from django.db import models
+from django.conf import settings
+from datetime import date
+from django.db.models import Q
+
+class ReporteDemografico(models.Model):
+    """
+    Modelo para la configuración, control y auditoría de reportes 
+    estructurados de Familias y Habitantes del Consejo Comunal.
+    """
+    OPCIONES_GENERO = [
+        ('TODOS', 'Todos'),
+        ('M', 'Masculino'),
+        ('F', 'Femenino'),
+    ]
+    
+    OPCIONES_EDAD = [
+        ('TODOS', 'Todas las edades'),
+        ('MENOR_12', 'Niños (Menores a 12 años)'),
+        ('MENOR_16', 'Adolescentes (Menores a 16 años)'),
+        ('TERCERA_EDAD', 'Adultos Mayores / 3ra Edad (>= 60 años)'),
+    ]
+
+    OPCIONES_FORMATO = [
+        ('PDF', 'Documento PDF (.pdf)'),
+        ('EXCEL', 'Hoja de Cálculo (.xlsx)'),
+        ('AMBOS', 'Ambos Formatos'),
+    ]
+
+    # 1. Metadatos del Reporte
+    titulo_reporte = models.CharField(max_length=150, verbose_name="Título del Reporte")
+    solicitado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        verbose_name="Generado por"
+    )
+    fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
+
+    # 2. Parámetros / Filtros aplicados (Condiciones)
+    filtro_genero = models.CharField(max_length=5, choices=OPCIONES_GENERO, default='TODOS', verbose_name="Filtro de Género")
+    filtro_edad = models.CharField(max_length=15, choices=OPCIONES_EDAD, default='TODOS', verbose_name="Segmentación por Edad")
+    incluir_datos_familia = models.BooleanField(default=True, verbose_name="Desglosar por Grupo Familiar")
+    
+    formato_salida = models.CharField(max_length=10, choices=OPCIONES_FORMATO, default='AMBOS', verbose_name="Formato Solicitado")
+    
+    # 3. Campos de auditoría opcionales (por si deseas guardar el archivo físico en el servidor)
+    archivo_pdf = models.FileField(upload_to='reportes/pdfs/', blank=True, null=True, verbose_name="Archivo PDF")
+    archivo_excel = models.FileField(upload_to='reportes/excels/', blank=True, null=True, verbose_name="Archivo Excel")
+
+    class Meta:
+        db_table = 'cc_reportes_demograficos'
+        verbose_name = 'Reporte Demográfico'
+        verbose_name_plural = 'Reportes Demográficos'
+        ordering = ['-fecha_generacion']
+
+    def __str__(self):
+        return f"{self.titulo_reporte} - {self.fecha_generacion.strftime('%d/%m/%Y %H:%M')}"
