@@ -120,13 +120,50 @@ class FamiliaAPIView(View):
                     status=201
                 )
             except Exception as e:
+                # Manejo de errores específicos para mostrar mensajes claros al usuario
+                error_message = str(e)
+                if 'UNIQUE constraint failed' in error_message or 'unique' in error_message.lower():
+                    if 'cedula' in error_message.lower():
+                        return JsonResponse(
+                            {'error': 'Ya existe un habitante con esa cédula registrada en el sistema.'}, 
+                            status=400
+                        )
+                    elif 'vivienda' in error_message.lower() or 'nombre_familia' in error_message.lower():
+                        return JsonResponse(
+                            {'error': 'Ya existe una familia con ese nombre o número de vivienda registrado.'}, 
+                            status=400
+                        )
                 return JsonResponse(
-                    {'error': str(e)}, 
+                    {'error': f'Error al guardar los datos: {error_message}'}, 
                     status=500
                 )
         else:
+            # Procesar errores del serializer para mostrar mensajes específicos
+            errors = serializer.errors
+            error_messages = []
+            
+            if 'habitantes' in errors:
+                for idx, habitante_error in enumerate(errors['habitantes']):
+                    if 'cedula' in habitante_error:
+                        error_messages.append(f'Habitante {idx + 1}: Ya existe un registro con esa cédula.')
+                    if 'nombre' in habitante_error:
+                        error_messages.append(f'Habitante {idx + 1}: El nombre es requerido.')
+            
+            if 'nombre_familia' in errors:
+                error_messages.append('El nombre de la familia es requerido.')
+            if 'vivienda' in errors:
+                error_messages.append('El número de vivienda es requerido y debe ser único.')
+            if 'direccion' in errors:
+                error_messages.append('La dirección es requerida.')
+            
+            # Si no hay errores específicos, agregar los errores genéricos
+            if not error_messages:
+                for field, field_errors in errors.items():
+                    for error in field_errors:
+                        error_messages.append(f'{field}: {error}')
+            
             return JsonResponse(
-                {'errors': serializer.errors}, 
+                {'errors': error_messages}, 
                 status=400
             )
     
@@ -168,13 +205,50 @@ class FamiliaAPIView(View):
                     status=200
                 )
             except Exception as e:
+                # Manejo de errores específicos para mostrar mensajes claros al usuario
+                error_message = str(e)
+                if 'UNIQUE constraint failed' in error_message or 'unique' in error_message.lower():
+                    if 'cedula' in error_message.lower():
+                        return JsonResponse(
+                            {'error': 'Ya existe un habitante con esa cédula registrada en el sistema.'}, 
+                            status=400
+                        )
+                    elif 'vivienda' in error_message.lower() or 'nombre_familia' in error_message.lower():
+                        return JsonResponse(
+                            {'error': 'Ya existe una familia con ese nombre o número de vivienda registrado.'}, 
+                            status=400
+                        )
                 return JsonResponse(
-                    {'error': str(e)}, 
+                    {'error': f'Error al guardar los datos: {error_message}'}, 
                     status=500
                 )
         else:
+            # Procesar errores del serializer para mostrar mensajes específicos
+            errors = serializer.errors
+            error_messages = []
+            
+            if 'habitantes' in errors:
+                for idx, habitante_error in enumerate(errors['habitantes']):
+                    if 'cedula' in habitante_error:
+                        error_messages.append(f'Habitante {idx + 1}: Ya existe un registro con esa cédula.')
+                    if 'nombre' in habitante_error:
+                        error_messages.append(f'Habitante {idx + 1}: El nombre es requerido.')
+            
+            if 'nombre_familia' in errors:
+                error_messages.append('El nombre de la familia es requerido.')
+            if 'vivienda' in errors:
+                error_messages.append('El número de vivienda es requerido y debe ser único.')
+            if 'direccion' in errors:
+                error_messages.append('La dirección es requerida.')
+            
+            # Si no hay errores específicos, agregar los errores genéricos
+            if not error_messages:
+                for field, field_errors in errors.items():
+                    for error in field_errors:
+                        error_messages.append(f'{field}: {error}')
+            
             return JsonResponse(
-                {'errors': serializer.errors}, 
+                {'errors': error_messages}, 
                 status=400
             )
     
