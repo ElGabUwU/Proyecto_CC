@@ -1,5 +1,26 @@
 {% load static %}
 
+<!-- 
+    ============================================
+    SISTEMA DE GESTIÓN DE SESIÓN Y TIEMPO DE INACTIVIDAD
+    ============================================
+    
+    Este template incluye el sistema de control de sesión que:
+    1. Detecta inactividad del usuario (4:30 minutos sin actividad)
+    2. Muestra una advertencia con SweetAlert2 (30 segundos para responder)
+    3. Verifica periódicamente con el backend si la sesión sigue válida
+    4. Maneja correctamente el cierre de sesión por expiración
+    
+    Endpoints requeridos:
+    - /check-session/ (GET): Verifica si la sesión está activa
+    - /keep-session/ (POST): Renueva la sesión cuando el usuario confirma
+    
+    Configuración en settings.py:
+    - SESSION_COOKIE_AGE: 300 segundos (5 minutos)
+    - SESSION_SAVE_EVERY_REQUEST: True
+    
+    -->
+
 <!-- SweetAlert2 para notificaciones de sesión -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">

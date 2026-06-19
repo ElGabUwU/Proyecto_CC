@@ -1885,6 +1885,32 @@ def logout_view(request):
     logout(request)
     return redirect('login')
 
+
+@django_login_required
+def check_session(request):
+    """
+    Verifica si la sesión del usuario sigue activa.
+    Usado por el timer de inactividad en el frontend.
+    """
+    if request.user.is_authenticated:
+        return JsonResponse({'status': 'active', 'user': request.user.username})
+    else:
+        return JsonResponse({'status': 'expired'}, status=401)
+
+
+@django_login_required
+def keep_session(request):
+    """
+    Mantiene la sesión del usuario activa.
+    Usado cuando el usuario confirma que quiere mantener la sesión.
+    """
+    if request.user.is_authenticated:
+        # Actualizar el tiempo de expiración de la sesión
+        request.session.modified = True
+        return JsonResponse({'status': 'renewed', 'message': 'Sesión renovada exitosamente'})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Usuario no autenticado'}, status=401)
+
 class GrupoStudentsApiView(TeacherRequiredMixin, View):
     def get(self, request, id, *args, **kwargs):
         grupo = get_object_or_404(Group_Levels, id=id)

@@ -13,6 +13,8 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('check-session/', views.check_session, name='check_session'),
+    path('keep-session/', views.keep_session, name='keep_session'),
     path('welcome/', views.welcome, name='welcome'),
 
     # Endpoint para cambio de contraseña forzado
