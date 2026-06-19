@@ -4,6 +4,7 @@ ARQUITECTURA NUEVA: Vista unificada maestro-detalle para Familias y Habitantes.
 """
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum, Count
@@ -664,10 +665,6 @@ def exportar_finanzas(request):
 # Vistas para Documentación
 # ============================================
 
-# # Nota: Conserva o ajusta tus decoradores de permisos según los manejes en tu app
-# def vocero_secretaria_required(view_func):
-#     return view_func  # Si usas @admin_required, puedes dejarlo pasar para la beta
-
 def documentacion(request):
     """
     Vista principal para la gestión de documentación y actas.
@@ -675,8 +672,8 @@ def documentacion(request):
     # 💡 CORRECCIÓN: Cambiado .ordering() por .order_by()
     familias = Familia.objects.filter(is_deleted=False).order_by('nombre_familia')
     
-    constancias_recientes = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:10]
-    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:10]
+    constancias_recientes = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:8]
+    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:5]
     
     context = {
         'familias': familias,
@@ -689,11 +686,11 @@ def documentacion(request):
     }
     return render(request, 'documentacion.html', context)
 
-
 def generar_constancia(request):
     """
     Vista optimizada para AJAX: Procesa la constancia, retorna JSON de éxito 
     para actualizar la tabla histórica sin abrir pestañas automáticas.
+    Muestra mensajes de error detallados basados en la validación del Form.
     """
     if request.method == 'POST':
         form = ConstanciaResidenciaForm(request.POST, user=request.user)
@@ -705,39 +702,66 @@ def generar_constancia(request):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': True,
-                    'message': f'La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito y se ha añadido al historial.'
+                    'message': f'La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito.'
                 }, status=200)
                 
             messages.success(request, f'¡Excelente! La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito.')
             return redirect('documentacion')
             
         else:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                errores_dict = {}
-                for campo, lista_errores in form.errors.get_json_data().items():
-                    errores_dict[campo] = lista_errores[0]['message']
+            # 🎯 EXTRACCIÓN Y FORMATEO AVANZADO DE ERRORES
+            errores_visibles = []
+            errores_dict = {}
+            
+            for campo, lista_errores in form.errors.get_json_data().items():
+                mensaje_error = lista_errores[0]['message']
                 
+                # Obtener el label legible del campo si no es __all__ (errores globales)
+                if campo != '__all__' and campo in form.fields:
+                    label_campo = form.fields[campo].label
+                    texto_completo = f"<strong>{label_campo}:</strong> {mensaje_error}"
+                else:
+                    texto_completo = mensaje_error
+                
+                errores_visibles.append(texto_completo)
+                errores_dict[campo] = mensaje_error
+            
+            # Unimos los errores en un bloque con saltos de línea HTML para SweetAlert2
+            mensaje_final_errores = "<br>".join(errores_visibles)
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
+                    'message': f'No se pudo procesar la solicitud:<br>{mensaje_final_errores}',
                     'errors': errores_dict
                 }, status=400)
                 
-            messages.error(request, 'Por favor, verifique los datos del formulario de constancia.')
+            # Fallback para recarga nativa tradicional
+            messages.error(request, f'Por favor, corrija lo siguiente:<br>{mensaje_final_errores}')
             return redirect('documentacion')
             
     return redirect('documentacion')
 
 def generar_buena_conducta(request):
+    """
+    Procesa y valida la Constancia de Buena Conducta mediante AJAX/Nativo.
+    Aplica estrictamente el candado de los 3 días de antigüedad máxima.
+    """
     if request.method == 'POST':
-        form = BuenaConductaForm(request.POST, user=request.user)
+        # 🎯 CORREGIDO: Eliminamos 'user=' ya que este formulario plano no lo requiere en su __init__
+        form = BuenaConductaForm(request.POST)
+        
         if form.is_valid():
             habitante = form.cleaned_data.get('habitante')
             familia = habitante.familia
             tiempo_residencia = form.cleaned_data.get('tiempo_residencia')
             organismo_destino = form.cleaned_data.get('organismo_destino')
+            # 🎯 REGLA DE ORO: Extraemos la fecha sanitizada y validada por el clean del formulario
+            fecha_documento = form.cleaned_data.get('fecha_documento')
             
             logo_base64 = ""
-            ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_Logo.png')
+            # Sincronizado con tu ruta física real CC_logo.png
+            ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_logo.png')
             if os.path.exists(ruta_logo):
                 with open(ruta_logo, "rb") as image_file:
                     logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
@@ -747,26 +771,51 @@ def generar_buena_conducta(request):
                 'familia': familia,
                 'tiempo_residencia': tiempo_residencia,
                 'organismo_destino': organismo_destino,
-                'fecha_emision': date.today(),
+                'fecha_emision': fecha_documento,  # Se imprime la fecha validada
                 'logo_pdf': logo_base64,
             }
+            
             html_string = render_to_string('reportes/buena_conducta_pdf.html', context)
             response = HttpResponse(content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="Carta_Buena_Conducta_{habitante.cedula}.pdf"'
+            
             pisa_status = pisa.CreatePDF(src=html_string, dest=response, encoding='utf-8')
             if not pisa_status.err:
                 return response
-            messages.error(request, "Error técnico al compilar el PDF de Buena Conducta.")
+                
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': 'Error técnico interno al compilar la estructura del PDF.'}, status=500)
+            messages.error(request, "Error técnico al compilar el PDF.")
             return redirect('documentacion')
+            
         else:
-            errores = "<br>".join([f"• <b>{form.fields[campo].label}:</b> {msg[0]}" for campo, msg in form.errors.items()])
-            messages.error(request, f"Errores en el formulario de Buena Conducta:<br>{errores}")
+            # 🎯 EXTRACCIÓN AVANZADA DE ERRORES PARA SWEETALERT2
+            errores_lista = []
+            for campo, msg in form.errors.get_json_data().items():
+                label = form.fields[campo].label if campo in form.fields else "Global"
+                errores_lista.append(f"• <b>{label}:</b> {msg[0]['message']}")
+            errores_html = "<br>".join(errores_lista)
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': f'No se pudo generar el documento:<br>{errores_html}'
+                }, status=400)
+                
+            messages.error(request, f"Errores en el formulario:<br>{errores_html}")
             return redirect('documentacion')
+            
     return redirect('documentacion')
 
 def generar_post_mortem(request):
+    """
+    Procesa y valida la Constancia Post-Mortem mediante AJAX/Nativo.
+    Aplica estrictamente el candado de los 60 días desde el deceso.
+    """
     if request.method == 'POST':
-        form = ConstanciaFallecidoForm(request.POST, user=request.user)
+        # 🎯 CORREGIDO: Eliminamos 'user=' para evitar conflictos de firma en el __init__
+        form = ConstanciaFallecidoForm(request.POST)
+        
         if form.is_valid():
             fallecido = form.cleaned_data.get('habitante')
             familia = fallecido.familia
@@ -776,7 +825,7 @@ def generar_post_mortem(request):
             relacion_parentesco = form.cleaned_data.get('relacion_parentesco')
             
             logo_base64 = ""
-            ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_Logo.png')
+            ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_logo.png')
             if os.path.exists(ruta_logo):
                 with open(ruta_logo, "rb") as image_file:
                     logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
@@ -788,34 +837,90 @@ def generar_post_mortem(request):
                 'solicitante_nombre': solicitante_defuncion,
                 'solicitante_cedula': solicitante_cedula,
                 'relacion_parentesco': relacion_parentesco,
-                'fecha_emision': date.today(),
+                'fecha_emision': date.today(), # La fecha de emisión de la carta sí es hoy
                 'logo_pdf': logo_base64,
             }
+            
             html_string = render_to_string('reportes/post_mortem_pdf.html', context)
             response = HttpResponse(content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="Constancia_PostMortem_{fallecido.cedula}.pdf"'
+            
             pisa_status = pisa.CreatePDF(src=html_string, dest=response, encoding='utf-8')
             if not pisa_status.err:
                 return response
-            messages.error(request, "Error técnico al compilar el PDF Post-Mortem.")
+                
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': 'Error técnico interno al compilar la estructura del PDF.'}, status=500)
+            messages.error(request, "Error técnico al compilar el PDF.")
             return redirect('documentacion')
+            
         else:
-            errores = "<br>".join([f"• <b>{form.fields[campo].label}:</b> {msg[0]}" for campo, msg in form.errors.items()])
-            messages.error(request, f"Errores en el formulario Post-Mortem:<br>{errores}")
+            # 🎯 EXTRACCIÓN AVANZADA DE ERRORES PARA SWEETALERT2
+            errores_lista = []
+            for campo, msg in form.errors.get_json_data().items():
+                label = form.fields[campo].label if campo in form.fields else "Global"
+                errores_lista.append(f"• <b>{label}:</b> {msg[0]['message']}")
+            errores_html = "<br>".join(errores_lista)
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': f'No se pudo generar el documento:<br>{errores_html}'
+                }, status=400)
+                
+            messages.error(request, f"Errores en el formulario:<br>{errores_html}")
             return redirect('documentacion')
+            
     return redirect('documentacion')
 
+@login_required
 @transaction.atomic
 def generar_acta(request):
+    """
+    Procesa la creación de Actas de Reunión de forma atómica.
+    Soporta respuestas nativas y peticiones AJAX enviando un desglose
+    estético de errores directo a SweetAlert2.
+    """
     if request.method == 'POST':
         # Pasamos el usuario explícitamente al formulario
         form = ActaReunionForm(request.POST, user=request.user)
+        
         if form.is_valid():
             acta = form.save()
-            messages.success(request, f'Acta "{acta.titulo}" creada con éxito de forma tradicional.')
-            return redirect('documentacion') # Redirecciona a la vista principal del módulo
+            
+            # Formateamos el título para que se vea ordenado en la respuesta
+            titulo_acta = acta.titulo.upper()
+            mensaje_exito = f'¡Excelente! El Acta <strong>"{titulo_acta}"</strong> se ha registrado y compilado correctamente con el formato ministerial.'
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': mensaje_exito
+                }, status=200)
+                
+            messages.success(request, mensaje_exito)
+            return redirect('documentacion')
+            
         else:
-            messages.error(request, 'Hubo errores al validar el formulario del Acta.')
+            # 🎯 EXTRACCIÓN AVANZADA DE ERRORES (Igual que en las constancias)
+            errores_lista = []
+            for campo, msg in form.errors.get_json_data().items():
+                # Buscamos el label legible en los fields; si es global usamos '__all__'
+                label = form.fields[campo].label if campo in form.fields else "Validación General"
+                errores_lista.append(f"• <b>{label}:</b> {msg[0]['message']}")
+                
+            errores_html = "<br>".join(errores_lista)
+            mensaje_error_completo = f"No se pudo registrar el acta debido a los siguientes inconvenientes:<br>{errores_html}"
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': mensaje_error_completo
+                }, status=400)
+                
+            messages.error(request, mensaje_error_completo)
+            return redirect('documentacion')
+            
     return redirect('documentacion')
 
 def descargar_constancia(request, id):
@@ -1001,7 +1106,7 @@ def panel_reportes(request):
                 filtro_edad=edad,
                 solicitado_por=request.user
             )
-            messages.success(request, f"Filtro '{titulo}' creado con éxito. Ya puedes descargar los reportes.")
+            messages.success(request, f"Filtro {titulo} creado con éxito. Ya puedes descargar los reportes.")
             return redirect('panel_reportes')
         else:
             messages.error(request, "Debe indicarle un título descriptivo al reporte.")

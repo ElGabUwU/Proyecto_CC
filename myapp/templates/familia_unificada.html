@@ -14,26 +14,25 @@
   
   <style>
     .custom-card-comunidad {
-      background: rgba(30, 41, 59, 0.45) !important;
+      background: rgba(255, 255, 255, 0.986) !important;
       backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       border-radius: 12px !important;
     }
     .seccion-bloque {
-      background: rgba(15, 23, 42, 0.45) !important;
-      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      background: rgb(255, 255, 255) !important;
+      border: 1px solid rgb(0, 0, 0) !important;
     }
     .form-control-comunal, .form-select-comunal {
-      background-color: rgba(15, 23, 42, 0.6) !important;
-      color: #ffffff !important;
-      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      color: #000000 !important;
+      border: 1px solid rgb(0, 0, 0) !important;
     }
     .form-control-comunal:focus, .form-select-comunal:focus {
       border-color: #38bdf8 !important;
       box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25) !important;
     }
     .label-comunal {
-      color: #94a3b8 !important;
+      color: #000000 !important;
       font-weight: 600;
       font-size: 0.85rem;
       letter-spacing: 0.5px;
@@ -42,8 +41,8 @@
       color: #e2e8f0 !important;
     }
     .table-comunidad th {
-      background-color: rgba(15, 23, 42, 0.7) !important;
-      color: #38bdf8 !important;
+      background-color: rgb(255, 255, 255) !important;
+      color: #000000 !important;
       font-weight: 600;
     }
   </style>
@@ -58,7 +57,7 @@
       <div class="card custom-card-comunidad shadow">
         
         <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom border-secondary py-3">
-          <h4 class="m-0 text-white fw-bold">
+          <h4 class="m-0 text-black fw-bold">
             <i class="fas fa-edit text-primary me-2"></i>
             {% if familia.id %}Actualizar Censo Familiar #{{ familia.id }}{% else %}Registrar Ficha Única Familiar{% endif %}
           </h4>
@@ -68,69 +67,68 @@
         </div>
 
         <div class="card-body">
-          <div class="alert alert-danger" id="form-errors" style="display: none;">
-            <i class="fas fa-exclamation-triangle me-2"></i><span id="error-message"></span>
-          </div>
+            <div class="alert alert-danger" id="form-errors" style="display: none;">
+              <i class="fas fa-exclamation-triangle me-2"></i><span id="error-message"></span>
+            </div>
 
-          <form id="mainFamiliaForm" class="mb-4">
-            {% csrf_token %}
-            <div class="p-4 mb-3 seccion-bloque rounded-3">
-              <h5 class="mb-3 text-primary fw-bold"><i class="fas fa-map-marker-alt me-2"></i>1. Ubicación Geográfica e Inmueble</h5>
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <label class="form-label label-comunal">APELLIDO DE FAMILIA / IDENTIFICADOR</label>
-                  <input type="text" id="nombre_familia" class="form-control form-control-comunal" value="{{ familia.nombre_familia|default:'' }}" placeholder="Ej: Familia Colmenares" required>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label label-comunal">NÚMERO DE VIVIENDA / CASA</label>
-                  <input type="text" id="vivienda" class="form-control form-control-comunal" value="{{ familia.vivienda|default:'' }}" placeholder="Ej: Casa Nro 12-B" required>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label label-comunal">CALLE/VEREDA</label>
-                  <input type="text" id="catastro" class="form-control form-control-comunal" value="{{ familia.catastro|default:'' }}" placeholder="Código único de catastro" required>
-                </div>
-                <div class="col-md-12">
-                  <label class="form-label label-comunal">DIRECCIÓN EXACTA DENTRO DE LA COMUNIDAD</label>
-                  <textarea id="direccion" class="form-control form-control-comunal" rows="2" placeholder="Vereda, calle, avenida o puntos de referencia..." required>{{ familia.direccion|default:'' }}</textarea>
+            <form id="mainFamiliaForm" class="mb-4">
+              {% csrf_token %}
+              <div class="p-4 mb-3 seccion-bloque rounded-3">
+                <h5 class="mb-3 text-primary fw-bold"><i class="fas fa-map-marker-alt me-2"></i>1. Ubicación Geográfica e Inmueble</h5>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">APELLIDO DE FAMILIA / IDENTIFICADOR</label>
+                    <input type="text" id="nombre_familia" class="form-control form-control-comunal" value="{{ familia.nombre_familia|default:'' }}" placeholder="Ej: Familia Colmenares" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">NÚMERO DE VIVIENDA / CASA</label>
+                    <input type="text" id="vivienda" class="form-control form-control-comunal" value="{{ familia.vivienda|default:'' }}" placeholder="Ej: Casa Nro 12-B" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">CALLE/VEREDA</label>
+                    <input type="text" id="catastro" class="form-control form-control-comunal" value="{{ familia.catastro|default:'' }}" placeholder="Código único de catastro" required>
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label label-comunal">DIRECCIÓN EXACTA DENTRO DE LA COMUNIDAD</label>
+                    <textarea id="direccion" class="form-control form-control-comunal" rows="2" placeholder="Vereda, calle, avenida o puntos de referencia..." required>{{ familia.direccion|default:'' }}</textarea>
+                  </div>
                 </div>
               </div>
-            </div>
-          </form>
+            </form>
 
-          <div class="p-4 seccion-bloque rounded-3 mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="m-0 text-primary fw-bold"><i class="fas fa-users me-2"></i>2. Censo de Integrantes del Hogar</h5>
-              <button type="button" class="btn btn-primary btn-sm px-3" onclick="abrirModalHabitante()">
-                <i class="fas fa-user-plus me-1"></i> Agregar Miembro
+            <div class="p-4 seccion-bloque rounded-3 mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="m-0 text-primary fw-bold"><i class="fas fa-users me-2"></i>2. Censo de Integrantes del Hogar</h5>
+                <button type="button" class="btn btn-primary btn-sm px-3" onclick="abrirModalHabitante()">
+                  <i class="fas fa-user-plus me-1"></i> Agregar Miembro
+                </button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-comunidad align-middle m-0" id="tableHabitantes">
+                  <thead>
+                    <tr>
+                      <th>Cédula</th>
+                      <th>Nombre y Apellido</th>
+                      <th>Nacimiento</th>
+                      <th>Género</th>
+                      <th>Filiación / Rol</th>
+                      <th>Ocupación</th>
+                      <th>Nivel Educativo</th>
+                      <th class="text-center">Operaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end">
+              <button type="button" class="btn btn-success px-5 py-2 fw-bold" id="btnGuardarTodo">
+                <i class="fas fa-save me-2"></i> Guardar Ficha Completa
               </button>
             </div>
-
-            <div class="table-responsive">
-              <table class="table table-comunidad align-middle m-0" id="tableHabitantes">
-                <thead>
-                  <tr>
-                    <th>Cédula</th>
-                    <th>Nombre y Apellido</th>
-                    <th>Nacimiento</th>
-                    <th>Género</th>
-                    <th>Filiación / Rol</th>
-                    <th>Ocupación</th>
-                    <th>Nivel Educativo</th>
-                    <th class="text-center">Operaciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-end">
-            <button type="button" class="btn btn-success px-5 py-2 fw-bold" id="btnGuardarTodo">
-              <i class="fas fa-save me-2"></i> Guardar Ficha Completa
-            </button>
-          </div>
-
         </div>
       </div>
     </main>
@@ -138,9 +136,9 @@
 
   <div class="modal fade" id="habitanteModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered">
-      <div class="modal-content text-white" style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.15);">
+      <div class="modal-content text-white" style="background-color: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15);">
         <div class="modal-header border-bottom border-secondary">
-          <h5 class="modal-title text-white fw-bold" id="habitanteModalLabel">Datos del Ciudadano</h5>
+          <h5 class="modal-title text-black fw-bold" id="habitanteModalLabel">Datos del Ciudadano</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -650,7 +648,7 @@
         Swal.fire({
           icon: 'success',
           title: '¡Ficha Guardada!',
-          text: 'El censo familiar se ha procesado con total éxito.',
+          text: 'Creación éxitosa.',
           background: '#1e293b',
           color: '#fff'
         }).then(() => {
@@ -699,7 +697,7 @@
 
           Swal.fire({
             icon: 'error',
-            title: 'Validación del Censo',
+            title: 'Error en Validación',
             html: errorHtml,
             background: '#1e293b',
             color: '#fff',
