@@ -121,7 +121,7 @@
                       <td title="{{ ingreso.observaciones }}">
                         {{ ingreso.observaciones|truncatechars:40|default:"-" }}
                       </td>
-                      <td>{{ ingreso.responsable.get_full_name|default:"Usuario eliminado" }}</td>
+                      <td>{{ ingreso.responsable|default:"Usuario eliminado" }}</td>
                       <td>
                         <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
                                 data-bs-target="#ingresoModal" data-ingreso-id="{{ ingreso.id }}">
@@ -197,7 +197,7 @@
                       <td title="{{ egreso.observaciones }}">
                         {{ egreso.observaciones|truncatechars:40|default:"-" }}
                       </td>
-                      <td>{{ egreso.responsable.get_full_name|default:"Usuario eliminado" }}</td>
+                      <td>{{ egreso.responsable|default:"Usuario eliminado" }}</td>
                       <td>
                         <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
                                 data-bs-target="#egresoModal" data-egreso-id="{{ egreso.id }}">
