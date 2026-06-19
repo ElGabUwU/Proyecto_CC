@@ -306,7 +306,7 @@
                         <td class="{% if movimiento.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
                           Bs. {{ movimiento.monto|floatformat:2 }}
                         </td>
-                        <td>{{ movimiento.responsable.get_full_name }}</td>
+                        <td>{{ movimiento.responsable }}</td>
                       </tr>
                       {% empty %}
                       <tr>

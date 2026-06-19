@@ -217,17 +217,6 @@ class IngresoComunalForm(forms.ModelForm):
         help_text="Monto del ingreso en bolívares"
     )
     
-    # Sincronizado con el nombre exacto del campo en tu models.py para evitar colisiones
-    soporte = forms.FileField(
-        required=False,
-        label="Soporte Digital",
-        widget=forms.ClearableFileInput(attrs={
-            'class': 'form-control',
-            'accept': '.pdf,.jpg,.jpeg,.png'
-        }),
-        help_text="Comprobante o soporte del ingreso (PDF, imagen)"
-    )
-    
     observaciones = forms.CharField(
         required=False,
         label="Observaciones",
@@ -236,19 +225,26 @@ class IngresoComunalForm(forms.ModelForm):
             'rows': 2,
             'placeholder': 'Observaciones adicionales...'
         }),
-        help_text="Observaciones adicionales"
     )
     
     class Meta:
         model = IngresoComunal
-        fields = ['fecha', 'tipo_ingreso', 'concepto', 'monto', 'soporte', 'observaciones']
+        fields = ['fecha', 'tipo_ingreso', 'concepto', 'monto', 'soporte_digital', 'observaciones']
         widgets = {
             'tipo_ingreso': forms.Select(attrs={'class': 'form-control'}),
+            'soporte_digital': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
         }
         labels = {
             'tipo_ingreso': 'Tipo de Ingreso',
+            'soporte_digital': 'Soporte Digital',
         }
-    
+        help_texts = {
+            'soporte_digital': 'Comprobante o soporte del egreso (PDF, imagen)',
+        }
+
     def __init__(self, *args, **kwargs):
         """Inicializar con el usuario actual como responsable"""
         self.user = kwargs.pop('user', None)
@@ -338,16 +334,6 @@ class EgresoComunalForm(forms.ModelForm):
         }),
         help_text="Persona o empresa que recibió el pago (opcional)"
     )
-
-    soporte_digital = forms.FileField(
-        required=False,
-        label="Soporte Digital",
-        widget=forms.ClearableFileInput(attrs={
-            'class': 'form-control',
-            'accept': '.pdf,.jpg,.jpeg,.png'
-        }),
-        help_text="Comprobante o soporte del ingreso (PDF, imagen)"
-    )
     
     observaciones = forms.CharField(
         required=False,
@@ -357,7 +343,6 @@ class EgresoComunalForm(forms.ModelForm):
             'rows': 2,
             'placeholder': 'Observaciones adicionales...'
         }),
-        help_text="Observaciones adicionales"
     )
     
     class Meta:
@@ -365,9 +350,17 @@ class EgresoComunalForm(forms.ModelForm):
         fields = ['fecha', 'tipo_egreso', 'concepto', 'monto', 'beneficiario', 'soporte', 'observaciones']
         widgets = {
             'tipo_egreso': forms.Select(attrs={'class': 'form-control'}),
+            'soporte': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
         }
         labels = {
             'tipo_egreso': 'Tipo de Egreso',
+            'soporte': 'Soporte Digital',
+        }
+        help_texts = {
+            'soporte': 'Comprobante o soporte del egreso (PDF, imagen)',
         }
     
     def __init__(self, *args, **kwargs):
