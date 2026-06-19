@@ -543,9 +543,29 @@ def editar_ingreso(request, id):
         form = IngresoComunalForm(request.POST, request.FILES, instance=ingreso, user=request.user)
         if form.is_valid():
             ingreso = form.save()
+            
+            # Si es una petición asíncrona (AJAX)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Ingreso de Bs. {ingreso.monto} actualizado exitosamente.'
+                }, status=200)
+            
             messages.success(request, f'Ingreso de Bs. {ingreso.monto} actualizado exitosamente.')
             return redirect('finanzas')
         else:
+            # Si falla y es AJAX, extraemos los mensajes del diccionario de forma limpia
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errores_dict = {}
+                for campo, lista_errores in form.errors.get_json_data().items():
+                    # Extraemos el primer texto de error para simplificar la lectura en JS
+                    errores_dict[campo] = lista_errores[0]['message']
+                
+                return JsonResponse({
+                    'success': False,
+                    'errors': errores_dict
+                }, status=400)
+            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = IngresoComunalForm(instance=ingreso, user=request.user)
@@ -623,9 +643,29 @@ def editar_egreso(request, id):
         form = EgresoComunalForm(request.POST, request.FILES, instance=egreso, user=request.user)
         if form.is_valid():
             egreso = form.save()
+            
+            # Si es una petición asíncrona (AJAX)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Egreso de Bs. {egreso.monto} actualizado exitosamente.'
+                }, status=200)
+            
             messages.success(request, f'Egreso de Bs. {egreso.monto} actualizado exitosamente.')
             return redirect('finanzas')
         else:
+            # Si falla y es AJAX, extraemos los mensajes del diccionario de forma limpia
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errores_dict = {}
+                for campo, lista_errores in form.errors.get_json_data().items():
+                    # Extraemos el primer texto de error para simplificar la lectura en JS
+                    errores_dict[campo] = lista_errores[0]['message']
+                
+                return JsonResponse({
+                    'success': False,
+                    'errors': errores_dict
+                }, status=400)
+            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = EgresoComunalForm(instance=egreso, user=request.user)
@@ -664,7 +704,7 @@ def api_ingreso(request, id):
         'concepto': ingreso.concepto,
         'monto': str(ingreso.monto),
         'observaciones': ingreso.observaciones or '',
-        'soporte_digital_nombre': ingreso.soporte_digital.name if ingreso.soporte_digital else None,
+        'soporte': ingreso.soporte_digital.name if ingreso.soporte_digital else '',
     }
     
     return JsonResponse(data)
@@ -685,7 +725,7 @@ def api_egreso(request, id):
         'monto': str(egreso.monto),
         'beneficiario': egreso.beneficiario or '',
         'observaciones': egreso.observaciones or '',
-        'soporte_nombre': egreso.soporte.name if egreso.soporte else None,
+        'soporte': egreso.soporte.name if egreso.soporte else '',
     }
     
     return JsonResponse(data)
