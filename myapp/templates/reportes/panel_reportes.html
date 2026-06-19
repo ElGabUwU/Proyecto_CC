@@ -34,7 +34,7 @@
       box-shadow: 0 0 0 0.25rem rgba(146, 35, 35, 0.25) !important;
     }
     .text-muted-custom {
-      color: #000000 !important;
+      color: #ffffff !important;
     }
   </style>
 </head>
@@ -50,8 +50,8 @@
         
         <div class="row mb-4">
           <div class="col-12">
-            <h2 class="h3 mb-0 text-white"><i class="fas fa-chart-pie me-2"></i> Módulo de Segmentación y Reportes Demográficos</h2>
-            <p class="text-muted-custom">Configure filtros en tiempo real para la extracción y descarga nominal de habitantes en formatos Excel y PDF.</p>
+            <h2 class="h3 mb-0 text-white"><i class="fas fa-chart-pie me-2"></i> Área de Estadística</h2>
+            <p class="text-muted-custom">Configure los filtros en tiempo real para la extracción y descarga de la nómina de habitantes registrados en el sistema actualmente</p>
           </div>
         </div>
 
@@ -67,7 +67,7 @@
                   <div class="mb-3">
                     <label class="form-label fw-semibold">Nombre del Reporte</label>
                     <input type="text" name="titulo_reporte" class="form-control" placeholder="Ej: Censo de niños mayores a 15 años" required>
-                    <div class="form-text text-muted-custom" style="font-size: 0.8rem;">Escriba un nombre descriptivo para identificarlo en el historial.</div>
+                    <div class="form-text text-black" style="font-size: 0.8rem;">Escriba un nombre descriptivo para identificarlo en el historial.</div>
                   </div>
                   <div class="mb-3">
                     <label class="form-label fw-semibold">Filtro de Género</label>
@@ -131,7 +131,7 @@
                     {% empty %}
                     <tr>
                       <td colspan="3" class="text-center py-5" style="background: transparent; color: #94a3b8; font-style: italic;">
-                        <i class="fas fa-info-circle me-1"></i> No se han configurado criterios de reportes demográficos. Use el formulario izquierdo para empezar.
+                        <i class="fas fa-info-circle me-1"></i> No se han configurado ningún criterio de reporte demográfico. Use el formulario izquierdo para empezar.
                       </td>
                     </tr>
                     {% endfor %}

@@ -22,6 +22,7 @@ from openpyxl.utils import get_column_letter
 import json
 from datetime import date, datetime, timedelta
 import os
+import re
 import base64
 import io
 from xhtml2pdf import pisa
@@ -996,44 +997,46 @@ def descargar_acta(request, id):
 # Vistas para Dashboard Comunitario
 # ============================================
 
-def dashboard_comunitario(request):
-    """
-    Vista del dashboard principal de la comunidad.
-    """
-    # Estadísticas generales
-    total_familias = Familia.objects.filter(is_deleted=False).count()
-    total_habitantes = Habitante.objects.filter(is_deleted=False).count()
+# def dashboard_comunitario(request):
+#     """
+#     Centro de mando principal del sistema. Cruza estadísticas demográficas,
+#     financieras y de trámites en tiempo real para el Consejo Comunal.
+#     """
+#     # Estadísticas generales (Solo conteo de registros activos)
+#     total_familias = Familia.objects.filter(is_deleted=False).count()
+#     total_habitantes = Habitante.objects.filter(is_deleted=False).count()
     
-    # Estadísticas financieras
-    total_ingresos = IngresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
-    total_egresos = EgresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
-    saldo_actual = total_ingresos - total_egresos
+#     # Estadísticas financieras agregadas
+#     total_ingresos = IngresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
+#     total_egresos = EgresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
+#     saldo_actual = total_ingresos - total_egresos
     
-    # Últimos movimientos financieros
-    ultimos_ingresos = IngresoComunal.objects.all().order_by('-fecha', '-fecha_registro')[:5]
-    ultimos_egresos = EgresoComunal.objects.all().order_by('-fecha', '-fecha_registro')[:5]
+#     # Últimos movimientos financieros (Ordenados de forma simple por ID descendente o fecha de registro)
+#     ultimos_ingresos = IngresoComunal.objects.all().order_by('-id')[:5]
+#     ultimos_egresos = EgresoComunal.objects.all().order_by('-id')[:5]
     
-    # Últimas familias registradas
-    ultimas_familias = Familia.objects.filter(is_deleted=False).order_by('-fecha_registro')[:5]
+#     # Últimas familias registradas activas (Usando selects optimizados si es necesario)
+#     ultimas_familias = Familia.objects.filter(is_deleted=False).order_by('-id')[:5]
     
-    # Últimos documentos generados
-    ultimas_constancias = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:3]
-    ultimas_actas = ActaReunion.objects.all().order_by('-fecha_reunion')[:3]
+#     # Últimos documentos e historial de trámites generados
+#     # Nota: Ajusta '-fecha_generacion' a tu campo real (ej. 'fecha_documento' si aplica)
+#     ultimas_constancias = ConstanciaResidencia.objects.all().order_by('-id')[:3]
+#     ultimas_actas = ActaReunion.objects.all().order_by('-id')[:3]
     
-    context = {
-        'total_familias': total_familias,
-        'total_habitantes': total_habitantes,
-        'saldo_actual': saldo_actual,
-        'total_ingresos': total_ingresos,
-        'total_egresos': total_egresos,
-        'ultimos_ingresos': ultimos_ingresos,
-        'ultimos_egresos': ultimos_egresos,
-        'ultimas_familias': ultimas_familias,
-        'ultimas_constancias': ultimas_constancias,
-        'ultimas_actas': ultimas_actas,
-    }
+#     context = {
+#         'total_familias': total_familias,
+#         'total_habitantes': total_habitantes,
+#         'saldo_actual': saldo_actual,
+#         'total_ingresos': total_ingresos,
+#         'total_egresos': total_egresos,
+#         'ultimos_ingresos': ultimos_ingresos,
+#         'ultimos_egresos': ultimos_egresos,
+#         'ultimas_familias': ultimas_familias,
+#         'ultimas_constancias': ultimas_constancias,
+#         'ultimas_actas': ultimas_actas,
+#     }
     
-    return render(request, 'dashboard_comunitario.html', context)
+#     return render(request, 'dashboard_comunitario.html', context)
 
 
 # ============================================
@@ -1385,3 +1388,55 @@ def exportar_reporte_pdf(request, reporte_id):
         return response
         
     return HttpResponse('Error al compilar la matriz del reporte demográfico en PDF.', status=500)
+
+def panel_reportes(request):
+    """
+    Controla la configuración de reportes demográficos y valida
+    estrictamente el nombre del reporte proveniente del formulario nativo.
+    """
+    if request.method == 'POST':
+        titulo_reporte = request.POST.get('titulo_reporte', '').strip()
+        filtro_genero = request.POST.get('filtro_genero', 'TODOS')
+        filtro_edad = request.POST.get('filtro_edad', 'TODOS')
+        
+        # ==========================================================
+        # 🔒 SECCIÓN DE CANDADOS DE VALIDACIÓN Y SANITIZACIÓN
+        # ==========================================================
+        if not titulo_reporte:
+            messages.error(request, "El nombre del reporte es un campo obligatorio.")
+            return redirect('panel_reportes')
+            
+        if len(titulo_reporte) < 6:
+            messages.error(request, "El nombre del reporte es demasiado corto. Debe tener al menos 6 caracteres.")
+            return redirect('panel_reportes')
+            
+        if len(titulo_reporte) > 100:
+            messages.error(request, "El nombre del reporte excede los 100 caracteres permitidos.")
+            return redirect('panel_reportes')
+            
+        if re.match(r'^[0-9\W_]+$', titulo_reporte):
+            messages.error(request, "El nombre del reporte no puede contener únicamente números o símbolos.")
+            return redirect('panel_reportes')
+            
+        titulo_sanitizado = titulo_reporte.upper()
+
+        try:
+            ReporteDemografico.objects.create(
+                titulo_reporte=titulo_sanitizado,
+                filtro_genero=filtro_genero,
+                filtro_edad=filtro_edad,
+                solicitado_por=request.user 
+            )
+            
+            messages.success(request, f'¡Criterio registrado! El reporte <strong>"{titulo_sanitizado}"</strong> ha sido configurado con éxito.')
+            return redirect('reportes/panel_reportes.html')
+            
+        except Exception as e:
+            messages.error(request, f"Ocurrió un error inesperado al guardar el criterio: {str(e)}")
+            return redirect('reportes/panel_reportes.html')
+
+    reportes = ReporteDemografico.objects.all().order_by('-id')
+    
+    return render(request, 'reportes/panel_reportes.html', {
+        'reportes': reportes
+    })

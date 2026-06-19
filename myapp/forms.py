@@ -1317,3 +1317,50 @@ class AsignarParticipanteForm(forms.ModelForm):
             instance.save()
         return instance
         
+        
+# REPORTE FORM
+class ReporteDemograficoForm(forms.Form):
+    """
+    Formulario de control y sanitización avanzada para la 
+    configuración de Reportes Demográficos.
+    """
+    titulo_reporte = forms.CharField(
+        label="Nombre del Reporte",
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': 'Ej: CENSO DE NIÑOS MAYORES A 15 AÑOS'
+        }),
+        help_text="Escriba un nombre descriptivo para identificarlo en el historial."
+    )
+    filtro_genero = forms.ChoiceField(
+        choices=[
+            ('TODOS', 'Todos (Masculino y Femenino)'),
+            ('M', 'Solo Masculino'),
+            ('F', 'Solo Femenino')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary'})
+    )
+    filtro_edad = forms.ChoiceField(
+        choices=[
+            ('TODOS', 'Todas las edades (Población general)'),
+            ('MENOR_12', 'Niños (Menores a 12 años)'),
+            ('MENOR_16', 'Adolescentes (Menores a 16 años)'),
+            ('TERCERA_EDAD', 'Adultos Mayores / 3ra Edad (>= 60 años)')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary'})
+    )
+
+    def clean_titulo_reporte(self):
+        titulo = self.cleaned_data.get('titulo_reporte', '').strip()
+
+        # 🔒 1. Validación de longitud mínima para que tenga sentido semántico
+        if len(titulo) < 6:
+            raise forms.ValidationError("El nombre del reporte es demasiado corto. Debe tener al menos 6 caracteres.")
+
+        # 🔒 2. Evitar que introduzcan solo números o símbolos maliciosos
+        if re.match(r'^[0-9\W_]+$', titulo):
+            raise forms.ValidationError("El nombre del reporte no puede contener únicamente números o símbolos.")
+
+        # 🔒 3. Sanitización institucional: Guardar limpio y en MAYÚSCULAS
+        return titulo.upper()

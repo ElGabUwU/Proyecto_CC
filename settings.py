@@ -167,5 +167,5 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # CLAVE PRIMARIA AUTOMÁTICA
 # ==============================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'  # Tipo de clave primaria predeterminada
-
+LOGIN_REDIRECT_URL = 'dashboard_comunitario'
 # AUTH_USER_MODEL = 'myapp.User' # Modelo de usuario personalizado

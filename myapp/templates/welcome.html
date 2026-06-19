@@ -1,88 +1,67 @@
 {% load static %}
 <!DOCTYPE html>
-
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consejo Comunal</title>
-  <!-- Bootstrap CSS -->
 
   <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
   <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
 
-  <!-- SweetAlert2 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
-  <!-- Alerta cierre de sesión -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-  <!-- FullCalendar CSS -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
-  <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
-  <style>
-
-  </style>
+  
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 </head>
 
+
 <body class="m-0 p-0">
   {% include 'partials/header.html' %}
-  <div class="bg-my-background-color d-flex text-white ">
-
+  
+  <div class="bg-my-background-color d-flex text-white" style="min-height: 100vh;">
     {% include 'partials/sidebar.html' %}
 
-    <!-- Contenido principal -->
-    <main class="main-content vh-100 d-flex flex-grow-1 p-3 align-items-center justify-content-center">
+    <main class="main-content flex-grow-1 p-4 overflow-auto pt-4 style-scroll" style="max-height: 100vh;">
       <div class="container-fluid position-relative">
-        <div class="row justify-content-center align-items-center ">
-          <img src="../../static/assets/images/stars_flag.png" alt="Imagen transparente"
-            class="aguila-trans img-fluid mx-auto z-0 position-absolute pe-none">
-          <!-- Columna izquierda - Logo y texto -->
-          <div class="col-12 col-md-6 text-center z-1">
-            <img src="../../static/assets/images/CC_blanco1.png" alt="Logo" class="img-fluid pe-none"
-              style="max-height: 100px;">
-            <h1 class="display-5 fw-bold fs-3 fs-md-5"><b>Bienvenid@</b></h1>
+        
+        {% block content %}
+        {% endblock %}
 
-          </div>
-        </div>
       </div>
     </main>
   </div>
-  <!-- Modal de cambio de contraseña obligatorio -->
-  <div class="modal fade" id="forceChangePasswordModal" tabindex="-1" aria-labelledby="forceChangePasswordLabel"
-    aria-hidden="true">
+
+  <div class="modal fade" id="forceChangePasswordModal" tabindex="-1" aria-labelledby="forceChangePasswordLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
           <h5 class="modal-title" id="forceChangePasswordLabel">Cambio de contraseña requerido</h5>
         </div>
         <div class="modal-body">
           <form id="forceChangePasswordForm">
             <div class="mb-3">
               <label for="newPassword" class="form-label">Nueva contraseña</label>
-              <input type="password" class="form-control" id="newPassword" name="new_password" minlength="8" required
-                autocomplete="new-password">
+              <input type="password" class="form-control bg-secondary text-white border-dark" id="newPassword" name="new_password" minlength="8" required autocomplete="new-password">
             </div>
             <div class="mb-3">
               <label for="confirmPassword" class="form-label">Confirmar nueva contraseña</label>
-              <input type="password" class="form-control" id="confirmPassword" name="confirm_password" minlength="8"
-                required autocomplete="new-password">
+              <input type="password" class="form-control bg-secondary text-white border-dark" id="confirmPassword" name="confirm_password" minlength="8" required autocomplete="new-password">
             </div>
             <div id="forceChangePasswordError" class="text-danger mb-2" style="display:none;"></div>
-            <button type="submit" class="btn btn-primary w-100">Cambiar contraseña</button>
+            <button type="submit" class="btn btn-danger w-100">Cambiar contraseña</button>
           </form>
         </div>
       </div>
     </div>
   </div>
-  <!-- Bootstrap JS Bundle -->
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- scraped -->
-  <script src="../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{% static 'assets/js/inactivity-timer.js' %}"></script>
 
   {% if must_change_password %}
@@ -90,6 +69,7 @@
   {% else %}
   <script id="mustChangePasswordData" type="application/json">false</script>
   {% endif %}
+  
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var mustChange = JSON.parse(document.getElementById('mustChangePasswordData').textContent);
@@ -108,6 +88,7 @@
         var errorDiv = document.getElementById('forceChangePasswordError');
         errorDiv.style.display = 'none';
         errorDiv.textContent = '';
+        
         if (newPassword.length < 8) {
           errorDiv.textContent = 'La contraseña debe tener al menos 8 caracteres.';
           errorDiv.style.display = 'block';
@@ -118,7 +99,7 @@
           errorDiv.style.display = 'block';
           return;
         }
-        // Enviar petición AJAX
+        
         try {
           const response = await fetch('{% url "change_password" %}', {
             method: 'POST',
@@ -132,7 +113,6 @@
           });
           const data = await response.json();
           if (data.success) {
-            // Mostrar éxito y recargar
             Swal.fire({
               icon: 'success',
               title: 'Contraseña cambiada',
@@ -154,5 +134,4 @@
     });
   </script>
 </body>
-
 </html>
