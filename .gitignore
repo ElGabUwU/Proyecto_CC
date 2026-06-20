@@ -1,1 +1,5 @@
-Nothing should be ignored based on the provided file changes. The only modified file is 'myapp/views_censos.py', which appears to be a source code file and should not be added to .gitignore.
+(myapp/templates/censos/censo_list.html, myapp/views_censos.py are both source code files - no build artifacts, dependencies, or temp files in the changes)
+
+```gitignore
+
+```

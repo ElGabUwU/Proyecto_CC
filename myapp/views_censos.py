@@ -1,7 +1,7 @@
 """
 Vistas para la gestión de censos comunitarios del Consejo Comunal.
 """
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, reverse
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum, Count
