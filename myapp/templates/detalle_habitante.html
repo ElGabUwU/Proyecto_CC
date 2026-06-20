@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalle del Habitante - Consejo Comunal{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-user mr-2"></i>Detalle del Habitante
+        </h1>
+        <div>
+            <a href="{% url 'habitantes_familia' habitante.familia.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left mr-1"></i> Volver a la Familia
+            </a>
+            <a href="{% url 'editar_habitante' habitante.id %}" class="btn btn-warning">
+                <i class="fas fa-edit mr-1"></i> Editar
+            </a>
+            <a href="{% url 'habitantes' %}" class="btn btn-primary">
+                <i class="fas fa-list mr-1"></i> Todos los Habitantes
+            </a>
+        </div>
+    </div>
+
+    <!-- Información Principal -->
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Datos Personales -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-id-card mr-1"></i> Datos Personales
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Nombre Completo:</strong> {{ habitante.persona.name }} {{ habitante.persona.surname }}</p>
+                            <p><strong>Cédula de Identidad:</strong> {{ habitante.persona.document_number }}</p>
+                            <p><strong>Fecha de Nacimiento:</strong> 
+                                {% if habitante.persona.date_of_birth %}
+                                    {{ habitante.persona.date_of_birth|date:"d/m/Y" }}
+                                    ({% now "Y" as current_year %}
+                                    {% with birth_year=habitante.persona.date_of_birth.year %}
+                                        {{ current_year|add:"-"|add:birth_year }} años)
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="text-muted">No registrada</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Sexo:</strong> {{ habitante.persona.get_gender_display }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Teléfono:</strong> {{ habitante.persona.telephone_number|default:"No registrado" }}</p>
+                            <p><strong>Email:</strong> {{ habitante.persona.email|default:"No registrado" }}</p>
+                            <p><strong>País de Origen:</strong> {{ habitante.persona.pais_origen|default:"No especificado" }}</p>
+                            <p><strong>Fecha Registro:</strong> {{ habitante.fecha_registro_comunitario|date:"d/m/Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos Comunitarios -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-users mr-1"></i> Datos Comunitarios
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Familia:</strong> 
+                                <a href="{% url 'habitantes_familia' habitante.familia.id %}">
+                                    {{ habitante.familia.jefe_familia.name }} {{ habitante.familia.jefe_familia.surname }}
+                                </a>
+                            </p>
+                            <p><strong>Parentesco:</strong> 
+                                <span class="badge badge-info">{{ habitante.get_parentesco_jefe_display }}</span>
+                            </p>
+                            <p><strong>Dirección:</strong> {{ habitante.familia.direccion }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Nivel Educativo:</strong> {{ habitante.get_nivel_educativo_display|default:"No especificado" }}</p>
+                            <p><strong>Ocupación:</strong> {{ habitante.ocupacion|default:"No especificado" }}</p>
+                            <p><strong>Ingresos Mensuales:</strong> 
+                                {% if habitante.ingresos_mensuales %}
+                                    Bs. {{ habitante.ingresos_mensuales|floatformat:2 }}
+                                {% else %}
+                                    <span class="text-muted">No especificado</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Condiciones de Salud -->
+            {% if habitante.condiciones_salud %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-heartbeat mr-1"></i> Condiciones de Salud
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p>{{ habitante.condiciones_salud|linebreaks }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Información de la Familia (Sidebar) -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-home mr-1"></i> Información de la Familia
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-users fa-3x text-primary"></i>
+                        <h5 class="mt-2">{{ habitante.familia.jefe_familia.name }} {{ habitante.familia.jefe_familia.surname }}</h5>
+                        <p class="text-muted">Jefe de Familia</p>
+                    </div>
+                    
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-map-marker-alt mr-2 text-muted"></i> Dirección</span>
+                            <span class="text-right">{{ habitante.familia.direccion|truncatechars:30 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-phone mr-2 text-muted"></i> Teléfono</span>
+                            <span>{{ habitante.familia.telefono_contacto }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-hashtag mr-2 text-muted"></i> N° Vivienda</span>
+                            <span>{{ habitante.familia.numero_vivienda|default:"-" }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-calendar-alt mr-2 text-muted"></i> Fecha Registro</span>
+                            <span>{{ habitante.familia.fecha_registro|date:"d/m/Y" }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-user-friends mr-2 text-muted"></i> Total Habitantes</span>
+                            <span class="badge badge-primary badge-pill">{{ habitante.familia.cantidad_habitantes }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'habitantes_familia' habitante.familia.id %}" class="btn btn-outline-primary btn-block">
+                            <i class="fas fa-eye mr-1"></i> Ver todos los habitantes
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones Rápidas -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt mr-1"></i> Acciones Rápidas
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'editar_habitante' habitante.id %}" class="btn btn-warning">
+                            <i class="fas fa-edit mr-1"></i> Editar Habitante
+                        </a>
+                        <button type="button" class="btn btn-danger" 
+                                onclick="confirmarEliminacion('{{ habitante.persona.name }} {{ habitante.persona.surname }}', '{% url 'eliminar_habitante' habitante.id %}')">
+                            <i class="fas fa-trash mr-1"></i> Eliminar Habitante
+                        </button>
+                        <a href="{% url 'generar_constancia' %}" class="btn btn-info">
+                            <i class="fas fa-file-alt mr-1"></i> Generar Constancia
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmarEliminacion(nombre, url) {
+    Swal.fire({
+        title: '¿Está seguro?',
+        html: `Va a eliminar al habitante: <strong>${nombre}</strong><br><br>
+               <span class="text-danger">Esta acción no se puede deshacer.</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Crear formulario para enviar la solicitud POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+            form.innerHTML = '{% csrf_token %}';
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+</script>
+{% endblock %}

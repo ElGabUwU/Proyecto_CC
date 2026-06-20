@@ -15,10 +15,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 # Importar decoradores y mixins de permisos
 from myapp.decorators import admin_required, teacher_required, student_data_only
 from myapp.mixins import AdminRequiredMixin, TeacherRequiredMixin, StudentDataOnlyMixin
-from .models import Cedula, Group_Levels, User, Calendario, Courses, Tutors, Levels, TodoItem, Person, Testing, Grade_Students
-from .forms import CourseForm, LevelForm, PersonForm, TodoItemForm, UserForm, UserUpdateForm, DocenteForm, UnitForm, GroupLevelForm, EvaluacionForm
+# from .models import Cedula, Group_Levels, User, Calendario, Courses, Tutors, Levels, TodoItem, Person, Testing, Grade_Students
+# from .forms import CourseForm, LevelForm, PersonForm, TodoItemForm, UserForm, UserUpdateForm, DocenteForm, UnitForm, GroupLevelForm, EvaluacionForm
 from django import forms
-from .models import Person, Students, User, Units, Tutors
+# from .models import Person, Students, User, Units, Tutors
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q, CharField, Max
@@ -36,12 +36,13 @@ from django.contrib.postgres.search import TrigramSimilarity
 import os
 import uuid
 from django.http import JsonResponse
-
 from django.conf import settings
 from PIL import Image
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
+from django.db.models import Sum
+from .models import Familia, Habitante, IngresoComunal, EgresoComunal, ConstanciaResidencia, ActaReunion
 
 # ==============================
 # Función home - Redirigir raíz a login o welcome
@@ -65,9 +66,45 @@ def home(request):
 
 @django_login_required
 def welcome(request):
-    
+    """
+    Vista del dashboard principal de la comunidad (Antiguo Welcome).
+    Mantiene el control de cambio de contraseña e inyecta las estadísticas en tiempo real.
+    """
+    # 🔒 Mantener la lógica del proyecto viejo intacta
     must_change_password = request.session.get('must_change_password', False)
-    return render(request, 'welcome.html', {'must_change_password': must_change_password})
+    
+    # 📊 Estadísticas generales
+    total_familias = Familia.objects.filter(is_deleted=False).count()
+    total_habitantes = Habitante.objects.filter(is_deleted=False).count()
+    
+    # 📊 Estadísticas financieras
+    total_ingresos = IngresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
+    total_egresos = EgresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
+    saldo_actual = total_ingresos - total_egresos
+    
+    # 📋 Historiales rápidos para el panel
+    ultimos_ingresos = IngresoComunal.objects.all().order_by('-id')[:5]
+    ultimos_egresos = EgresoComunal.objects.all().order_by('-id')[:5]
+    ultimas_familias = Familia.objects.filter(is_deleted=False).order_by('-id')[:5]
+    ultimas_constancias = ConstanciaResidencia.objects.all().order_by('-id')[:3]
+    ultimas_actas = ActaReunion.objects.all().order_by('-id')[:3]
+    
+    context = {
+        'must_change_password': must_change_password,
+        'total_familias': total_familias,
+        'total_habitantes': total_habitantes,
+        'saldo_actual': saldo_actual,
+        'total_ingresos': total_ingresos,
+        'total_egresos': total_egresos,
+        'ultimos_ingresos': ultimos_ingresos,
+        'ultimos_egresos': ultimos_egresos,
+        'ultimas_familias': ultimas_familias,
+        'ultimas_constancias': ultimas_constancias,
+        'ultimas_actas': ultimas_actas,
+    }
+    
+    # Renderizamos directamente el archivo del dashboard
+    return render(request, 'dashboard_comunitario.html', context)
 
 
 @admin_required
@@ -1396,50 +1433,50 @@ class MisNotasView(LoginRequiredMixin, View):
             }
         
         return render(request, self.template_name, context)
-# class MisNotasView(StudentDataOnlyMixin, View):
-#     """
-#     Vista para que los estudiantes vean sus propias notas.
-#     Los estudiantes ven solo sus notas, profesores y admin ven todas.
-#     """
+class MisNotasView(StudentDataOnlyMixin, View):
+    """
+    Vista para que los estudiantes vean sus propias notas.
+    Los estudiantes ven solo sus notas, profesores y admin ven todas.
+    """
         
-#     template_name = 'mis_notas.html'
-#     login_url = 'login'
+    template_name = 'mis_notas.html'
+    login_url = 'login'
 
-#     def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         
-#         # Si es estudiante, mostrar solo sus notas
-#         if request.student_filter:
-#             try:
-#                 estudiante_obj = Students.objects.get(user=request.user)
-#             except Students.DoesNotExist:
-#                 return render(request, "mis_notas.html", {
-#                     'error': 'No se encontró un perfil de estudiante asociado a tu cuenta.'
-#                 })
+        # Si es estudiante, mostrar solo sus notas
+        if request.student_filter:
+            try:
+                estudiante_obj = Students.objects.get(user=request.user)
+            except Students.DoesNotExist:
+                return render(request, "mis_notas.html", {
+                    'error': 'No se encontró un perfil de estudiante asociado a tu cuenta.'
+                })
             
-#             # Obtener notas del estudiante
-#             notas_qs = Grade_Students.objects.filter(
-#                 student=estudiante_obj
-#             ).select_related('evaluacion', 'evaluacion__seccion').order_by('-evaluacion__date')
+            # Obtener notas del estudiante
+            notas_qs = Grade_Students.objects.filter(
+                student=estudiante_obj
+            ).select_related('evaluacion', 'evaluacion__seccion').order_by('-evaluacion__date')
             
-#             context = {
-#                 'estudiante': estudiante_obj,
-#                 'notas': notas_qs,
-#                 'total_notas': notas_qs.count(),
-#                 'es_estudiante': True
-#             }
-#         else:
-#             # Admin o profesor: mostrar todas las notas
-#             notas_qs = Grade_Students.objects.all().select_related(
-#                 'student', 'student__user', 'evaluacion', 'evaluacion__seccion'
-#             ).order_by('-evaluacion__date')
+            context = {
+                'estudiante': estudiante_obj,
+                'notas': notas_qs,
+                'total_notas': notas_qs.count(),
+                'es_estudiante': True
+            }
+        else:
+            # Admin o profesor: mostrar todas las notas
+            notas_qs = Grade_Students.objects.all().select_related(
+                'student', 'student__user', 'evaluacion', 'evaluacion__seccion'
+            ).order_by('-evaluacion__date')
             
-#             context = {
-#                 'notas': notas_qs,
-#                 'total_notas': notas_qs.count(),
-#                 'es_estudiante': False
-#             }
+            context = {
+                'notas': notas_qs,
+                'total_notas': notas_qs.count(),
+                'es_estudiante': False
+            }
         
-#         return render(request, "mis_notas.html", context)
+        return render(request, "mis_notas.html", context)
         
 
 class CalificarEvaluacionView(TeacherRequiredMixin, View):

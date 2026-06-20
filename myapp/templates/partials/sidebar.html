@@ -4,14 +4,8 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
 <!-- Barra lateral izquierda -->
-  
-  <!-- Botón para abrir el sidebar en móviles -->
-    
-  <div class="d-none d-md-block z-3">
-  <div class="sidebar degradado-sidebar d-flex flex-column text-white min-vh-100 overflow-hidden">
-      <!-- Sidebar -->
       
-      {# Inicio - Todos los roles #}
+      <!-- {# Inicio - Todos los roles #}
       <a class="mt-3 nav-link " href="{% url 'welcome' %}" id="welcome-btn">
         <i class="fa fa-home" aria-hidden="true" style="height: 26px; width: 30px; font-size: 1.7rem;"></i> 
         <span class="nav-text">Inicio</span>
@@ -19,79 +13,139 @@
       <hr class="">
       
       {# Docentes - Solo Admin #}
-      {% if is_admin %}
-      <a class="mt-2 nav-link" href="{% url 'docentes' %}"
+      {# % if is_admin % #}
+      <a class="mt-2 nav-link" href="{# % url 'docentes' % #}"
       {% if request.resolver_match.url_name == 'docentes' %}style="background-color: #922323"{% endif %} id="docentes-btn">
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28">
         <span class="nav-text">Docentes</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Estudiantes - Solo Admin #}
-      {% if is_admin %}
-      <a class="mt-2 nav-link" href="{% url 'cedulas' %}"
+      {# % if is_admin % #}
+      <a class="mt-2 nav-link" href="{# % url 'cedulas' % #}"
       {% if request.resolver_match.url_name == 'cedulas' %}style="background-color: #922323"{% endif %} id="control-nomina-btn">
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28">
         <span class="nav-text">Estudiantes</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Usuarios - Solo Admin #}
-      {% if is_admin %}
-      <a class="nav-link" href="{% url 'usuarios' %}"
+      {# % if is_admin % #}
+      <a class="nav-link" href="{# % url 'usuarios' % #}"
       {% if request.resolver_match.url_name == 'usuarios' %}style="background-color: #922323"{% endif %} id="usuarios-btn">
         <img src="{% static 'assets/images/usuarios.png' %}" width="28" height="28">
         <span class="nav-text">Usuarios</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Cursos - Todos los roles #}
-      <a class="nav-link" href="{% url 'cursos' %}"
+      <a class="nav-link" href="{# % url 'cursos' % #}"
       {% if request.resolver_match.url_name == 'cursos' %}style="background-color: #922323"{% endif %} id="cursos-btn">
         <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28">
         <span class="nav-text">Cursos</span>
       </a>
       
       {# Mis Notas - Solo Estudiantes #}
-      {% if is_student %}
-      <a class="nav-link" href="{% url 'mis_notas' %}"
+      {# % if is_student % #}
+      <a class="nav-link" href="{# % url 'mis_notas' % #}"
       {% if request.resolver_match.url_name == 'mis_notas' %}style="background-color: #922323"{% endif %}>
         <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28">
         <span class="nav-text">Mis Notas</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Mi Perfil - Todos los roles #}
-      <a class="nav-link" href="{% url 'perfil' %}"
+      <a class="nav-link" href="{# % url 'perfil' % #}"
       {% if request.resolver_match.url_name == 'mi_perfil' %}style="background-color: #922323"{% endif %}>
         <img src="{% static 'assets/images/mipefil.png' %}" width="28" height="28">
         <span class="nav-text">Mi Perfil</span>
       </a>
       
       {# To-Do List - Solo Admin #}
-      {% if is_admin %}
-      <a class="nav-link" href="{% url 'todolist' %}"
+      {# % if is_admin % #}
+      <a class="nav-link" href="{# % url 'todolist' % #}"
        {% if request.resolver_match.url_name == 'todolist' %}style="background-color: #922323"{% endif %}>
         <span class="nav-text">To-Do List</span>
       </a>
-      {% endif %}
+      {# % endif % #}
       
       {# Test Zone - Solo Admin #}
-      {% if is_admin %}
-      <a class="nav-link" href="{% url 'test_zone' %}"
+      {# % if is_admin % #}
+      <a class="nav-link" href="{# % url 'test_zone' % #}"
       {% if request.resolver_match.url_name == 'test_zone' %}style="background-color: #922323"{% endif %} id="test_zone-btn">
         <span class="nav-text">test_zone</span>
       </a>
-      {% endif %}
+      {# % endif % #} -->
+  <!-- Botón para abrir el sidebar en móviles -->
+    
+<div class="d-none d-md-block z-3">
+  <div class="sidebar degradado-sidebar d-flex flex-column text-white min-vh-100 overflow-hidden">
+      <!-- Sidebar -->      
+    {# 1. SECCIÓN PÚBLICA: Inicio (Para TODOS los roles) #}
+      <a class="mt-3 nav-link" href="{% url 'welcome' %}" id="welcome-btn">
+        <i class="fa fa-home" aria-hidden="true" style="height: 26px; width: 30px; font-size: 1.7rem;"></i> 
+        <span class="nav-text">Inicio</span>
+      </a>
       
-      {# Cerrar Sesión - Todos los roles #}
+      <hr class="border-secondary">
+
+      {# 2. SECCIÓN RESTRINGIDA: Gestión Comunitaria (Solo Admin y Voceros) #}
+      {% if is_admin or user.role in 'vocero_finanzas,vocero_secretaria,vocero_salud,vocero_educacion' %}
+      <div class="sidebar-section">
+        
+        
+        <a class="nav-link" href="{% url 'familias' %}"
+          {% if request.resolver_match.url_name == 'familias' %}style="background-color: #922323"{% endif %}>
+          <i class="fas fa-user-friends me-2"></i>
+          <span class="nav-text">Familias</span>
+        </a>
+        <!-- <a class="nav-link" href="{% url 'habitantes' %}"
+          {% if request.resolver_match.url_name == 'habitantes' %}style="background-color: #922323"{% endif %}>
+          <i class="fas fa-user-friends me-2"></i>
+          <span class="nav-text">Habitantes</span>
+        </a> -->
+        <a class="nav-link" href="{% url 'proyectos' %}"
+          {% if request.resolver_match.url_name == 'proyectos' or request.resolver_match.url_name == 'comites' %}style="background-color: #922323"{% endif %}>
+          <i class="fas fa-project-diagram me-2"></i>
+          <span class="nav-text">Proyectos</span>
+        </a>
+        
+        <a class="nav-link" href="{% url 'finanzas' %}"
+          {% if request.resolver_match.url_name == 'finanzas' %}style="background-color: #922323"{% endif %}>
+          <i class="fas fa-money-bill-wave me-2"></i>
+          <span class="nav-text">Finanzas</span>
+        </a>
+
+        <!-- Documentacion -->
+        <a class="nav-link" href="{% url 'documentacion' %}"
+          {% if request.resolver_match.url_name == 'documentacion' %}style="background-color: #922323;"{% endif %}>
+          <i class="fas fa-file-alt me-3"></i>
+          <span class="nav-text">Documentación</span>
+        </a>
+
+        <!-- Reportes Demográficos -->
+        <a class="nav-link" href="{% url 'panel_reportes' %}"
+          {% if 'reporte' in request.resolver_match.url_name %}style="background-color: #922323;"{% endif %}>
+          <i class="fas fa-chart-pie me-2"></i> 
+          <span class="nav-text">Reportes</span>
+        </a>
+
+        <!-- Censos -->
+        <a class="nav-link" href="{% url 'censos' %}"
+          {% if request.resolver_match.url_name == 'censos' %}style="background-color: #922323"{% endif %}>
+          <i class="fas fa-clipboard-list me-3"></i>
+          <span class="nav-text">Censos</span>
+        </a>
+      </div>
+      {% endif %}
+
+      {# 3. SECCIÓN PÚBLICA: Cerrar Sesión (Pegado al fondo con mt-auto) #}
       <a class="nav-link mt-auto" href="{% url 'logout' %}">
         <img src="{% static 'assets/images/logout1.png' %}" width="28" height="28">
         <span class="nav-text">Cerrar Sesión</span>
       </a>
-
-    </div>
-
+  </div> 
 </div>
 
 <div class="offcanvas offcanvas-start d-md-none text-white h-100 w-100"
@@ -110,36 +164,74 @@
       <!-- Tus enlaces (optimizados para móvil) -->
       <a class=" nav-link align-items-center  px-4 py-3 rounded" href="{% url 'welcome' %}">
         <i class="fa fa-home me-3" style="font-size: 1.5rem;"></i> Inicio
-      </a>
+      </a> 
       
-      <a class="nav-link align-items-center px-4  py-3 rounded" href="{% url 'docentes' %}"
+      <!-- <a class="nav-link align-items-center px-4  py-3 rounded" href="{# % url 'docentes' % #}"
         {% if request.resolver_match.url_name == 'docentes' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28" class="me-3"> Docentes
-      </a>
-      <!-- Estudiantes -->
-      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'cedulas' %}"
+      </a> 
+      <!-- Estudiantes 
+       <a class="nav-link align-items-center px-4 py-3 rounded" href="{# % url 'cedulas' % #}"
         {% if request.resolver_match.url_name == 'cedulas' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/estudiantes.png' %}" width="28" height="28" class="me-3"> Estudiantes
       </a>
 
       <!-- Usuarios -->
-      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'usuarios' %}"
+      <!-- <a class=" nav-link align-items-center px-4 py-3 rounded" href="{# % url 'usuarios' % #}"
         {% if request.resolver_match.url_name == 'usuarios' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/usuarios.png' %}" width="28" height="28" class="me-3"> Usuarios
-      </a>
+      </a> -->
 
       <!-- Cursos -->
-      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'cursos' %}"
+      <!-- <a class=" nav-link align-items-center px-4 py-3 rounded" href="{# % url 'cursos' % #}"
         {% if request.resolver_match.url_name == 'cursos' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/cursos.png' %}" width="28" height="28" class="me-3"> Cursos
-      </a>
+      </a> -->
 
       <!-- Mi Perfil -->
-      <a class=" nav-link align-items-center px-4 py-3 rounded" href="{% url 'perfil' %}"
+      <!-- <a class=" nav-link align-items-center px-4 py-3 rounded" href="{# % url 'perfil' % #}"
         {% if request.resolver_match.url_name == 'mi_perfil' %}style="background-color: #922323;"{% endif %}>
         <img src="{% static 'assets/images/mipefil.png' %}" width="28" height="28" class="me-3"> Mi Perfil
+      </a> -->
+
+      <!-- 🆕 NUEVO: Gestión Comunitaria (versión móvil) -->
+      {% if is_admin or user.role in 'vocero_finanzas,vocero_secretaria,vocero_salud,vocero_educacion' %}
+      <hr class="border-secondary mx-4 my-3">
+      <div class="px-4 mb-3">
+      </div>
+
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'familias' %}"
+        {% if request.resolver_match.url_name == 'familias' %}style="background-color: #922323;"{% endif %}>
+        <i class="fas fa-home me-3"></i> Familias
       </a>
 
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'proyectos' %}"
+        {% if request.resolver_match.url_name == 'proyectos' %}style="background-color: #922323;"{% endif %}>
+        <i class="fas fa-project-diagram me-3"></i> Proyectos
+      </a>
+
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'finanzas' %}"
+        {% if request.resolver_match.url_name == 'finanzas' %}style="background-color: #922323;"{% endif %}>
+        <i class="fas fa-money-bill-wave me-3"></i> Finanzas
+      </a>
+
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'documentacion' %}"
+        {% if request.resolver_match.url_name == 'documentacion' %}style="background-color: #922323;"{% endif %}>
+        <i class="fas fa-file-alt me-3"></i> Documentación
+      </a>
+      
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'panel_reportes' %}"
+        {% if 'reporte' in request.resolver_match.url_name %}style="background-color: #922323;"{% endif %}>
+        <i class="fas fa-chart-pie me-3"></i> Estadísticas
+      </a>
+
+      <a class="nav-link align-items-center px-4 py-3 rounded" href="{% url 'censos' %}"
+        {% if request.resolver_match.url_name == 'censos' %}style="background-color: #922323;"{% endif %}>
+        <i class="fas fa-clipboard-list me-3"></i> Censos
+      </a>
+      
+
+      {% endif %}
 
       <!-- Cerrar Sesión: pegado al fondo -->
       <a class=" nav-link align-items-center  px-4 py-3 rounded mt-auto" href="{% url 'logout' %}">

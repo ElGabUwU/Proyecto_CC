@@ -1,0 +1,499 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ censo.nombre_censo }} - Detalle del Censo</title>
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  {% include 'partials/session_timeout.html' %}
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white">
+    {% include 'partials/sidebar.html' %}
+
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      <!-- Breadcrumbs -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'welcome' %}" class="text-decoration-none">Inicio</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'censos' %}" class="text-decoration-none">Censos</a></li>
+          <li class="breadcrumb-item active text-white" aria-current="page">{{ censo.nombre_censo|truncatechars:30 }}</li>
+        </ol>
+      </nav>
+
+      <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-clipboard-list me-2"></i>{{ censo.nombre_censo }}
+          </h1>
+          <div>
+            <a href="{% url 'censos' %}" class="btn btn-secondary">
+              <i class="fas fa-arrow-left me-1"></i> Volver
+            </a>
+            <!-- <a href="{% url 'exportar_participantes_censo' censo.pk %}" class="btn btn-success">
+            <a href="{% url 'editar_censo' censo.pk %}" class="btn btn-warning">
+              <i class="fas fa-edit me-1"></i> Editar
+            </a>
+              <i class="fas fa-file-csv me-1"></i> Exportar CSV
+              <a href="{% url 'exportar_participantes_censo_excel' censo.pk %}" class="btn btn-primary">
+                <i class="fas fa-file-excel me-1"></i> Exportar Excel
+              </a>
+            </a> -->
+          </div>
+        </div>
+
+        <div class="row">
+          <!-- Información Principal del Censo -->
+          <div class="col-lg-8">
+            <!-- Ficha Técnica -->
+            <div class="card shadow mb-4">
+              <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                  <i class="fas fa-info-circle me-1"></i> Información del Censo
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-6">
+                    <p><strong><i class="fas fa-tag me-2 text-muted"></i>Nombre:</strong><br>{{ censo.nombre_censo }}</p>
+                    <p><strong><i class="fas fa-layer-group me-2 text-muted"></i>Categoría:</strong><br>
+                      <span class="badge {{ censo.get_categoria_badge_class }}">{{ censo.get_categoria_enfoque_display }}</span>
+                    </p>
+                    <p><strong><i class="fas fa-flag me-2 text-muted"></i>Estatus:</strong><br>
+                      <span class="badge {{ censo.get_estatus_badge_class }} fs-6">{{ censo.get_estatus_display }}</span>
+                    </p>
+                  </div>
+                  <div class="col-md-6">
+                    <p><strong><i class="fas fa-calendar-alt me-2 text-muted"></i>Fecha de Inicio:</strong><br>
+                      {{ censo.fecha_inicio|date:"d/m/Y" }}
+                    </p>
+                    <p><strong><i class="fas fa-calendar-check me-2 text-muted"></i>Fecha de Cierre:</strong><br>
+                      {% if censo.fecha_fin %}
+                        {{ censo.fecha_fin|date:"d/m/Y" }}
+                        {% if censo.duracion_dias %}
+                          <small class="text-muted d-block">(Duración: {{ censo.duracion_dias }} días)</small>
+                        {% endif %}
+                      {% else %}
+                        <span class="text-muted">Sin definir</span>
+                      {% endif %}
+                    </p>
+                    <p><strong><i class="fas fa-clock me-2 text-muted"></i>Fecha de Creación:</strong><br>
+                      {{ censo.fecha_creacion|date:"d/m/Y H:i" }}
+                    </p>
+                    <p><strong><i class="fas fa-user-plus me-2 text-muted"></i>Creado por:</strong><br>
+                      {% if censo.creado_por %}
+                        {{ censo.creado_por.get_full_name|default:censo.creado_por.username }}
+                      {% else %}
+                        <span class="text-muted">No registrado</span>
+                      {% endif %}
+                    </p>
+                  </div>
+                </div>
+                
+                <!-- Descripción -->
+                <div class="mt-3 pt-3 border-top">
+                  <h6 class="text-primary mb-2"><i class="fas fa-align-left me-1"></i>Descripción</h6>
+                  <p class="mb-0">{{ censo.descripcion|linebreaks }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Participantes del Censo -->
+            <div class="card shadow mb-4">
+              <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary mb-0">
+                  <i class="fas fa-users me-1"></i> Participantes Registrados
+                  <span class="badge bg-primary ms-2" id="total-participantes">{{ participantes.count }}</span>
+                </h6>
+                {% if censo.estatus == 'activo' %}
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#participanteModal">
+                  <i class="fas fa-user-plus me-1"></i> Agregar Participante
+                </button>
+                {% endif %}
+              </div>
+              <div class="card-body">
+                {% if participantes %}
+                  <!-- Tabla de participantes -->
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Nombre Completo</th>
+                          <th>Cédula</th>
+                          <!-- <th>Género</th>
+                          <th>Familia</th> -->
+                          <th>Fecha Registro</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for participante in participantes %}
+                        <tr>
+                          <td>{{ forloop.counter }}</td>
+                          <td>
+                            <i class="fas fa-user me-2 text-muted"></i>
+                            {{ participante.habitante.nombre }} {{ participante.habitante.apellido }}
+                          </td>
+                          <td>
+                            <span class="badge bg-light text-dark">
+                              {{ participante.habitante.cedula }}
+                            </span>
+                          </td>
+                          <!-- <td>
+                            {{ participante.habitante.get_genero_display }}
+                          </td>
+                          <td>
+                            <small>{{ participante.habitante.familia.jefe_familia.apellido }}</small>
+                          </td> -->
+                          <td>{{ participante.fecha_registro|date:"d/m/Y H:i" }}</td>
+                          <td>
+                            {% if censo.estatus == 'activo' %}
+                            <form action="{% url 'remover_participante_censo' censo.pk participante.habitante.id %}" 
+                                  method="post" style="display:inline;">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                      onclick="return confirm('¿Remover a {{ participante.habitante.nombre }} del censo?')"
+                                      title="Remover del censo">
+                                <i class="fas fa-user-minus"></i>
+                              </button>
+                            </form>
+                            {% endif %}
+                          </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                          <td colspan="7" class="text-center text-muted py-4">
+                            <i class="fas fa-user-slash fa-2x mb-2 d-block"></i>
+                            No hay participantes registrados en este censo.
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% else %}
+                  <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3 d-block"></i>
+                    <h5 class="text-muted">Sin participantes registrados</h5>
+                    <p class="text-muted">Haga clic en "Agregar Participante" para comenzar.</p>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar con estadísticas -->
+          <div class="col-lg-4">
+            <!-- Contador Principal -->
+            <div class="card shadow mb-4">
+              <div class="card-header py-3 bg-primary text-white">
+                <h6 class="m-0 font-weight-bold">
+                  <i class="fas fa-chart-bar me-1"></i> Total Participantes
+                </h6>
+              </div>
+              <div class="card-body text-center">
+                <h1 class="display-4 text-primary mb-0" id="contador-participantes">{{ participantes.count }}</h1>
+                <p class="text-muted mb-0">personas censadas</p>
+              </div>
+            </div>
+
+            <!-- Estadísticas por Género -->
+            <div class="card shadow mb-4">
+              <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                  <i class="fas fa-venus-mars me-1"></i> Por Género
+                </h6>
+              </div>
+              <div class="card-body">
+                {% for genero, cantidad in stats_genero.items %}
+                <div class="d-flex justify-content-between mb-2">
+                  <span>{{ genero }}</span>
+                  <span class="badge bg-secondary">{{ cantidad }}</span>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">Sin datos</p>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Top Familias -->
+            <div class="card shadow mb-4">
+              <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                  <i class="fas fa-home me-1"></i> Top Familias
+                </h6>
+              </div>
+              <div class="card-body">
+                {% for familia, cantidad in stats_familias.items|slice:":5" %}
+                <div class="d-flex justify-content-between mb-2">
+                  <span><small>{{ familia }}</small></span>
+                  <span class="badge bg-info">{{ cantidad }}</span>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">Sin datos</p>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Acciones Rápidas -->
+            <div class="card shadow">
+              <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                  <i class="fas fa-bolt me-1"></i> Acciones Rápidas
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="d-grid gap-2">
+                  {% if censo.estatus == 'activo' %}
+                  <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#participanteModal">
+                    <i class="fas fa-user-plus me-1"></i> Agregar Participante
+                  </button>
+                  {% endif %}
+                  <a href="{% url 'editar_censo' censo.pk %}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Editar Censo
+                  </a>
+                  <!-- <a href="{% url 'exportar_participantes_censo' censo.pk %}" class="btn btn-info">
+                    <i class="fas fa-file-csv me-1"></i> Exportar CSV
+                  </a> -->
+                  <a href="{% url 'exportar_participantes_censo_excel' censo.pk %}" class="btn btn-primary">
+                    <i class="fas fa-file-excel me-1"></i> Exportar Excel
+                  </a>
+                  <button type="button" class="btn btn-danger" onclick="confirmarEliminacionCenso()">
+                    <i class="fas fa-trash me-1"></i> Eliminar Censo
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para Agregar Participante -->
+  <div class="modal fade" id="participanteModal" tabindex="-1" aria-labelledby="participanteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="participanteModalLabel">
+            <i class="fas fa-user-plus me-1"></i> Agregar Participante al Censo
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="participanteForm" method="POST" action="{% url 'asignar_participante_censo' censo.pk %}">
+            {% csrf_token %}
+            
+            <!-- Búsqueda de Habitante -->
+            <div class="mb-3">
+              <label for="buscar_habitante" class="form-label">
+                <i class="fas fa-search me-1"></i> Buscar Habitante
+              </label>
+              <div class="input-group">
+                <input type="text" class="form-control" id="buscar_habitante" 
+                       placeholder="Escriba nombre, apellido o cédula para buscar...">
+                <button class="btn btn-outline-secondary" type="button" id="btnBuscar">
+                  <i class="fas fa-search"></i>
+                </button>
+              </div>
+              <small class="text-muted">Mínimo 2 caracteres para iniciar la búsqueda</small>
+            </div>
+            
+            <!-- Resultados de búsqueda -->
+            <div id="resultadosBusqueda" class="mb-3" style="display: none;">
+              <label class="form-label">Resultados de la búsqueda:</label>
+              <div class="list-group" id="listaResultados" style="max-height: 200px; overflow-y: auto;">
+                <!-- Se llena dinámicamente -->
+              </div>
+            </div>
+            
+            <!-- Habitante seleccionado -->
+            <div id="habitanteSeleccionado" class="alert alert-info" style="display: none;">
+              <strong>Habitante seleccionado:</strong>
+              <span id="nombreHabitante"></span>
+              <input type="hidden" name="habitante" id="habitanteId" value="">
+            </div>
+            
+            <!-- Observaciones -->
+            <div class="mb-3">
+              <label for="id_observaciones" class="form-label">Observaciones (opcional)</label>
+              <textarea name="observaciones" id="id_observaciones" class="form-control" rows="2"
+                        placeholder="Observaciones adicionales..."></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="participanteForm" class="btn btn-success" id="btnAgregar" disabled>
+            <i class="fas fa-check me-1"></i> Agregar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Variables globales
+      const censoId = {{ censo.pk }};
+      
+      // Búsqueda de habitantes con debounce
+      let timeoutBusqueda;
+      const inputBuscar = document.getElementById('buscar_habitante');
+      const btnBuscar = document.getElementById('btnBuscar');
+      const resultadosDiv = document.getElementById('resultadosBusqueda');
+      const listaResultados = document.getElementById('listaResultados');
+      const habitanteSeleccionadoDiv = document.getElementById('habitanteSeleccionado');
+      const nombreHabitanteSpan = document.getElementById('nombreHabitante');
+      const habitanteIdInput = document.getElementById('habitanteId');
+      const btnAgregar = document.getElementById('btnAgregar');
+      
+      // Función para buscar habitantes (conectada con Django via AJAX)
+      function buscarHabitantes(query) {
+        // Mostrar estado de "buscando..."
+        listaResultados.innerHTML = '<div class="list-group-item text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Buscando...</div>';
+        resultadosDiv.style.display = 'block';
+        
+        fetch(`/censos/api/buscar-habitantes/?q=${encodeURIComponent(query)}&censo_id=${censoId}`)
+          .then(response => {
+            if (!response.ok) throw new Error('Error en la respuesta del servidor');
+            return response.json();
+          })
+          .then(data => {
+            listaResultados.innerHTML = '';
+            
+            if (data.habitantes.length === 0) {
+              listaResultados.innerHTML = '<div class="list-group-item text-muted">No se encontraron habitantes.</div>';
+            } else {
+              data.habitantes.forEach(h => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'list-group-item list-group-item-action';
+                btn.innerHTML = `
+                  <div class="d-flex justify-content-between">
+                    <div>
+                      <strong>${h.nombre}</strong><br>
+                      <small class="text-muted">C.I.: ${h.documento}</small>
+                    </div>
+                    <div class="text-end">
+                      <small class="text-muted">${h.genero}</small><br>
+                      <small>${h.familia}</small>
+                    </div>
+                  </div>
+                `;
+                btn.onclick = function() { seleccionarHabitante(h.id, h.nombre, h.documento); };
+                listaResultados.appendChild(btn);
+              });
+            }
+          })
+          .catch(error => {
+            console.error('Error al buscar habitantes:', error);
+            listaResultados.innerHTML = '<div class="list-group-item text-danger">Error al buscar. Intente nuevamente.</div>';
+          });
+      }
+      
+      // Función para seleccionar un habitante de la lista
+      function seleccionarHabitante(id, nombre, documento) {
+        habitanteIdInput.value = id;
+        nombreHabitanteSpan.textContent = `${nombre} (C.I.: ${documento})`;
+        habitanteSeleccionadoDiv.style.display = 'block';
+        btnAgregar.disabled = false;
+        resultadosDiv.style.display = 'none';
+        inputBuscar.value = '';
+      }
+      
+      // Event listener para el input de búsqueda (con debounce de 300ms)
+      if (inputBuscar) {
+        inputBuscar.addEventListener('input', function() {
+          clearTimeout(timeoutBusqueda);
+          const query = this.value.trim();
+          
+          if (query.length >= 2) {
+            timeoutBusqueda = setTimeout(() => buscarHabitantes(query), 300);
+          } else {
+            resultadosDiv.style.display = 'none';
+          }
+        });
+      }
+      
+      // Event listener para el botón de búsqueda
+      if (btnBuscar) {
+        btnBuscar.addEventListener('click', function() {
+          const query = inputBuscar.value.trim();
+          if (query.length >= 2) {
+            buscarHabitantes(query);
+          }
+        });
+      }
+      
+      // Resetear el formulario cuando se cierra el modal
+      const participanteModal = document.getElementById('participanteModal');
+      if (participanteModal) {
+        participanteModal.addEventListener('hidden.bs.modal', function() {
+          // Limpiar selección
+          habitanteIdInput.value = '';
+          nombreHabitanteSpan.textContent = '';
+          habitanteSeleccionadoDiv.style.display = 'none';
+          btnAgregar.disabled = true;
+          resultadosDiv.style.display = 'none';
+          inputBuscar.value = '';
+          document.getElementById('id_observaciones').value = '';
+        });
+      }
+    });
+    
+    // Confirmar eliminación del censo
+    function confirmarEliminacionCenso() {
+      Swal.fire({
+        title: '¿Eliminar este censo?',
+        html: `
+          <strong>{{ censo.nombre_censo }}</strong><br><br>
+          <span class="text-danger">Esta acción no se puede deshacer.</span>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = "{% url 'eliminar_censo' censo.pk %}";
+          form.innerHTML = '{% csrf_token %}';
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    }
+    
+    // Mensajes de Django
+    $(document).ready(function () {
+      {% if messages %}
+      {% for message in messages %}
+      Swal.fire({
+        icon: '{{ message.tags }}',
+        title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% else %}Notificación{% endif %}',
+        html: '{{ message.message|safe }}',
+        showConfirmButton: true
+      });
+      {% endfor %}
+      {% endif %}
+    });
+  </script>
+</body>
+</html>

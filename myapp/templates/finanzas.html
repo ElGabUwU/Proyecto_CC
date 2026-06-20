@@ -1,0 +1,771 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finanzas - Consejo Comunal</title>
+  <!-- 🆕 NUEVO: Template para gestión financiera -->
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  {% include 'partials/session_timeout.html' %}
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white">
+    {% include 'partials/sidebar.html' %}
+
+    <main class="flex-grow-1 main-content vh-100 p-3 mx-3 overflow-auto pt-4">
+      <!-- Resumen Financiero -->
+      <div class="row mb-4">
+        <div class="col-md-4">
+          <div class="card bg-success text-white">
+            <div class="card-body">
+              <h5 class="card-title"><i class="fas fa-money-bill-wave me-2"></i>Saldo Actual</h5>
+              <h2 class="card-text" id="saldo-actual">Bs. {{ saldo_actual|floatformat:2 }}</h2>
+              <small>Actualizado: {% now "d/m/Y H:i" %}</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card bg-info text-white">
+            <div class="card-body">
+              <h5 class="card-title"><i class="fas fa-arrow-up me-2"></i>Total Ingresos</h5>
+              <h2 class="card-text" id="total-ingresos">Bs. {{ total_ingresos|floatformat:2 }}</h2>
+              <small>Desde: {{ fecha_inicio|date:"d/m/Y" }}</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card bg-warning text-white">
+            <div class="card-body">
+              <h5 class="card-title"><i class="fas fa-arrow-down me-2"></i>Total Egresos</h5>
+              <h2 class="card-text" id="total-egresos">Bs. {{ total_egresos|floatformat:2 }}</h2>
+              <small>Desde: {{ fecha_inicio|date:"d/m/Y" }}</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pestañas para Ingresos/Egresos -->
+      <div class="card shadow">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs" id="finanzasTab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="ingresos-tab" data-bs-toggle="tab" data-bs-target="#ingresos" type="button">
+                <i class="fas fa-arrow-up me-1"></i>Ingresos
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="egresos-tab" data-bs-toggle="tab" data-bs-target="#egresos" type="button">
+                <i class="fas fa-arrow-down me-1"></i>Egresos
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="reportes-tab" data-bs-toggle="tab" data-bs-target="#reportes" type="button">
+                <i class="fas fa-chart-bar me-1"></i>Reportes
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card-body">
+          <div class="tab-content" id="finanzasTabContent">
+            <!-- Pestaña Ingresos -->
+            <div class="tab-pane fade show active" id="ingresos" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Registro de Ingresos</h5>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ingresoModal">
+                  <i class="fas fa-plus me-1"></i>Nuevo Ingreso
+                </button>
+              </div>
+              
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Tipo de Ingreso</th>
+                      <th>Concepto</th>
+                      <th>Monto</th>
+                      <th>Soporte Digital</th>
+                      <th>Observaciones</th>
+                      <th>Responsable</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for ingreso in ingresos %}
+                    <tr>
+                      <td>{{ ingreso.fecha|date:"d/m/Y" }}</td>
+                      <td>
+                        <span class="badge bg-primary">
+                          {{ ingreso.get_tipo_ingreso_display }}
+                        </span>
+                      </td>
+                      <td>{{ ingreso.concepto }}</td>
+                      <td class="text-success fw-bold">Bs. {{ ingreso.monto|floatformat:2 }}</td>
+                      <td>
+                        {% if ingreso.soporte_digital %}
+                          <a href="{{ ingreso.soporte_digital.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-file-pdf"></i> Ver/Descargar
+                          </a>
+                        {% else %}
+                          <span class="text-muted">Sin soporte</span>
+                        {% endif %}
+                      </td>
+                      <td title="{{ ingreso.observaciones }}">
+                        {{ ingreso.observaciones|truncatechars:40|default:"-" }}
+                      </td>
+                      <td>{{ ingreso.responsable|default:"Usuario eliminado" }}</td>
+                      <td>
+                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
+                                data-bs-target="#ingresoModal" data-ingreso-id="{{ ingreso.id }}">
+                          <i class="fas fa-edit"></i>
+                        </button>
+                        <form action="{% url 'eliminar_ingreso' ingreso.id %}" method="post" style="display:inline;" id="form-delete-ingreso-{{ ingreso.id }}">
+                          {% csrf_token %}
+                          <button type="button" class="btn btn-sm btn-danger btn-delete-ingreso" 
+                                  data-ingreso-id="{{ ingreso.id }}" data-ingreso-concepto="{{ ingreso.concepto }}">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                      <td colspan="8" class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                        No hay ingresos registrados
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Paginación Ingresos -->
+              {% if ingresos.has_other_pages %}
+              <nav aria-label="Paginación de ingresos" class="mt-3">
+                <ul class="pagination justify-content-center">
+                  {% if ingresos.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page_ingresos={{ ingresos.previous_page_number }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">Anterior</a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                  </li>
+                  {% endif %}
+
+                  {% for num in ingresos.paginator.page_range %}
+                    {% if ingresos.number == num %}
+                      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > ingresos.number|add:'-3' and num < ingresos.number|add:'3' %}
+                      <li class="page-item"><a class="page-link" href="?page_ingresos={{ num }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">{{ num }}</a></li>
+                    {% endif %}
+                  {% endfor %}
+
+                  {% if ingresos.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page_ingresos={{ ingresos.next_page_number }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">Siguiente</a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Siguiente</span>
+                  </li>
+                  {% endif %}
+                </ul>
+              </nav>
+              {% endif %}
+            </div>
+
+            <!-- Pestaña Egresos -->
+            <div class="tab-pane fade" id="egresos" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Registro de Egresos</h5>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#egresoModal">
+                  <i class="fas fa-plus me-1"></i>Nuevo Egreso
+                </button>
+              </div>
+              
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Tipo de Egreso</th>
+                      <th>Concepto</th>
+                      <th>Monto</th>
+                      <th>Beneficiario</th>
+                      <th>Soporte</th>
+                      <th>Observaciones</th>
+                      <th>Responsable</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for egreso in egresos %}
+                    <tr>
+                      <td>{{ egreso.fecha|date:"d/m/Y" }}</td>
+                      <td>
+                        <span class="badge bg-warning text-dark">
+                          {{ egreso.get_tipo_egreso_display }}
+                        </span>
+                      </td>
+                      <td>{{ egreso.concepto }}</td>
+                      <td class="text-danger fw-bold">Bs. {{ egreso.monto|floatformat:2 }}</td>
+                      <td>{{ egreso.beneficiario|default:"-" }}</td>
+                      <td>
+                        {% if egreso.soporte %}
+                          <a href="{{ egreso.soporte.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-paperclip"></i> Ver
+                          </a>
+                        {% else %}
+                          <span class="text-muted">Sin soporte</span>
+                        {% endif %}
+                      </td>
+                      <td title="{{ egreso.observaciones }}">
+                        {{ egreso.observaciones|truncatechars:40|default:"-" }}
+                      </td>
+                      <td>{{ egreso.responsable|default:"Usuario eliminado" }}</td>
+                      <td>
+                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
+                                data-bs-target="#egresoModal" data-egreso-id="{{ egreso.id }}">
+                          <i class="fas fa-edit"></i>
+                        </button>
+                        <form action="{% url 'eliminar_egreso' egreso.id %}" method="post" style="display:inline;" id="form-delete-egreso-{{ egreso.id }}">
+                          {% csrf_token %}
+                          <button type="button" class="btn btn-sm btn-danger btn-delete-egreso" 
+                                  data-egreso-id="{{ egreso.id }}" data-egreso-concepto="{{ egreso.concepto }}">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                      <td colspan="9" class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                        No hay egresos registrados
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Paginación Egresos -->
+              {% if egresos.has_other_pages %}
+              <nav aria-label="Paginación de egresos" class="mt-3">
+                <ul class="pagination justify-content-center">
+                  {% if egresos.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page_egresos={{ egresos.previous_page_number }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">Anterior</a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                  </li>
+                  {% endif %}
+
+                  {% for num in egresos.paginator.page_range %}
+                    {% if egresos.number == num %}
+                      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > egresos.number|add:'-3' and num < egresos.number|add:'3' %}
+                      <li class="page-item"><a class="page-link" href="?page_egresos={{ num }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">{{ num }}</a></li>
+                    {% endif %}
+                  {% endfor %}
+
+                  {% if egresos.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page_egresos={{ egresos.next_page_number }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">Siguiente</a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Siguiente</span>
+                  </li>
+                  {% endif %}
+                </ul>
+              </nav>
+              {% endif %}
+            </div>
+
+            <!-- Pestaña Reportes -->
+            <div class="tab-pane fade" id="reportes" role="tabpanel">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5>Filtrar por período</h5>
+                    </div>
+                    <div class="card-body">
+                      <form method="get" action="{% url 'finanzas' %}">
+                        <div class="mb-3">
+                          <label for="fecha_inicio" class="form-label">Desde</label>
+                          <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                                 value="{{ request.GET.fecha_inicio|default:'' }}">
+                        </div>
+                        <div class="mb-3">
+                          <label for="fecha_fin" class="form-label">Hasta</label>
+                          <input type="date" class="form-control" id="fecha_fin" name="fecha_fin"
+                                 value="{{ request.GET.fecha_fin|default:'' }}">
+                        </div>
+                        <button type="button" class="btn btn-success" id="btn-export-excel" disabled title="Selecciona ambas fechas para habilitar la exportación">
+                          <i class="fas fa-file-excel me-1"></i>Exportar Excel
+                        </button> 
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5>Resumen del Período</h5>
+                    </div>
+                    <div class="card-body">
+                      <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between">
+                          <span>Ingresos:</span>
+                          <strong class="text-success">Bs. {{ total_ingresos_periodo|floatformat:2 }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                          <span>Egresos:</span>
+                          <strong class="text-danger">Bs. {{ total_egresos_periodo|floatformat:2 }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                          <span>Saldo:</span>
+                          <strong class="text-primary">Bs. {{ saldo_periodo|floatformat:2 }}</strong>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Tabla de reporte detallado -->
+              <div class="mt-4">
+                <h5>Detalle de Movimientos</h5>
+                <div class="table-responsive">
+                  <table class="table table-bordered" id="tabla-reporte">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Concepto</th>
+                        <th>Monto</th>
+                        <th>Responsable</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for movimiento in movimientos_periodo %}
+                      <tr>
+                        <td>{{ movimiento.fecha|date:"d/m/Y" }}</td>
+                        <td>
+                          {% if movimiento.tipo == 'ingreso' %}
+                          <span class="badge bg-success">Ingreso</span>
+                          {% else %}
+                          <span class="badge bg-danger">Egreso</span>
+                          {% endif %}
+                        </td>
+                        <td>{{ movimiento.concepto }}</td>
+                        <td class="{% if movimiento.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
+                          Bs. {{ movimiento.monto|floatformat:2 }}
+                        </td>
+                        <td>{{ movimiento.responsable }}</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="5" class="text-center text-muted">No hay movimientos en este período</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para Ingreso -->
+  <div class="modal fade" id="ingresoModal" tabindex="-1" aria-labelledby="ingresoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="modalIngresoTitle">Registrar Ingreso</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="ingresoForm" method="POST" action="" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ ingreso_form.as_p }}
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" form="ingresoForm" class="btn btn-primary">Guardar</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Egreso -->
+  <div class="modal fade" id="egresoModal" tabindex="-1" aria-labelledby="egresoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="modalEgresoTitle">Registrar Egreso</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="egresoForm" method="POST" action="" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ egreso_form.as_p }}
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" form="egresoForm" class="btn btn-primary">Guardar</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Lógica para modales de finanzas
+    document.addEventListener('DOMContentLoaded', function() {
+      // 🔹 Inicializar pestañas
+      const triggerTabList = [].slice.call(document.querySelectorAll('#finanzasTab button'));
+      triggerTabList.forEach(function (triggerEl) {
+        const tabTrigger = new bootstrap.Tab(triggerEl);
+        triggerEl.addEventListener('click', function (event) {
+          event.preventDefault();
+          tabTrigger.show();
+        });
+      });
+
+      // 🔹 VALIDACIÓN: Habilitar botón solo si ambas fechas están seleccionadas
+      const btnExport = document.getElementById('btn-export-excel');
+      const inputInicio = document.getElementById('fecha_inicio');
+      const inputFin = document.getElementById('fecha_fin');
+
+      function verificarFechas() {
+        if (inputInicio && inputFin && btnExport) {
+          if (inputInicio.value && inputFin.value) {
+            btnExport.disabled = false;
+            btnExport.title = "Exportar datos filtrados";
+            btnExport.classList.remove('disabled');
+            btnExport.style.opacity = '1';
+          } else {
+            btnExport.disabled = true;
+            btnExport.title = "Selecciona ambas fechas para habilitar la exportación";
+            btnExport.classList.add('disabled');
+            btnExport.style.opacity = '0.65';
+          }
+        }
+      }
+
+      verificarFechas();
+
+      if (inputInicio) inputInicio.addEventListener('change', verificarFechas);
+      if (inputFin) inputFin.addEventListener('change', verificarFechas);
+
+      // 🔹 EXPORTAR: Lógica para construir URL con filtros
+      if (btnExport) {
+        btnExport.addEventListener('click', function() {
+          const fechaInicio = inputInicio.value;
+          const fechaFin = inputFin.value;
+          
+          if (!fechaInicio || !fechaFin) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Atención',
+              text: '⚠️ Por favor selecciona ambas fechas antes de exportar.'
+            });
+            return;
+          }
+          
+          let url = "{% url 'exportar_finanzas' %}?";
+          const params = [];
+          if (fechaInicio) params.push(`fecha_inicio=${encodeURIComponent(fechaInicio)}`);
+          if (fechaFin) params.push(`fecha_fin=${encodeURIComponent(fechaFin)}`);
+          
+          url += params.join('&');
+          window.open(url, '_blank');
+        });
+      }
+
+      // 🔹 MODAL INGRESO: Lógica de Carga y Envío Asíncrono (AJAX)
+      const ingresoModal = document.getElementById('ingresoModal');
+      const formIngreso = document.getElementById('ingresoForm');
+      
+      if (ingresoModal && formIngreso) {
+        ingresoModal.addEventListener('show.bs.modal', function(event) {
+          const button = event.relatedTarget;
+          const ingresoId = button ? button.getAttribute('data-ingreso-id') : null;
+          const title = document.getElementById('modalIngresoTitle');
+          
+          if (ingresoId) {
+            title.textContent = 'Editar Ingreso';
+            formIngreso.action = `/finanzas/ingresos/editar/${ingresoId}/`;
+            
+            fetch(`/finanzas/ingresos/api/${ingresoId}/`)
+              .then(response => response.json())
+              .then(data => {
+                for (const [key, value] of Object.entries(data)) {
+                  const input = formIngreso.querySelector(`[name="${key}"]`);
+                  if (input) {
+                    input.value = value !== null && value !== '' ? value : '';
+                  }
+                }
+                // Manejo especial para campos select
+                if (data.tipo_ingreso) {
+                  const selectTipo = formIngreso.querySelector('[name="tipo_ingreso"]');
+                  if (selectTipo) {
+                    selectTipo.value = data.tipo_ingreso;
+                  }
+                }
+              })
+              .catch(err => console.error('Error al cargar datos del ingreso:', err));
+          } else {
+            title.textContent = 'Registrar Ingreso';
+            formIngreso.action = "{% url 'crear_ingreso' %}";
+            formIngreso.reset();
+          }
+        });
+
+        // CONTROLADOR AJAX: Envío de Ingresos
+        formIngreso.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const urlTarget = this.action;
+          const formData = new FormData(this);
+          
+          fetch(urlTarget, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          })
+          .then(response => response.json().then(data => ({ status: response.status, body: data })))
+          .then(res => {
+            if (res.status === 200 || res.body.success) {
+              const modalInstance = bootstrap.Modal.getInstance(ingresoModal);
+              if (modalInstance) modalInstance.hide();
+              
+              Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: res.body.message || 'Operación realizada correctamente.',
+                confirmButtonColor: '#198754'
+              }).then(() => { window.location.reload(); });
+            } else {
+              let msgError = "Por favor corrija los errores en el formulario.";
+              if (res.body.errors) {
+                if (res.body.errors.fecha) {
+                  let err = res.body.errors.fecha;
+                  msgError = Array.isArray(err) ? err[0] : (typeof err === 'object' ? err.message : err);
+                } else {
+                  const primerCampoConError = Object.keys(res.body.errors)[0];
+                  let errGeneral = res.body.errors[primerCampoConError];
+                  msgError = Array.isArray(errGeneral) ? errGeneral[0] : (typeof errGeneral === 'object' ? errGeneral.message : errGeneral);
+                }
+              }
+              Swal.fire({
+                icon: 'error',
+                title: 'Restricción de Validación',
+                text: msgError,
+                confirmButtonColor: '#dc3545'
+              });
+            }
+          })
+          .catch(err => {
+            console.error("Error en ingresos:", err);
+          });
+        });
+      }
+
+      // 🔹 MODAL EGRESO: Lógica de Carga y Envío Asíncrono (AJAX)
+      const egresoModal = document.getElementById('egresoModal');
+      const formEgreso = document.getElementById('egresoForm');
+      
+      if (egresoModal && formEgreso) {
+        egresoModal.addEventListener('show.bs.modal', function(event) {
+          const button = event.relatedTarget;
+          const egresoId = button ? button.getAttribute('data-egreso-id') : null;
+          const title = document.getElementById('modalEgresoTitle');
+          
+          if (egresoId) {
+            title.textContent = 'Editar Egreso';
+            formEgreso.action = `/finanzas/egresos/editar/${egresoId}/`;
+            
+            fetch(`/finanzas/egresos/api/${egresoId}/`)
+              .then(response => response.json())
+              .then(data => {
+                for (const [key, value] of Object.entries(data)) {
+                  const input = formEgreso.querySelector(`[name="${key}"]`);
+                  if (input) {
+                    input.value = value !== null && value !== '' ? value : '';
+                  }
+                }
+                // Manejo especial para campos select
+                if (data.tipo_egreso) {
+                  const selectTipo = formEgreso.querySelector('[name="tipo_egreso"]');
+                  if (selectTipo) {
+                    selectTipo.value = data.tipo_egreso;
+                  }
+                }
+              })
+              .catch(err => console.error('Error al cargar datos del egreso:', err));
+          } else {
+            title.textContent = 'Registrar Egreso';
+            formEgreso.action = "{% url 'crear_egreso' %}";
+            formEgreso.reset();
+          }
+        });
+
+        // 🚀 CONTROLADOR AJAX: Envío de Egresos sin borrar el historial
+        formEgreso.addEventListener('submit', function(e) {
+          e.preventDefault(); // 🚫 Detiene el refresco forzado de la página
+          
+          const urlTarget = this.action;
+          const formData = new FormData(this);
+          
+          fetch(urlTarget, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(response => {
+            // Unificamos el estatus de la respuesta y el cuerpo JSON correctamente
+            return response.json().then(data => ({ status: response.status, body: data }));
+          })
+          .then(res => {
+            if (res.status === 200 || res.body.success) {
+              const modalInstance = bootstrap.Modal.getInstance(egresoModal);
+              if (modalInstance) modalInstance.hide();
+              
+              Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: res.body.message || 'Egreso registrado correctamente.',
+                confirmButtonColor: '#198754'
+              }).then(() => {
+                window.location.reload(); 
+              });
+            } else {
+              // ============================================================
+              // 🔍 DETECCIÓN ESPECÍFICA DE ERRORES PARA EGRESOS
+              // ============================================================
+              let msgError = "Por favor corrija los errores en el formulario.";
+              
+              if (res.body.errors) {
+                // Evaluamos de forma precisa el campo 'fecha' de egresos
+                if (res.body.errors.fecha) {
+                  let err = res.body.errors.fecha;
+                  msgError = Array.isArray(err) ? err[0] : (typeof err === 'object' ? err.message : err);
+                } 
+                // Si el error pertenece a monto o concepto, tomamos el primero
+                else {
+                  const primerCampoConError = Object.keys(res.body.errors)[0];
+                  let errGeneral = res.body.errors[primerCampoConError];
+                  msgError = Array.isArray(errGeneral) ? errGeneral[0] : (typeof errGeneral === 'object' ? errGeneral.message : errGeneral);
+                }
+              }
+              
+              Swal.fire({
+                icon: 'error',
+                title: 'Restricción de Validación',
+                text: msgError,
+                confirmButtonColor: '#dc3545'
+              });
+              // ============================================================
+            }
+          })
+          .catch(err => {
+            console.error("Error en la solicitud HTTP de egresos:", err);
+            Swal.fire({
+              icon: 'error',
+              title: 'Error del Sistema',
+              text: 'Ocurrió un problema al procesar la transacción financiera.'
+            });
+          });
+        });
+      }
+      
+      // Calcular saldo inicial
+      if (typeof calcularSaldoEnTiempoReal === 'function') {
+        calcularSaldoEnTiempoReal();
+      }
+    });
+    
+    // Mensajes de Django heredados (Para flujos GET/Redirects normales)
+    $(document).ready(function () {
+      {% if messages %}
+      {% for message in messages %}
+      Swal.fire({
+        icon: '{{ message.tags }}',
+        title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% else %}Notificación{% endif %}',
+        html: '{{ message.message|safe }}',
+        showConfirmButton: true
+      });
+      {% endfor %}
+      {% endif %}
+      
+      // 🔹 SweetAlert para eliminar ingreso
+      $('.btn-delete-ingreso').on('click', function() {
+        const ingresoId = $(this).data('ingreso-id');
+        const ingresoConcepto = $(this).data('ingreso-concepto');
+        
+        Swal.fire({
+          title: '¿Eliminar ingreso?',
+          text: `¿Estás seguro de que deseas eliminar el ingreso "${ingresoConcepto}"? Esta acción no se puede deshacer.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            $(`#form-delete-ingreso-${ingresoId}`).submit();
+          }
+        });
+      });
+      
+      // 🔹 SweetAlert para eliminar egreso
+      $('.btn-delete-egreso').on('click', function() {
+        const egresoId = $(this).data('egreso-id');
+        const egresoConcepto = $(this).data('egreso-concepto');
+        
+        Swal.fire({
+          title: '¿Eliminar egreso?',
+          text: `¿Estás seguro de que deseas eliminar el egreso "${egresoConcepto}"? Esta acción no se puede deshacer.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            $(`#form-delete-egreso-${egresoId}`).submit();
+          }
+        });
+      });
+    });
+</script>
+</body>
+</html>

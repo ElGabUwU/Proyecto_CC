@@ -1,0 +1,316 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comités - Consejo Comunal</title>
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  {% include 'partials/session_timeout.html' %}
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white">
+    {% include 'partials/sidebar.html' %}
+
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      <!-- Breadcrumbs -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'welcome' %}" class="text-decoration-none">Inicio</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'proyectos' %}" class="text-decoration-none">Proyectos</a></li>
+          <li class="breadcrumb-item active text-white" aria-current="page">Comités</li>
+        </ol>
+      </nav>
+
+      <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">
+            <i class="fas fa-sitemap me-2"></i>Gestión de Comités
+          </h4>
+          <div>
+            <a href="{% url 'proyectos' %}" class="btn btn-outline-info me-2">
+              <i class="fas fa-project-diagram me-1"></i>Ver Proyectos
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#comiteModal">
+              <i class="fas fa-plus me-1"></i>Nuevo Comité
+            </button>
+          </div>
+        </div>
+        
+        <div class="card-body">
+          <!-- Filtros -->
+          <div class="row mb-4">
+            <div class="col-md-4">
+              <label for="filtro-tipo" class="form-label">Filtrar por Tipo</label>
+              <select class="form-select" id="filtro-tipo" onchange="filtrarPorTipo(this.value)">
+                <option value="">Todos los tipos</option>
+                {% for value, label in tipos_comite %}
+                <option value="{{ value }}" {% if tipo == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <form method="get" action="{% url 'comites' %}" class="mt-4">
+                <div class="input-group">
+                  <input type="text" name="q" class="form-control" placeholder="Buscar por nombre..." 
+                         value="{{ query|default_if_none:'' }}">
+                  <button class="btn btn-secondary" type="submit">
+                    <i class="fa fa-search"></i>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Tabla de Comités -->
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <th style="width: 140px;">Acciones</th>
+                  <th>Nombre del Comité</th>
+                  <th>Tipo</th>
+                  <th>Vocero Principal</th>
+                  <th>Proyectos Activos</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-comites">
+                {% for comite in comites %}
+                <tr data-tipo="{{ comite.tipo_comite }}">
+                  <td>
+                    <button type="button" class="btn btn-sm btn-warning mb-1" data-bs-toggle="modal" 
+                            data-bs-target="#comiteModal" data-comite-id="{{ comite.id }}" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <form action="{% url 'eliminar_comite' comite.id %}" method="post" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-danger mb-1" 
+                              onclick="return confirmarEliminacion('{{ comite.nombre }}', {{ comite.cantidad_proyectos_activos }})"
+                              title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                  <td>
+                    <strong>{{ comite.nombre }}</strong>
+                    {% if comite.descripcion %}
+                    <br><small class="text-muted">{{ comite.descripcion|truncatechars:50 }}</small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge bg-info">{{ comite.get_tipo_comite_display }}</span>
+                  </td>
+                  <td>
+                    {% if comite.vocero_principal %}
+                      {{ comite.vocero_principal.nombre }} {{ comite.vocero_principal.apellido }}
+                    {% else %}
+                      <span class="text-muted">Sin asignar</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge bg-primary">{{ comite.cantidad_proyectos_activos }}</span>
+                  </td>
+                  <td>
+                    <span class="badge {% if comite.activo %}bg-success{% else %}bg-secondary{% endif %}">
+                      {% if comite.activo %}Activo{% else %}Inactivo{% endif %}
+                    </span>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">
+                    <i class="fas fa-folder-open fa-3x mb-2 d-block"></i>
+                    No se encontraron comités registrados.
+                    <br>
+                    <small>Haga clic en "Nuevo Comité" para comenzar.</small>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paginación -->
+          {% if comites.has_other_pages %}
+          <div class="pagination-container d-flex justify-content-center align-items-center my-4">
+            <button id="prev-page" class="btn pagination-btn" {% if not comites.has_previous %}disabled{% endif %}>
+              <img src="{% static 'assets/images/flecha_izq.png' %}" alt="Anterior" width="40" height="30">
+            </button>
+            <span class="page-info text-white mx-3">
+              {{ comites.number }} / {{ comites.paginator.num_pages }}
+            </span>
+            <button id="next-page" class="btn pagination-btn" {% if not comites.has_next %}disabled{% endif %}>
+              <img src="{% static 'assets/images/flecha_der.png' %}" alt="Siguiente" width="40" height="30">
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para Comité -->
+  <div class="modal fade" id="comiteModal" tabindex="-1" aria-labelledby="comiteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="modalComiteTitle">Registrar Comité</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="comiteForm" method="POST" action="">
+            {% csrf_token %}
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="id_nombre" class="form-label">{{ comite_form.nombre.label }}</label>
+                {{ comite_form.nombre }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_tipo_comite" class="form-label">{{ comite_form.tipo_comite.label }}</label>
+                {{ comite_form.tipo_comite }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="id_vocero_principal" class="form-label">{{ comite_form.vocero_principal.label }}</label>
+                {{ comite_form.vocero_principal }}
+              </div>
+              <div class="col-md-6 mb-3 d-flex align-items-end">
+                <div class="form-check">
+                  {{ comite_form.activo }}
+                  <label for="id_activo" class="form-check-label">{{ comite_form.activo.label }}</label>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="id_descripcion" class="form-label">{{ comite_form.descripcion.label }}</label>
+                {{ comite_form.descripcion }}
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="comiteForm" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Lógica para modal de comité
+    const comiteModal = document.getElementById('comiteModal');
+    if (comiteModal) {
+      comiteModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const comiteId = button ? button.getAttribute('data-comite-id') : null;
+        const form = document.getElementById('comiteForm');
+        const title = document.getElementById('modalComiteTitle');
+        
+        if (comiteId) {
+          title.textContent = 'Editar Comité';
+          form.action = `/proyectos/comites/editar/${comiteId}/`;
+          // AJAX para cargar datos
+          fetch(`/proyectos/comites/api/${comiteId}/`)
+            .then(response => response.json())
+            .then(data => {
+              document.getElementById('id_nombre').value = data.nombre || '';
+              document.getElementById('id_tipo_comite').value = data.tipo_comite || '';
+              document.getElementById('id_descripcion').value = data.descripcion || '';
+              document.getElementById('id_activo').checked = data.activo;
+              if (data.vocero_principal) {
+                document.getElementById('id_vocero_principal').value = data.vocero_principal;
+              }
+            });
+        } else {
+          title.textContent = 'Registrar Comité';
+          form.action = "{% url 'crear_comite' %}";
+          form.reset();
+        }
+      });
+    }
+    
+    // Función para filtrar por tipo
+    function filtrarPorTipo(tipo) {
+      const url = new URL(window.location.href.split('?')[0], window.location.origin);
+      if (tipo) url.searchParams.append('tipo', tipo);
+      const query = "{{ query|default:'' }}";
+      if (query && query !== 'None') url.searchParams.append('q', query);
+      window.location.href = url.toString();
+    }
+    
+    // Confirmar eliminación
+    function confirmarEliminacion(nombre, proyectosCount) {
+      if (proyectosCount > 0) {
+        Swal.fire({
+          icon: 'error',
+          title: 'No se puede eliminar',
+          html: `El comité <strong>${nombre}</strong> tiene ${proyectosCount} proyecto(s) asociado(s).<br><br>
+                 Debe eliminar o reasignar los proyectos primero.`
+        });
+        return false;
+      }
+      return confirm(`¿Está seguro de eliminar el comité "${nombre}"?\n\nEsta acción no se puede deshacer.`);
+    }
+    
+    // Mensajes de Django
+    $(document).ready(function () {
+      {% if messages %}
+      {% for message in messages %}
+      Swal.fire({
+        icon: '{{ message.tags }}',
+        title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% else %}Notificación{% endif %}',
+        html: '{{ message.message|safe }}',
+        showConfirmButton: true
+      });
+      {% endfor %}
+      {% endif %}
+    });
+    
+    // Lógica de paginación
+    document.addEventListener('DOMContentLoaded', function() {
+      const prevButton = document.getElementById('prev-page');
+      const nextButton = document.getElementById('next-page');
+      const currentPage = {{ comites.number|default:1 }};
+      const totalPages = {{ comites.paginator.num_pages|default:1 }};
+      const query = "{{ query|default:'' }}";
+      const tipoFilter = "{{ tipo|default:'' }}";
+      
+      function buildURL(page) {
+        const url = new URL(window.location.href.split('?')[0], window.location.origin);
+        if (page > 1) url.searchParams.append('page', page);
+        if (query && query !== 'None' && query.trim() !== '') url.searchParams.append('q', query);
+        if (tipoFilter && tipoFilter !== 'None') url.searchParams.append('tipo', tipoFilter);
+        return url.toString();
+      }
+      
+      if (prevButton && !prevButton.disabled) {
+        prevButton.addEventListener('click', function() {
+          if (currentPage > 1) window.location.href = buildURL(currentPage - 1);
+        });
+      }
+      
+      if (nextButton && !nextButton.disabled) {
+        nextButton.addEventListener('click', function() {
+          if (currentPage < totalPages) window.location.href = buildURL(currentPage + 1);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

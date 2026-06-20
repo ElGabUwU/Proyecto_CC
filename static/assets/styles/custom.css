@@ -12234,7 +12234,7 @@ textarea.form-control-lg {
 }
 
 .text-warning {
-  color: #ffc107 !important;
+  color: #ff0000 !important;
 }
 
 .border-warning {
@@ -12312,3 +12312,325 @@ textarea.form-control-lg {
 .border-my-red {
   border-color: #c62300 !important;
 }/*# sourceMappingURL=custom.css.map */
+
+
+/* ============================================
+   🆕 NUEVO: Estilos para Gestión Comunitaria
+   ============================================ */
+
+/* Colores específicos para comunidad */
+:root {
+  --bs-comunitario-primary: #2c3e50;
+  --bs-comunitario-secondary: #34495e;
+  --bs-comunitario-success: #27ae60;
+  --bs-comunitario-info: #3498db;
+  --bs-comunitario-warning: #f39c12;
+  --bs-comunitario-danger: #e74c3c;
+}
+
+/* Estilos para tarjetas comunitarias */
+.card-comunidad {
+  border-left: 4px solid var(--bs-comunitario-primary);
+  transition: transform 0.2s;
+}
+
+.card-comunidad:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card-comunidad .card-header {
+  background-color: var(--bs-comunitario-primary);
+  color: white;
+}
+
+/* Badges comunitarios */
+.badge-comunitario {
+  background-color: var(--bs-comunitario-primary);
+  color: white;
+}
+
+.badge-familia {
+  background-color: #8e44ad;
+  color: white;
+}
+
+.badge-habitante {
+  background-color: #16a085;
+  color: white;
+}
+
+.badge-finanza {
+  background-color: #2980b9;
+  color: white;
+}
+
+/* Estilos para tablas comunitarias */
+.table-comunidad thead {
+  background-color: var(--bs-comunitario-secondary);
+  color: white;
+}
+
+.table-comunidad tbody tr:hover {
+  background-color: rgba(52, 73, 94, 0.1);
+}
+
+/* Estilos para modales comunitarios */
+.modal-comunidad .modal-header {
+  background: linear-gradient(135deg, var(--bs-comunitario-primary), var(--bs-comunitario-secondary));
+  color: white;
+}
+
+/* Estilos para sidebar comunitario */
+.sidebar-section-title {
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* Estilos para resumen financiero */
+.resumen-financiero {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.resumen-financiero .card-body {
+  padding: 1.5rem;
+}
+
+.resumen-financiero h2 {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+/* Estilos para pestañas comunitarias */
+.nav-tabs-comunidad .nav-link {
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--bs-comunitario-secondary);
+  font-weight: 500;
+}
+
+.nav-tabs-comunidad .nav-link.active {
+  border-bottom: 3px solid var(--bs-comunitario-primary);
+  color: var(--bs-comunitario-primary);
+  background-color: transparent;
+}
+
+/* Estilos para formularios comunitarios */
+.form-control-comunitario {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+.form-control-comunitario:focus {
+  border-color: var(--bs-comunitario-primary);
+  box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
+}
+
+/* Estilos para botones comunitarios */
+.btn-comunitario {
+  background-color: var(--bs-comunitario-primary);
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.btn-comunitario:hover {
+  background-color: var(--bs-comunitario-secondary);
+  color: white;
+}
+
+.btn-comunitario-outline {
+  background-color: transparent;
+  color: var(--bs-comunitario-primary);
+  border: 2px solid var(--bs-comunitario-primary);
+}
+
+.btn-comunitario-outline:hover {
+  background-color: var(--bs-comunitario-primary);
+  color: white;
+}
+
+/* Estilos para paginación comunitaria */
+.pagination-comunidad .page-link {
+  color: var(--bs-comunitario-primary);
+  border: 1px solid #ddd;
+}
+
+.pagination-comunidad .page-item.active .page-link {
+  background-color: var(--bs-comunitario-primary);
+  border-color: var(--bs-comunitario-primary);
+  color: white;
+}
+
+.pagination-comunidad .page-link:hover {
+  background-color: rgba(44, 62, 80, 0.1);
+  color: var(--bs-comunitario-secondary);
+}
+
+/* Estilos para alertas comunitarias */
+.alert-comunitario {
+  border-left: 4px solid var(--bs-comunitario-primary);
+  background-color: rgba(44, 62, 80, 0.05);
+}
+
+.alert-comunitario-success {
+  border-left-color: var(--bs-comunitario-success);
+  background-color: rgba(39, 174, 96, 0.05);
+}
+
+.alert-comunitario-warning {
+  border-left-color: var(--bs-comunitario-warning);
+  background-color: rgba(243, 156, 18, 0.05);
+}
+
+.alert-comunitario-danger {
+  border-left-color: var(--bs-comunitario-danger);
+  background-color: rgba(231, 76, 60, 0.05);
+}
+
+/* Estilos para tooltips comunitarios */
+.tooltip-comunitario .tooltip-inner {
+  background-color: var(--bs-comunitario-primary);
+  color: white;
+}
+
+.tooltip-comunitario .tooltip-arrow {
+  border-top-color: var(--bs-comunitario-primary);
+}
+
+/* Estilos para gráficos y visualizaciones */
+.chart-container {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Estilos responsive para comunidad */
+@media (max-width: 768px) {
+  .card-comunidad {
+    margin-bottom: 1rem;
+  }
+  
+  .table-comunidad {
+    font-size: 0.9rem;
+  }
+  
+  .resumen-financiero h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Animaciones para transiciones comunitarias */
+@keyframes fadeInComunitario {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-comunitario {
+  animation: fadeInComunitario 0.3s ease-out;
+}
+
+/* Estilos para estados de documentos */
+.estado-documento {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.estado-generado {
+  background-color: rgba(39, 174, 96, 0.1);
+  color: var(--bs-comunitario-success);
+}
+
+.estado-pendiente {
+  background-color: rgba(243, 156, 18, 0.1);
+  color: var(--bs-comunitario-warning);
+}
+
+.estado-error {
+  background-color: rgba(231, 76, 60, 0.1);
+  color: var(--bs-comunitario-danger);
+}
+
+/* Estilos para listas de documentos */
+.lista-documentos .list-group-item {
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.lista-documentos .list-group-item:hover {
+  border-left-color: var(--bs-comunitario-primary);
+  background-color: rgba(44, 62, 80, 0.05);
+}
+
+/* Estilos para previsualización de documentos */
+.previsualizacion-documento {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 2rem;
+  min-height: 400px;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.previsualizacion-documento h1 {
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.previsualizacion-documento .fecha {
+  text-align: right;
+  margin-bottom: 2rem;
+}
+
+.previsualizacion-documento .contenido {
+  line-height: 1.6;
+  text-align: justify;
+}
+
+.previsualizacion-documento .firma {
+  margin-top: 4rem;
+  text-align: center;
+}
+
+.previsualizacion-documento .sello {
+  border: 2px dashed #ccc;
+  padding: 1rem;
+  display: inline-block;
+  margin-top: 2rem;
+}
+
+/* .card-registro-familia {
+    background-color: #ffffff !important; 
+    border: 1px solid #dee2e6 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+} */
+
+/* .card-registro-familia .card-body {
+    flex: 1 1 auto;
+    padding: var(--bs-card-spacer-y) var(--bs-card-spacer-x);
+    color: var(--bs-card-color);
+    background-color: #ffffff !important;
+    color: #1e293b !important;            
+} */
+
+/* Forzar que las etiquetas (labels) de los inputs se vean nítidas en negro */
+/* .card-registro-familia .form-label, 
+.card-registro-familia fw-semibold {
+    color: #000000 !important;
+} */

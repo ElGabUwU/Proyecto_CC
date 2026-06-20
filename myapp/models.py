@@ -1,502 +1,678 @@
 from django.db import models
 from django.conf import settings
-from django.utils import timezone
-from django.contrib.auth.models import AbstractUser, Group, Permission  # Importar la clase User de autenticación
+from datetime import date
+from django.db.models import Q
+from django.core.exceptions import ValidationError
 
-# --- Lógica para Soft Delete (Eliminación Lógica) ---
-
-# Constante para tipos de documento
-TIPO_DOCUMENTO_CHOICES = [
-    ('V', 'Cédula Venezolana (V)'),
-    ('CC', 'Cédula Colombiana (CC)'),
-]
-GENDER_LIST_PREDIFINED = [
-    ('M', 'Masculino'),
-    ('F', 'Femenino'),
-]
-ROLE_LIST_PREDIFINED = [
-    ("estudiante", "Estudiante"), 
-    ("profesor", "Profesor"),
-    ("tutor", "Tutor"), 
-    ("admin", "Administrador")
-]
-COURSE_MODALITY_LIST_PREDIFINED = [
-    ("virtual", "Virtual"),
-    ("presencial", "Presencial")
-]
-STAFF_POSITION_LIST_PREDIFINED = [
-    ("profesor", "Profesor"),
-    ("tutor", "Tutor"),
-    ("administrador", "Administrador"),
-]
-
-PAIS_ORIGEN_CHOICES = [
-    ('Venezuela', 'Venezuela'),
-    ('Colombia', 'Colombia'),
-    ('Argentina', 'Argentina'),
-    ('Bolivia', 'Bolivia'),
-    ('Brasil', 'Brasil'),
-    ('Chile', 'Chile'),
-    ('Costa Rica', 'Costa Rica'),
-    ('Cuba', 'Cuba'),
-    ('República Dominicana', 'República Dominicana'),
-    ('Ecuador', 'Ecuador'),
-    ('El Salvador', 'El Salvador'),
-    ('España', 'España'),
-    ('Estados Unidos', 'Estados Unidos'),
-    ('Guatemala', 'Guatemala'),
-    ('Honduras', 'Honduras'),
-    ('México', 'México'),
-    ('Nicaragua', 'Nicaragua'),
-    ('Panamá', 'Panamá'),
-    ('Paraguay', 'Paraguay'),
-    ('Perú', 'Perú'),
-    ('Puerto Rico', 'Puerto Rico'),
-    ('Uruguay', 'Uruguay'),
-    ('Otro', 'Otro'),
-]
-
-class SoftDeleteManager(models.Manager):
-    """
-    Manager personalizado para que por defecto solo se muestren
-    los registros que no están marcados como eliminados.
-    """
-    def get_queryset(self):
-        return super().get_queryset().filter(is_deleted=False)
-
+# Nota: Asumo que mantienes tu clase base SoftDeleteModel para borrado lógico.
+# Si no la tienes definida en este archivo, recuerda importarla de tu mixin/base.
 class SoftDeleteModel(models.Model):
-    """
-    Modelo base abstracto con campos y métodos para la eliminación lógica.
-    """
     is_deleted = models.BooleanField(default=False, verbose_name="Eliminado")
-    deleted_at = models.DateTimeField(null=True, blank=True, default=None, verbose_name="Fecha de eliminación")
-
-    # Managers
-    objects = SoftDeleteManager()  # Manager que filtra los eliminados
-    all_objects = models.Manager() # Manager que devuelve todos los objetos
-
-    def delete(self, using=None, keep_parents=False):
-        """
-        Sobrescribe el método delete para marcar el objeto como eliminado.
-        """
-        self.is_deleted = True
-        self.deleted_at = timezone.now()
-        self.save()
-
-    def restore(self):
-        """
-        Método para restaurar un objeto marcado como eliminado.
-        """
-        self.is_deleted = False
-        self.deleted_at = None
-        self.save()
 
     class Meta:
         abstract = True
 
-# --- Fin de la lógica para Soft Delete ---
+    def delete(self, *args, **kwargs):
+        self.is_deleted = True
+        self.save()
 
-class Cedula(models.Model):
+
+class Familia(SoftDeleteModel):
+    """
+    Representa un grupo familiar o vivienda dentro del consejo comunal.
+    Según el diagrama: Familias (nombre_familia, vivienda, direccion, catastro)
+    """
+    nombre_familia = models.CharField(max_length=100, verbose_name="Nombre de la Familia/Grupo")
+    vivienda = models.CharField(max_length=50, verbose_name="Número o Tipo de Vivienda")
+    direccion = models.TextField(verbose_name="Dirección Completa")
+    catastro = models.CharField(max_length=50, blank=True, null=True, verbose_name="Código Catastral")
+    fecha_registro = models.DateField(auto_now_add=True, verbose_name="Fecha de Registro")
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+
     class Meta:
-        db_table = 'cedulas'
-        verbose_name = 'Cédula'
-        verbose_name_plural = 'Cédulas'
-    """
-    Modelo para almacenar registros de personas con cédulas venezolanas o colombianas.
-    """
-    tipo_documento = models.CharField(
-        max_length=2,
-        choices=TIPO_DOCUMENTO_CHOICES,
-        default='V',
-        verbose_name="Tipo de Documento"
-    )
-    numero_documento = models.CharField(
-        max_length=20,
-        unique=True,
-        verbose_name="Número de Documento"
-    )
-    nombre = models.CharField(max_length=50, verbose_name="Nombre")
-    apellido = models.CharField(max_length=50, verbose_name="Apellido")
+        db_table = 'familias'
+        verbose_name = 'Familia'
+        verbose_name_plural = 'Familias'
+        ordering = ['-fecha_registro']
 
     def __str__(self):
-        return f"{self.get_tipo_documento_display()} - {self.numero_documento} - {self.nombre} {self.apellido}"
+        return f"{self.nombre_familia} - Casa/Apto: {self.vivienda}"
+
+    def cantidad_habitantes(self):
+        """Retorna la cantidad de habitantes activos en esta familia"""
+        return self.habitantes.filter(is_deleted=False).count()
+
+    @property
+    def jefe_familia(self):
+        """Retorna el habitante que es jefe de esta familia, si existe"""
+        return self.habitantes.filter(es_jefe_familia=True, is_deleted=False).first()
 
 
-class Calendario(models.Model):
-    """
-    Modelo para gestionar eventos del calendario.
-    """
-    titulo = models.CharField(max_length=200, verbose_name="Título")
-    descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción")
-    fecha_inicio = models.DateTimeField(verbose_name="Fecha de Inicio")
-    fecha_fin = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Fin")
-    creador = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
-    activo = models.BooleanField(default=True, verbose_name="Evento Activo")
-
-    def __str__(self):
-        return self.titulo
+class Habitante(SoftDeleteModel):
     
-    class Meta:
-        db_table = 'calendario'
-        verbose_name = 'Evento de calendario'
-        verbose_name_plural = 'Eventos de calendario'
+    TIPO_CEDULA_CHOICES = [
+    ('V', 'Venezolano/a'),
+    ('E', 'Extranjero/a'),
+    ]
+    tipo_cedula = models.CharField(max_length=1, choices=TIPO_CEDULA_CHOICES, default='V')
+    cedula = models.CharField(max_length=15, unique=True) # Tu campo existente
+    
+    """
+    Representa a un ciudadano de la comunidad. 
+    Funde los datos de identidad personal con los datos socio-comunitarios.
+    """
+    GENERO_CHOICES = [
+        ('M', 'Masculino'),
+        ('F', 'Femenino'),
+        ('O', 'Otro'),
+    ]
 
+    NIVEL_EDUCATIVO_CHOICES = [
+        ('ninguno', 'Ninguno'),
+        ('primaria', 'Primaria'),
+        ('secundaria', 'Secundaria'),
+        ('tecnico', 'Técnico Medio'),
+        ('universitario', 'Universitario'),
+        ('postgrado', 'Postgrado'),
+    ]
 
-# MODELOS DE NUEVA BASE DE DATOS ACADEMIA
-class Person(SoftDeleteModel):
-    type_document = models.CharField(max_length=2, choices=TIPO_DOCUMENTO_CHOICES, default='V')
-    document_number = models.CharField(
-    max_length=20, 
-    unique=True,
-    error_messages={
-    'unique': 'Ya existe una persona registrada con este número de documento.'
-    })
-    name= models.CharField(max_length=50)
-    surname= models.CharField(max_length=50)
-    progenitor_name= models.CharField(max_length=50, blank=True, null=True)
-    progenitor_document_number= models.CharField(max_length=20, blank=True, null=True)
-    telephone_number=models.CharField(max_length=15, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    date_of_birth = models.DateField(blank=True, null=True)
-    gender = models.CharField(max_length=10, choices=GENDER_LIST_PREDIFINED, default='H')
-    pais_origen = models.CharField("País de origen", max_length=50, choices=PAIS_ORIGEN_CHOICES, blank=True, null=True)
+    # Relación fuerte: Si se elimina la familia lógicamente o físicamente
+    familia = models.ForeignKey(
+        Familia, 
+        on_delete=models.CASCADE, 
+        related_name='habitantes', 
+        verbose_name="Familia / Hogar"
+    )
+    
+    # Datos de Identidad (Antes en la tabla Person)
+    cedula = models.CharField(max_length=20, unique=True, verbose_name="Cédula de Identidad")
+    nombre = models.CharField(max_length=100, verbose_name="Nombres")
+    apellido = models.CharField(max_length=100, verbose_name="Apellidos")
+    fecha_nacimiento = models.DateField(verbose_name="Fecha de Nacimiento")
+    genero = models.CharField(max_length=1, choices=GENERO_CHOICES, verbose_name="Género")
+    
+    # Control de Liderazgo Familiar
+    es_jefe_familia = models.BooleanField(default=False, verbose_name="¿Es Jefe de Familia?")
+    
+    # Datos Socioeconómicos del antiguo Habitante
+    ocupacion = models.CharField(max_length=100, blank=True, verbose_name="Ocupación")
+    nivel_educativo = models.CharField(
+        max_length=50, 
+        choices=NIVEL_EDUCATIVO_CHOICES, 
+        blank=True, 
+        verbose_name="Nivel Educativo"
+    )
+    ingresos_mensuales = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        null=True, 
+        blank=True, 
+        verbose_name="Ingresos Mensuales (Bs.)"
+    )
+    condiciones_salud = models.TextField(blank=True, verbose_name="Condiciones de Salud")
+    fecha_registro_comunitario = models.DateField(auto_now_add=True, verbose_name="Fecha de Registro")
+
     class Meta:
-        db_table = 'personas'
-        verbose_name = 'Persona'
-        verbose_name_plural = 'Personas'
+        db_table = 'habitantes'
+        verbose_name = 'Habitante'
+        verbose_name_plural = 'Habitantes'
+        ordering = ['familia', '-es_jefe_familia', 'apellido', 'nombre']
         
-    def __str__(self):
-        return f"{self.name} ({self.document_number})"
-
-class Students(SoftDeleteModel):
-    """
-    Modelo que representa a un estudiante de la academia.
-    Relaciona a la persona, usuario y los grupos a los que pertenece.
-    """
-    date_register = models.DateField()
-    status = models.CharField(max_length=50)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    person = models.ForeignKey(Person, on_delete=models.CASCADE)
-
-    class Meta:
-        db_table = 'estudiantes'
-        verbose_name = 'Estudiante'
-        verbose_name_plural = 'Estudiantes'
-
-    def __str__(self):
-        return f"{self.person.name} ({self.user.username})"
-    
-
-class Grade_Students(models.Model):
-    """
-    Modelo que almacena las calificaciones de los estudiantes en un grupo específico.
-    Conecta las notas con evaluaciones específicas.
-    """
-    grades = models.DecimalField(max_digits=5, decimal_places=2)
-    observations = models.TextField(blank=True, null=True)
-    student = models.ForeignKey('Students', on_delete=models.CASCADE)
-    group_level = models.ForeignKey('Group_Levels', on_delete=models.CASCADE)
-    evaluacion = models.ForeignKey('Testing', on_delete=models.CASCADE, null=True, blank=True, 
-                                   verbose_name='Evaluación', help_text='Evaluación asociada a esta nota')
-
-    class Meta:
-        db_table = 'notas_estudiantes'
-        verbose_name = 'Nota de estudiante'
-        verbose_name_plural = 'Notas de estudiantes'
-        # Constraint: Un estudiante no puede tener dos notas para la misma evaluación
-        unique_together = ['student', 'evaluacion']
+        constraints = [
+            # 1. Regla del Consejo Comunal: Un solo jefe activo por cada grupo familiar
+            models.UniqueConstraint(
+                fields=['familia'],
+                condition=models.Q(es_jefe_familia=True, is_deleted=False),
+                name='unique_jefe_activo_por_familia'
+            ),
+            
+            # 2. Regla del Estado Venezolano / Sistema: La cédula debe ser única en todo el sistema 
+            # (ignorando lógicamente los registros que hayan sido borrados con soft delete)
+            models.UniqueConstraint(
+                fields=['cedula'],
+                condition=models.Q(is_deleted=False),
+                name='unique_cedula_habitante_activo'
+            )
+        ]
 
     def __str__(self):
-        evaluacion_name = self.evaluacion.name if self.evaluacion else "Sin evaluación"
-        return f"{self.grades} - {self.student.person.name} - {evaluacion_name}"
+        rango = "Jefe" if self.es_jefe_familia else "Miembro"
+        return f"{self.cedula} - {self.nombre} {self.apellido} ({rango})"
 
-class Testing(models.Model):
+    def clean(self):
+        """Validación a nivel de formulario/clean de Django"""
+        super().clean()
+        if self.es_jefe_familia and not self.is_deleted:
+            # Validar si ya existe otro jefe en la familia (excluyéndose a sí mismo si está editando)
+            jefes_existentes = Habitante.objects.filter(
+                familia=self.familia, 
+                es_jefe_familia=True, 
+                is_deleted=False
+            )
+            if self.pk:
+                jefes_existentes = jefes_existentes.exclude(pk=self.pk)
+            
+            if jefes_existentes.exists():
+                raise ValidationError({
+                    'es_jefe_familia': 'Esta familia ya posee un Jefe de Familia registrado y activo.'
+                })
+
+
+class IngresoComunal(models.Model):
     """
-    Modelo que representa una evaluación aplicada a un estudiante en un grupo.
+    Modelo para registrar ingresos de la caja comunal (Módulo Finanzas).
     """
-    TIPOS_EVALUACION = [
-        ('examen', 'Examen'),
-        ('quiz', 'Quiz'),
-        ('tarea', 'Tarea'),
-        ('proyecto', 'Proyecto'),
-        ('participacion', 'Participación'),
-        ('personalizada', 'Evaluación Personalizada'),
+    TIPO_INGRESO_CHOICES = [
+        ('aportes', 'Aportes de Familias'),
+        ('donaciones', 'Donaciones'),
+        ('actividades', 'Actividades Comunitarias'),
+        ('subvenciones', 'Subvenciones'),
+        ('otros', 'Otros Ingresos'),
     ]
     
-    name = models.CharField(max_length=200)  # Aumentado de 100 a 200
-    description = models.TextField()
-    percentage_grade = models.DecimalField(max_digits=5, decimal_places=2)
-    date = models.DateField()
-    tipo_evaluacion = models.CharField(
+    fecha = models.DateField(verbose_name="Fecha del Ingreso")
+    tipo_ingreso = models.CharField(max_length=50, choices=TIPO_INGRESO_CHOICES, default='aportes', verbose_name="Tipo de Ingreso")
+    concepto = models.CharField(max_length=200, verbose_name="Concepto")
+    monto = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Monto (Bs.)")
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='ingresos_registrados', verbose_name="Responsable")
+    soporte_digital = models.FileField(upload_to='soportes/ingresos/', blank=True, null=True, verbose_name="Soporte Digital")
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    
+    class Meta:
+        db_table = 'ingresos_comunales'
+        verbose_name = 'Ingreso Comunal'
+        verbose_name_plural = 'Ingresos Comunales'
+        ordering = ['-fecha', '-fecha_registro']
+    
+    def __str__(self):
+        return f"{self.fecha} - {self.concepto} - Bs. {self.monto}"
+
+
+class EgresoComunal(models.Model):
+    """
+    Modelo para registrar egresos de la caja comunal (Módulo Finanzas).
+    """
+    TIPO_EGRESO_CHOICES = [
+        ('mantenimiento', 'Mantenimiento Comunitario'),
+        ('servicios', 'Servicios Públicos'),
+        ('actividades', 'Actividades Comunitarias'),
+        ('emergencias', 'Emergencias'),
+        ('administrativos', 'Gastos Administrativos'),
+        ('otros', 'Otros Egresos'),
+    ]
+    
+    fecha = models.DateField(verbose_name="Fecha del Egreso")
+    tipo_egreso = models.CharField(max_length=50, choices=TIPO_EGRESO_CHOICES, default='mantenimiento', verbose_name="Tipo de Egreso")
+    concepto = models.CharField(max_length=200, verbose_name="Concepto")
+    monto = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Monto (Bs.)")
+    beneficiario = models.CharField(max_length=200, blank=True, verbose_name="Beneficiario")
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='egresos_registrados', verbose_name="Responsable")
+    soporte = models.FileField(upload_to='soportes/egresos/', blank=True, null=True, verbose_name="Soporte")
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    
+    class Meta:
+        db_table = 'egresos_comunales'
+        verbose_name = 'Egreso Comunal'
+        verbose_name_plural = 'Egresos Comunales'
+        ordering = ['-fecha', '-fecha_registro']
+    
+    def __str__(self):
+        return f"{self.fecha} - {self.concepto} - Bs. {self.monto}"
+
+
+class ConstanciaResidencia(models.Model):
+    """
+    Según tu nuevo diagrama, el modelo Constancias se vincula con un Habitante (id_habitante), 
+    lo cual es correcto porque la constancia de residencia es nominal e individual.
+    """
+    habitante = models.ForeignKey(Habitante, on_delete=models.CASCADE, related_name='constancias', verbose_name="Habitante Solicitante")
+    fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Generación")
+    fecha_documento = models.DateField(verbose_name="Fecha del Documento")
+    finalidad = models.TextField(verbose_name="Finalidad de la Constancia")
+    contenido = models.TextField(verbose_name="Contenido de la Constancia")
+    generado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Generado por")
+    archivo_pdf = models.FileField(upload_to='constancias/', blank=True, null=True, verbose_name="Archivo PDF")
+    
+    class Meta:
+        db_table = 'constancias_residencia'
+        verbose_name = 'Constancia de Residencia'
+        verbose_name_plural = 'Constancias de Residencia'
+        ordering = ['-fecha_generacion']
+    
+    def __str__(self):
+        return f"Constancia de {self.habitante.nombre} {self.habitante.apellido} - {self.fecha_documento}"
+
+
+class ActaReunion(models.Model):
+    """
+    Modelo para registrar las Asambleas de Ciudadanos y sus acuerdos.
+    """
+    titulo = models.CharField(max_length=200, verbose_name="Título del Acta")
+    fecha_reunion = models.DateTimeField(verbose_name="Fecha y Hora de la Reunión")
+    lugar = models.CharField(max_length=200, verbose_name="Lugar de la Reunión")
+    asistentes = models.TextField(verbose_name="Lista de Asistentes")  # Separados por comas o texto libre
+    contenido = models.TextField(verbose_name="Contenido del Acta")
+    acuerdos = models.TextField(blank=True, verbose_name="Acuerdos Tomados")
+    generado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Generado por")
+    fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Generación")
+    archivo_pdf = models.FileField(upload_to='actas/', blank=True, null=True, verbose_name="Archivo PDF")
+    
+    class Meta:
+        db_table = 'actas_reunion'
+        verbose_name = 'Acta de Reunión'
+        verbose_name_plural = 'Actas de Reunión'
+        ordering = ['-fecha_reunion']
+    
+    def __str__(self):
+        return f"{self.titulo} - {self.fecha_reunion}"
+    
+    def asistentes_count(self):
+        """Retorna la cantidad de asistentes"""
+        return len(self.asistentes.split(',')) if self.asistentes else 0
+
+
+# ============================================
+# 🆕 NUEVO: Modelos para Gestión de Proyectos Comunitarios
+# ============================================
+
+class Comite(SoftDeleteModel):
+    """
+    Modelo que representa un comité del consejo comunal.
+    Los proyectos se asignan a comités específicos.
+    """
+    TIPO_COMITE_CHOICES = [
+        ('finanzas', 'Comité de Finanzas'),
+        ('salud', 'Comité de Salud'),
+        ('educacion', 'Comité de Educación'),
+        ('vivienda', 'Comité de Vivienda'),
+        ('deporte', 'Comité de Deporte y Recreación'),
+        ('cultura', 'Comité de Cultura'),
+        ('seguridad', 'Comité de Seguridad'),
+        ('alimentacion', 'Comité de Alimentación'),
+        ('medio_ambiente', 'Comité de Medio Ambiente'),
+        ('otro', 'Otro Comité'),
+    ]
+    
+    nombre = models.CharField(max_length=100, verbose_name="Nombre del Comité")
+    tipo_comite = models.CharField(
         max_length=50, 
-        choices=TIPOS_EVALUACION, 
-        default='examen',
-        verbose_name='Tipo de Evaluación'
+        choices=TIPO_COMITE_CHOICES, 
+        default='otro',
+        verbose_name="Tipo de Comité"
     )
-    student = models.ForeignKey(Students, on_delete=models.CASCADE)
-    group_level = models.ForeignKey('Group_Levels', on_delete=models.CASCADE)
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    vocero_principal = models.ForeignKey(
+        Habitante, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='comites_dirigidos',
+        verbose_name="Vocero Principal"
+    )
+    fecha_creacion = models.DateField(auto_now_add=True, verbose_name="Fecha de Creación")
+    activo = models.BooleanField(default=True, verbose_name="Comité Activo")
+    
+    class Meta:
+        db_table = 'comites'
+        verbose_name = 'Comité'
+        verbose_name_plural = 'Comités'
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return f"{self.nombre} ({self.get_tipo_comite_display()})"
+    
+    def cantidad_proyectos_activos(self):
+        """Retorna la cantidad de proyectos activos del comité"""
+        return self.proyectos.filter(is_deleted=False).exclude(estatus='cancelado').count()
 
-    def get_estado(self):
-        """
-        Calcula el estado de la evaluación basándose en:
-        - Total de estudiantes del grupo
-        - Notas asignadas para esta evaluación
-        - Si la fecha ya pasó
-        """
-        from django.utils import timezone
-        
-        try:
-            # Obtener total de estudiantes del grupo (activos)
-            total_estudiantes = self.group_level.students.filter(is_deleted=False).count()
-            
-            # Contar cuántos estudiantes tienen nota para esta evaluación específica
-            notas_asignadas = Grade_Students.objects.filter(
-                evaluacion__name=self.name,
-                evaluacion__group_level=self.group_level,
-                grades__isnull=False
-            ).count()
-            
-            # Verificar si la fecha ya pasó
-            fecha_pasada = self.date < timezone.now().date()
-            
-            # Determinar el estado
-            if notas_asignadas == 0:
-                # No hay notas asignadas
-                if fecha_pasada:
-                    return 'vencida'  # La fecha pasó y no se ha calificado
-                else:
-                    return 'pendiente'  # Aún no llega la fecha
-            elif notas_asignadas < total_estudiantes:
-                # Hay algunas notas pero no todas
-                return 'en_progreso'
-            else:
-                # Todos los estudiantes tienen nota
-                return 'completada'
-        except Exception as e:
-            return 'pendiente'
+
+class Proyecto(SoftDeleteModel):
+    """
+    Modelo que representa un proyecto comunitario.
+    """
+    ESTATUS_CHOICES = [
+        ('planificacion', 'Planificación'),
+        ('ejecucion', 'Ejecución'),
+        ('finalizado', 'Finalizado'),
+        ('cancelado', 'Cancelado'),
+    ]
     
-    def get_estado_display(self):
-        """
-        Retorna el estado en formato legible.
-        """
-        estado = self.get_estado()
-        estados = {
-            'completada': 'Completada',
-            'en_progreso': 'En Progreso',
-            'pendiente': 'Pendiente',
-            'vencida': 'Vencida'
-        }
-        return estados.get(estado, 'Pendiente')
+    nombre = models.CharField(max_length=200, verbose_name="Nombre del Proyecto")
+    fecha_inicio = models.DateField(verbose_name="Fecha de Inicio")
+    fecha_fin = models.DateField(null=True, blank=True, verbose_name="Fecha de Fin Estimada")
+    descripcion = models.TextField(verbose_name="Descripción del Proyecto")
+    monto_estimado = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        verbose_name="Monto Estimado (Bs.)",
+        help_text="Monto estimado en bolívares"
+    )
+    estatus = models.CharField(
+        max_length=20, 
+        choices=ESTATUS_CHOICES, 
+        default='planificacion',
+        verbose_name="Estatus del Proyecto"
+    )
+    comite = models.ForeignKey(
+        Comite, 
+        on_delete=models.PROTECT, 
+        related_name='proyectos',
+        verbose_name="Comité Responsable"
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='proyectos_creados',
+        verbose_name="Creado por"
+    )
     
-    def get_estado_badge_class(self):
-        """
-        Retorna la clase CSS para el badge del estado.
-        """
-        estado = self.get_estado()
+    class Meta:
+        db_table = 'proyectos'
+        verbose_name = 'Proyecto'
+        verbose_name_plural = 'Proyectos'
+        ordering = ['-fecha_creacion']
+    
+    def __str__(self):
+        return f"{self.nombre} ({self.get_estatus_display()})"
+    
+    def get_estatus_badge_class(self):
+        """Retorna la clase CSS del badge según el estatus"""
         clases = {
-            'completada': 'bg-success',
-            'en_progreso': 'bg-warning',
-            'pendiente': 'bg-secondary',
-            'vencida': 'bg-danger'
+            'planificacion': 'bg-info',
+            'ejecucion': 'bg-warning',
+            'finalizado': 'bg-success',
+            'cancelado': 'bg-danger',
         }
-        return clases.get(estado, 'bg-secondary')
+        return clases.get(self.estatus, 'bg-secondary')
     
-    def get_progreso_calificacion(self):
-        """
-        Retorna el progreso de calificación (estudiantes con nota / total estudiantes del grupo)
-        """
-        try:
-            # Contar estudiantes activos del grupo
-            total_estudiantes = self.group_level.students.filter(is_deleted=False).count()
-            
-            # Contar cuántos estudiantes tienen nota para esta evaluación
-            notas_asignadas = Grade_Students.objects.filter(
-                evaluacion__name=self.name,
-                evaluacion__group_level=self.group_level,
-                grades__isnull=False
-            ).count()
-            
-            return {
-                'estudiantes_con_notas': notas_asignadas,
-                'total_estudiantes': total_estudiantes,
-                'porcentaje': round((notas_asignadas / total_estudiantes * 100), 1) if total_estudiantes > 0 else 0
-            }
-        except Exception as e:
-            return {
-                'estudiantes_con_notas': 0,
-                'total_estudiantes': 0,
-                'porcentaje': 0
-            }
+    def cantidad_integrantes(self):
+        """Retorna la cantidad de integrantes del proyecto"""
+        return self.integrantes.count()
+    
+    def duracion_dias(self):
+        """Calcula la duración del proyecto en días"""
+        if self.fecha_inicio and self.fecha_fin:
+            return (self.fecha_fin - self.fecha_inicio).days
+        return None
 
-    @staticmethod
-    def calcular_estado_evaluacion(nombre_evaluacion, grupo):
-        """
-        Método estático para calcular el estado de una evaluación específica en un grupo
-        """
-        from django.utils import timezone
+
+class ProyectoIntegrante(models.Model):
+    """
+    Modelo intermedio para la relación Proyecto - Habitante.
+    Permite registrar el rol y fecha de asignación de cada integrante.
+    """
+    ROL_CHOICES = [
+        ('coordinador', 'Coordinador'),
+        ('ejecutor', 'Ejecutor'),
+        ('contralor', 'Contralor'),
+        ('colaborador', 'Colaborador'),
+        ('beneficiario', 'Beneficiario'),
+    ]
+    
+    proyecto = models.ForeignKey(
+        Proyecto, 
+        on_delete=models.CASCADE,
+        related_name='integrantes',
+        verbose_name="Proyecto"
+    )
+    habitante = models.ForeignKey(
+        'Habitante',
+        on_delete=models.CASCADE,
+        related_name='proyectos_asignados',
+        verbose_name="Habitante"
+    )
+    rol = models.CharField(
+        max_length=20, 
+        choices=ROL_CHOICES, 
+        default='colaborador',
+        verbose_name="Rol en el Proyecto"
+    )
+    fecha_asignacion = models.DateField(auto_now_add=True, verbose_name="Fecha de Asignación")
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+    
+    class Meta:
+        db_table = 'proyecto_integrantes'
+        verbose_name = 'Integrante de Proyecto'
+        verbose_name_plural = 'Integrantes de Proyecto'
+        unique_together = ['proyecto', 'habitante']  # Un habitante solo puede estar una vez en cada proyecto
+        ordering = ['proyecto', 'rol', 'habitante__nombre']
+    
+    def __str__(self):
+        return f"{self.habitante.nombre} {self.habitante.apellido} - {self.get_rol_display()} en {self.proyecto.nombre}"
+    @property
+    def nombre_habitante(self):
+        return f"{self.habitante.nombre} {self.habitante.apellido}"
+
+    @property
+    def documento_habitante(self):
+        return self.habitante.cedula  # El campo en Habitante es 'cedula'
+
+
+# ============================================
+# 🆕 NUEVO: Modelos para Gestión de Censos Comunitarios
+# ============================================
+
+class Censo(SoftDeleteModel):
+    """
+    Modelo que representa una campaña de censo comunitario.
+    Permite registrar habitantes participantes en cada censo.
+    """
+    CATEGORIA_ENFOQUE_CHOICES = [
+        ('salud', 'Salud'),
+        ('educacion', 'Educación'),
+        ('vivienda', 'Vivienda'),
+        ('desempleo', 'Desempleo'),
+        ('nutricion', 'Nutrición'),
+        ('seguridad', 'Seguridad'),
+        ('servicios_publicos', 'Servicios Públicos'),
+        ('poblacion', 'Censo Poblacional'),
+        ('general', 'General'),
+    ]
+    
+    ESTATUS_CHOICES = [
+        ('activo', 'Activo'),
+        ('cerrado', 'Cerrado'),
+        ('archivado', 'Archivado'),
+    ]
+    
+    nombre_censo = models.CharField(
+        max_length=200, 
+        verbose_name="Nombre del Censo",
+        help_text="Nombre identificativo de la campaña de censo"
+    )
+    fecha_inicio = models.DateField(verbose_name="Fecha de Inicio")
+    fecha_fin = models.DateField(
+        null=True, 
+        blank=True, 
+        verbose_name="Fecha de Cierre"
+    )
+    descripcion = models.TextField(
+        verbose_name="Descripción",
+        help_text="Descripción detallada del objetivo del censo"
+    )
+    categoria_enfoque = models.CharField(
+        max_length=50,
+        choices=CATEGORIA_ENFOQUE_CHOICES,
+        default='general',
+        verbose_name="Categoría de Enfoque"
+    )
+    estatus = models.CharField(
+        max_length=20,
+        choices=ESTATUS_CHOICES,
+        default='activo',
+        verbose_name="Estatus del Censo"
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='censos_creados',
+        verbose_name="Creado por"
+    )
+    # Relación ManyToMany con Habitante a través de CensoParticipante
+    participantes = models.ManyToManyField(
+        'Habitante',
+        through='CensoParticipante',
+        related_name='censos_participados',
+        blank=True,
+        verbose_name="Participantes"
+    )
+    
+    class Meta:
+        db_table = 'censos'
+        verbose_name = 'Censo'
+        verbose_name_plural = 'Censos'
+        ordering = ['-fecha_creacion']
+    
+    def __str__(self):
+        return f"{self.nombre_censo} ({self.get_estatus_display()})"
+    
+    def get_estatus_badge_class(self):
+        """Retorna la clase CSS del badge según el estatus"""
+        clases = {
+            'activo': 'bg-success',
+            'cerrado': 'bg-secondary',
+            'archivado': 'bg-light text-dark',
+        }
+        return clases.get(self.estatus, 'bg-secondary')
+    
+    def get_categoria_badge_class(self):
+        """Retorna la clase CSS del badge según la categoría"""
+        clases = {
+            'salud': 'bg-danger',
+            'educacion': 'bg-primary',
+            'vivienda': 'bg-warning text-dark',
+            'desempleo': 'bg-info',
+            'nutricion': 'bg-success',
+            'seguridad': 'bg-dark',
+            'servicios_publicos': 'bg-secondary',
+            'poblacion': 'bg-purple',
+            'general': 'bg-light text-dark',
+        }
+        return clases.get(self.categoria_enfoque, 'bg-secondary')
+    
+    def cantidad_participantes(self):
+        """Retorna la cantidad de participantes en el censo"""
+        return self.participantes.count()
+    
+    def duracion_dias(self):
+        """Calcula la duración del censo en días"""
+        if self.fecha_inicio and self.fecha_fin:
+            return (self.fecha_fin - self.fecha_inicio).days
+        return None
+    
+    def esta_activo(self):
+        """Verifica si el censo está activo"""
+        return self.estatus == 'activo'
+
+
+class CensoParticipante(models.Model):
+    """
+    Modelo intermedio para la relación Censo - Habitante.
+    Registra qué habitantes participan en cada censo con fecha y observaciones.
+    """
+    censo = models.ForeignKey(
+        Censo,
+        on_delete=models.CASCADE,
+        related_name='participantes_censo',
+        verbose_name="Censo"
+    )
+    habitante = models.ForeignKey(
+        'Habitante',
+        on_delete=models.CASCADE,
+        related_name='participaciones_censo',
+        verbose_name="Habitante"
+    )
+    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    observaciones = models.TextField(
+        blank=True,
+        verbose_name="Observaciones",
+        help_text="Notas adicionales sobre la participación del habitante"
+    )
+    
+    class Meta:
+        db_table = 'censo_participantes'
+        verbose_name = 'Participante de Censo'
+        verbose_name_plural = 'Participantes de Censo'
+        unique_together = ['censo', 'habitante']  # Un habitante solo puede registrarse una vez por censo
+        ordering = ['censo', 'fecha_registro', 'habitante__nombre']
+    
+    def __str__(self):
+        return f"{self.habitante.nombre} {self.habitante.apellido} - {self.censo.nombre_censo}"
+    @property
+    def nombre_habitante(self):
+        return f"{self.habitante.nombre} {self.habitante.apellido}"
         
-        try:
-            # Obtener una evaluación de referencia para la fecha
-            evaluacion_ref = Testing.objects.filter(
-                name=nombre_evaluacion,
-                group_level=grupo
-            ).first()
-            
-            if not evaluacion_ref:
-                return 'pendiente'
-            
-            # Total de estudiantes activos del grupo
-            total_estudiantes = grupo.students.filter(is_deleted=False).count()
-            
-            # Contar notas para esta evaluación
-            notas_asignadas = Grade_Students.objects.filter(
-                evaluacion__name=nombre_evaluacion,
-                evaluacion__group_level=grupo,
-                grades__isnull=False
-            ).count()
-            
-            # Verificar si la fecha ya pasó
-            fecha_pasada = evaluacion_ref.date < timezone.now().date()
-            
-            # Determinar el estado
-            if notas_asignadas == 0:
-                return 'vencida' if fecha_pasada else 'pendiente'
-            elif notas_asignadas < total_estudiantes:
-                return 'en_progreso'
-            else:
-                return 'completada'
-                
-        except Exception as e:
-            return 'pendiente'
-
-    class Meta:
-        db_table = 'evaluaciones'
-        verbose_name = 'Evaluación'
-        verbose_name_plural = 'Evaluaciones'
-        # Constraint: Un estudiante no puede tener dos evaluaciones con el mismo nombre en el mismo grupo
-        unique_together = ['name', 'student', 'group_level']    
-
-    def __str__(self):
-        return f"{self.name} ({self.date}) - {self.student.person.name}"
+    @property
+    def documento_habitante(self):
+        return self.habitante.cedula
     
-class Units(models.Model):
-    title = models.CharField(max_length=100)
-    content = models.TextField(blank=True, null=True)
-    pdf_material = models.FileField(upload_to='materials/', blank=True, null=True)
-    topic_order = models.IntegerField()
-    level = models.ForeignKey('Levels', on_delete=models.CASCADE, related_name='units', null=True)
-    class Meta:
-        db_table = 'unidades'
-        verbose_name = 'Unidad'
-        verbose_name_plural = 'Unidades'
+    # @property
+    # def telefono_habitante(self):
+    #     return self.habitante.telefono or ''
 
-    def __str__(self):
-        return f"{self.title} (Tema {self.topic_order})"
+from django.db import models
+from django.conf import settings
+from datetime import date
+from django.db.models import Q
 
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-class User(AbstractUser, SoftDeleteModel):
-    must_change_password = models.BooleanField(default=False, verbose_name="Debe cambiar contraseña")
-    email = models.EmailField(unique=True)
-    documento = models.CharField(max_length=20, unique=True)
-    role = models.CharField(max_length=50, choices=ROLE_LIST_PREDIFINED, default='estudiante')
-    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True, blank=True)
-
-    REQUIRED_FIELDS = ['first_name','last_name','documento', 'role', 'email']
-
-    groups = models.ManyToManyField(
-        Group,
-        related_name='usuarios_sistema_user_set',
-        blank=True,
-        help_text='Los grupos a los que pertenece este usuario.',
-        verbose_name='grupos'
-    )
-    user_permissions = models.ManyToManyField(
-        Permission,
-        related_name='usuarios_sistema_user_permissions_set',
-        blank=True,
-        help_text='Permisos específicos para este usuario.',
-        verbose_name='permisos de usuario'
-    )
-    class Meta:
-        db_table = 'usuarios_sistema'
-        verbose_name = 'Usuario del sistema'
-        verbose_name_plural = 'Usuarios del sistema'
-    
-    def __str__(self):
-        return f"{self.username} ({self.role})"
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""    
-
-class Tutors(SoftDeleteModel):
-    staff_position = models.CharField(max_length=50, choices=STAFF_POSITION_LIST_PREDIFINED, default='tutor')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    person = models.ForeignKey(Person, on_delete=models.CASCADE)
-
-    class Meta:
-        db_table = 'tutores'
-        verbose_name = 'Tutor'
-        verbose_name_plural = 'Tutores'
-    
-    def __str__(self):
-        return f"{self.person.name} ({self.staff_position})"
-class Courses(SoftDeleteModel):
-    course_name = models.CharField(max_length=100)
-    image_course = models.ImageField(upload_to='courses_images/', blank=True, null=True, help_text="Imagen del curso")
-    tutor = models.ForeignKey(Tutors, on_delete=models.SET_NULL, null=True, blank=True)
-    
-    def __str__(self):
-        # Nota: El campo study_modality no existe en el modelo, se debe corregir o añadir.
-        # Usando course_name por ahora.
-        return f"{self.course_name}"
-
-    class Meta:
-        db_table = 'cursos'
-        verbose_name = 'Curso'
-        verbose_name_plural = 'Cursos'
-
-class Levels(models.Model):
-    level_name = models.CharField(max_length=100)
-    description = models.TextField(blank=True, null=True)
-    duration = models.IntegerField(help_text="Duración en horas")
-    course = models.ForeignKey(Courses, on_delete=models.CASCADE)
-    class Meta:
-        db_table = 'niveles'
-        verbose_name = 'Nivel'
-        verbose_name_plural = 'Niveles'
-
-    def __str__(self):
-        return f"{self.level_name} ({self.course.course_name})"
-    
-class Group_Levels(models.Model):
+class ReporteDemografico(models.Model):
     """
-    Modelo que representa un grupo de nivel en la academia.
-    Un grupo puede tener muchos estudiantes y un nivel asociado.
+    Modelo para la configuración, control y auditoría de reportes 
+    estructurados de Familias y Habitantes del Consejo Comunal.
     """
-    name_group_levels = models.CharField(max_length=100)
-    date_begin = models.DateField()
-    date_end = models.DateField()
-    study_modality = models.CharField(max_length=50, choices=COURSE_MODALITY_LIST_PREDIFINED, default='presential')
-    level = models.ForeignKey('Levels', on_delete=models.CASCADE)
-    students = models.ManyToManyField('Students', related_name='group_levels', blank=True)
-    cohort = models.IntegerField(help_text="Cohorte del Grupo", blank=True, null=True)
+    OPCIONES_GENERO = [
+        ('TODOS', 'Todos'),
+        ('M', 'Masculino'),
+        ('F', 'Femenino'),
+    ]
+    
+    OPCIONES_EDAD = [
+        ('TODOS', 'Todas las edades'),
+        ('MENOR_12', 'Niños (Menores a 12 años)'),
+        ('MENOR_16', 'Adolescentes (Menores a 16 años)'),
+        ('TERCERA_EDAD', 'Adultos Mayores / 3ra Edad (>= 60 años)'),
+    ]
+
+    OPCIONES_FORMATO = [
+        ('PDF', 'Documento PDF (.pdf)'),
+        ('EXCEL', 'Hoja de Cálculo (.xlsx)'),
+        ('AMBOS', 'Ambos Formatos'),
+    ]
+
+    # 1. Metadatos del Reporte
+    titulo_reporte = models.CharField(max_length=150, verbose_name="Título del Reporte")
+    solicitado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        verbose_name="Generado por"
+    )
+    fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
+
+    # 2. Parámetros / Filtros aplicados (Condiciones)
+    filtro_genero = models.CharField(max_length=5, choices=OPCIONES_GENERO, default='TODOS', verbose_name="Filtro de Género")
+    filtro_edad = models.CharField(max_length=15, choices=OPCIONES_EDAD, default='TODOS', verbose_name="Segmentación por Edad")
+    incluir_datos_familia = models.BooleanField(default=True, verbose_name="Desglosar por Grupo Familiar")
+    
+    formato_salida = models.CharField(max_length=10, choices=OPCIONES_FORMATO, default='AMBOS', verbose_name="Formato Solicitado")
+    
+    # 3. Campos de auditoría opcionales (por si deseas guardar el archivo físico en el servidor)
+    archivo_pdf = models.FileField(upload_to='reportes/pdfs/', blank=True, null=True, verbose_name="Archivo PDF")
+    archivo_excel = models.FileField(upload_to='reportes/excels/', blank=True, null=True, verbose_name="Archivo Excel")
 
     class Meta:
-        db_table = 'grupos_niveles'
-        verbose_name = 'Grupo Nivel'
-        verbose_name_plural = 'Grupos Niveles'
+        db_table = 'cc_reportes_demograficos'
+        verbose_name = 'Reporte Demográfico'
+        verbose_name_plural = 'Reportes Demográficos'
+        ordering = ['-fecha_generacion']
 
     def __str__(self):
-        return f"{self.name_group_levels} ({self.level.level_name})"
-
-class TodoItem(models.Model):
-    task = models.CharField(max_length=200)
-    completed = models.BooleanField(default=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    due_date = models.DateField(null=True, blank=True)
-    priority = models.CharField(max_length=20, choices=[('low', 'Baja'), ('medium', 'Media'), ('high', 'Alta')], default='medium', verbose_name="Prioridad")
-    class Meta:
-        db_table = 'tareas'
-        verbose_name = 'Tarea'
-        verbose_name_plural = 'Tareas'
-
-    def __str__(self):
-        return self.task
+        return f"{self.titulo_reporte} - {self.fecha_generacion.strftime('%d/%m/%Y %H:%M')}"

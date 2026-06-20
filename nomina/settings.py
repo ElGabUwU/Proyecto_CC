@@ -149,7 +149,7 @@ def get_database_config():
 DATABASES = get_database_config()
 
 # Router de bases de datos
-DATABASE_ROUTERS = ['routers_db.db_routers.AuthRouter']
+#DATABASE_ROUTERS = ['routers_db.db_routers.AuthRouter']
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -178,7 +178,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]  # Carpeta para archivos estáticos
 
-AUTH_USER_MODEL = 'myapp.User'
+#AUTH_USER_MODEL = 'myapp.User'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

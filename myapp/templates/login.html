@@ -14,7 +14,7 @@
     <!-- css -->
     <link href="{% static 'assets/styles/login.css' %}" rel="stylesheet" />
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
     <style>
         
     </style>
@@ -61,14 +61,14 @@
                             <label for="username" class="form-label"><strong>Usuario <span
                                         class="text-danger">*</span></strong></label>
                             <input type="text" class="form-control" id="username" name="username"
-                                placeholder="Ingrese su nombre de usuario" required>
+                                placeholder="Ingrese su nombre de usuario" required maxlength="150">
                         </div>
                         <!-- Campo Contraseña -->
                         <!-- Campo Contraseña -->
                         <div class="mb-4 text-start position-relative">
                             <label for="password" class="form-label"><strong>Contraseña <span class="text-danger">*</span></strong></label>
                             <input type="password" class="form-control" id="password" name="password"
-                                placeholder="Ingrese su contraseña" required>
+                                placeholder="Ingrese su contraseña" required maxlength="128">
                             <button class="btn position-absolute end-0 translate-middle-y"
                                     type="button" id="togglePassword" style="background-color: transparent; border: none; z-index: 10; top: 74%;  border-top-left-radius: 0; border-bottom-left-radius: 0; outline: none !important;">
                                 <i class="bi bi-eye" id="eyeIcon"></i>
@@ -87,11 +87,11 @@
                     <div class="fade-white"></div>
                     <!-- Contenido centrado -->
                     <div class="my-auto text-center z-1">
-                        <h1 class="display-4 fw-bold text-danger mb-5">TheProfessor</h1>
-                        <img src="../../static/assets/images/aguila.png" alt="Logo TheProfessor" class="img-fluid mb-4"
-                            style="max-width: 500px;">
-                        <p class="fw-bold lead mb-1 text-primary">Learn languages with an expert</p>
-                        <p class="fw-bold lead text-danger">Languages Academy</p>
+                        <h1 class="display-4 fw-bold text-danger mb-2">Consejo Comunal</h1>
+                        <img src="../../static/assets/images/CC_logo.png" alt="Logo TheProfessor" class="img-fluid mb-4"
+                            style="width: 250px;">
+                        <p class="fw-bold lead mb-1 text-primary">Urbanización Manuel Pulido Méndez</p>
+                        <p class="fw-bold lead text-danger"></p>
                     </div>
                 </div>
             </div> <!-- final columna -->

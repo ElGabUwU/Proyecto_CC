@@ -1,105 +1,135 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-
 from . import views
-from . import views_export
+from . import views_comunidad
+from . import views_proyectos
+from . import views_censos
 from .views import PersonApiView, DocenteApiView
 from .views import change_password
 
 urlpatterns = [
-    path('', views.home, name='home'),  # Esto debe estar definido en views.py
+    path('', views.home, name='home'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('welcome/', views.welcome, name='welcome'),
 
+    # ============================================
+    # Dashboard Comunitario
+    # ============================================
+    # path('welcome/', views_comunidad.welcome, name='dashboard_comunitario'),
     # Endpoint para cambio de contraseña forzado
     path('change_password/', change_password, name='change_password'),
 
+    # ============================================
+    # NUEVA ARQUITECTURA: Familias y Habitantes (Maestro-Detalle)
+    # ============================================
     
-    path('cedulas/', views.PersonView.as_view(), name='cedulas'),
-    path('cedulas/editar/<int:id>/', views.UpdatePersonView.as_view(), name='editar_persona'),
-    path('cedulas/eliminar/<int:id>/', views.DeletePersonView.as_view(), name='eliminar_persona'),
-    path('docentes/', views.DocenteView.as_view(), name='docentes'),
-    path('docentes/editar/<int:id>/', views.UpdateDocenteView.as_view(), name='editar_docente'),
-    path('cedulas/api/<int:id>/', PersonApiView.as_view(), name='person_api'),
-    path('docentes/api/<int:id>/', DocenteApiView.as_view(), name='docente_api'),
-    path('docentes/eliminar/<int:id>/', views.DeleteDocenteView.as_view(), name='eliminar_docente'),
-    path('usuarios/', views.UserView.as_view(), name='usuarios'),
-    path('usuarios/editar/<int:id>/', views.UpdateUserView.as_view(), name='editar_usuario'),
-    path('usuarios/eliminar/<int:id>/', views.DeleteUserView.as_view(), name='eliminar_usuario'),
+    # Vistas de Template
+    path('comunidad/familias/', views_comunidad.familias, name='familias'),
+    path('comunidad/familias/gestion/', views_comunidad.familia_unificada, name='familia_unificada'),
+    path('comunidad/familias/gestion/<int:familia_id>/', views_comunidad.familia_unificada, name='editar_familia_unificada'),
+    path('comunidad/familias/eliminar/<int:id>/', views_comunidad.eliminar_familia, name='eliminar_familia'),
     
-    # Perfil de usuario
-    path('todolist/', views.TodoListView.as_view(), name='todolist'),
-    path('todolist/update/<int:id>/', views.UpdateTodoView.as_view(), name='update_todo'),
-    path('todolist/delete/<int:id>/', views.DeleteTodoView.as_view(), name='delete_todo'),
-    path('cursos/', views.CourseView.as_view(), name='cursos'),
-    path('cursos/editar/<int:id>/', views.UpdateCourseView.as_view(), name='editar_curso'),
-    path('cursos/eliminar/<int:id>/', views.DeleteCourseView.as_view(), name='eliminar_curso'),
-    path('cursos/<int:course_id>/niveles/', views.LevelView.as_view(), name='niveles'),
-    path('niveles/editar/<int:id>/', views.UpdateLevelView.as_view(), name='editar_nivel'),
-    path('niveles/eliminar/<int:id>/', views.DeleteLevelView.as_view(), name='eliminar_nivel'),
-    path('secciones/<int:level_id>/', views.SeccionView.as_view(), name='secciones'),
-    path('secciones/level/<int:level_id>/unit/add/', views.UnitCreateView.as_view(), name='add_unit'),
-    path('secciones/unit/<int:unit_id>/edit/', views.UnitUpdateView.as_view(), name='edit_unit'),
-    path('secciones/update-order/', views.UpdateUnitOrderView.as_view(), name='update_unit_order'),
-    path('secciones/unit/<int:unit_id>/', views.UnitJsonView.as_view(), name='unit_json'),
-    path('secciones/unit/delete/<int:unit_id>/', views.DeleteUnitView.as_view(), name='delete_unit'),
-
-# NUEVO
-
-    path('grupos/', views.GrupoView.as_view(), name='grupos'),
-    path('grupos/<int:level_id>/', views.GrupoView.as_view(), name='grupos_level'),
-    path('grupos/editar/<int:id>/', views.UpdateGrupoView.as_view(), name='editar_grupo'),
-    path('grupos/eliminar/<int:id>/', views.DeleteGrupoView.as_view(), name='eliminar_grupo'),
-    path('grupos/api/<int:id>/', views.GrupoApiView.as_view(), name='grupo_api'),
-    path('grupos/api/<int:id>/students/', views.GrupoStudentsApiView.as_view(), name='grupo_students_api'),
-    path('grupos/<int:id>/add-student/', views.AddStudentToGroupView.as_view(), name='add_student_to_group'),
-    path('grupos/<int:id>/remove-student/', views.RemoveStudentFromGroupView.as_view(), name='remove_student_from_group'),
-    path('api/students/search/', views.StudentSearchApiView.as_view(), name='student_search_api'),
-
-    path('evaluaciones/', views.EvaluacionesListView.as_view(), name='evaluaciones'),
-    path('grupos/<int:group_id>/evaluaciones/', views.EvaluacionesListView.as_view(), name='evaluaciones_grupo'),
-    path('grupos/<int:group_id>/evaluaciones/crear/', views.CrearEvaluacionView.as_view(), name='crear_evaluacion'),
-    path('grupos/<int:group_id>/evaluaciones/<int:evaluacion_id>/editar/', views.EditarEvaluacionView.as_view(), name='editar_evaluacion'),
-    path('grupos/<int:group_id>/evaluaciones/<int:evaluacion_id>/eliminar/', views.EliminarEvaluacionView.as_view(), name='eliminar_evaluacion'),
-    path('grupos/<int:group_id>/evaluaciones/<int:evaluacion_id>/api/', views.EvaluacionApiView.as_view(), name='evaluacion_api'),
-    path('evaluaciones/api/porcentaje-total/<int:group_id>/', views.PorcentajeTotalApiView.as_view(), name='porcentaje_total_api'),
+    # API REST para Familias
+    path('api/familias/', views_comunidad.FamiliaAPIView.as_view(), name='api_familias_lista'),
+    path('api/familias/<int:familia_id>/', views_comunidad.FamiliaAPIView.as_view(), name='api_familia_detalle'),
     
-    # Calificar evaluación (para profesores)
-    path('evaluaciones/<int:evaluacion_id>/calificar/', views.CalificarEvaluacionView.as_view(), name='calificar_evaluacion'),
+    # ============================================
+    # Habitantes (Vistas independientes para gestión individual)
+    # ============================================
+    path('habitantes/', views_comunidad.habitantes, name='habitantes'),
+    path('habitantes/detalle/<int:id>/', views_comunidad.detalle_habitante, name='detalle_habitante'),
     
-    path('notas/', views.NotasView.as_view(), name='notas'),
-    path('addgroup/', views.AñadirGrupoView.as_view(), name='addgroup'),
-    path('addgroup/<int:level_id>/', views.AñadirGrupoView.as_view(), name='addgroup_level'),
-    path('perfil/', views.perfil_view, name='perfil'),
+    # ============================================
+    # Finanzas
+    # ============================================
+    path('finanzas/', views_comunidad.finanzas, name='finanzas'),
+    path('finanzas/ingresos/crear/', views_comunidad.crear_ingreso, name='crear_ingreso'),
+    path('finanzas/ingresos/editar/<int:id>/', views_comunidad.editar_ingreso, name='editar_ingreso'),
+    path('finanzas/ingresos/eliminar/<int:id>/', views_comunidad.eliminar_ingreso, name='eliminar_ingreso'),
+    path('finanzas/ingresos/api/<int:id>/', views_comunidad.api_ingreso, name='api_ingreso'),
+    path('finanzas/egresos/crear/', views_comunidad.crear_egreso, name='crear_egreso'),
+    path('finanzas/egresos/editar/<int:id>/', views_comunidad.editar_egreso, name='editar_egreso'),
+    path('finanzas/egresos/eliminar/<int:id>/', views_comunidad.eliminar_egreso, name='eliminar_egreso'),
+    path('finanzas/egresos/api/<int:id>/', views_comunidad.api_egreso, name='api_egreso'),
+    path('finanzas/exportar/', views_comunidad.exportar_finanzas, name='exportar_finanzas'),
+    
+    # ============================================
+    # Documentación
+    # ============================================
+# 📁 Módulo de Gestión Documental Principal
+    path('comunidad/documentacion/', views_comunidad.documentacion, name='documentacion'),
+    # Procesamiento de Formularios (POST)
+    path('comunidad/documentacion/constancia/generar/', views_comunidad.generar_constancia, name='generar_constancia'),
+    path('comunidad/documentacion/acta/generar/', views_comunidad.generar_acta, name='generar_acta'),
+    path('documentacion/buena-conducta/', views_comunidad.generar_buena_conducta, name='generar_buena_conducta'),
+    path('documentacion/post-mortem/', views_comunidad.generar_post_mortem, name='generar_post_mortem'),
+    # Descarga e Impresión de PDFs Reales
+    path('comunidad/documentacion/constancia/descargar/<int:id>/', views_comunidad.descargar_constancia, name='descargar_constancia'),
+    path('comunidad/documentacion/acta/descargar/<int:id>/', views_comunidad.descargar_acta, name='descargar_acta'),
 
-    path('misnotas/', views.MisNotasView.as_view(), name='mis_notas'),
+    # ============================================
+    # 🆕 NUEVO: Gestión de Proyectos Comunitarios
+    # ============================================
+    
+    # Comités
+    path('proyectos/comites/', views_proyectos.comites, name='comites'),
+    path('proyectos/comites/crear/', views_proyectos.crear_comite, name='crear_comite'),
+    path('proyectos/comites/editar/<int:id>/', views_proyectos.editar_comite, name='editar_comite'),
+    path('proyectos/comites/eliminar/<int:id>/', views_proyectos.eliminar_comite, name='eliminar_comite'),
+    path('proyectos/comites/api/<int:id>/', views_proyectos.api_comite, name='api_comite'),
+    
+    # Proyectos
+    path('proyectos/', views_proyectos.proyectos, name='proyectos'),
+    path('proyectos/crear/', views_proyectos.crear_proyecto, name='crear_proyecto'),
+    path('proyectos/<int:pk>/', views_proyectos.detalle_proyecto, name='detalle_proyecto'),
+    path('proyectos/<int:pk>/editar/', views_proyectos.editar_proyecto, name='editar_proyecto'),
+    path('proyectos/<int:pk>/eliminar/', views_proyectos.eliminar_proyecto, name='eliminar_proyecto'),
+    path('proyectos/api/<int:pk>/', views_proyectos.api_proyecto, name='api_proyecto'),
+    
+    # Integrantes de Proyectos
+    path('proyectos/<int:pk>/asignar-habitante/', views_proyectos.asignar_habitante, name='asignar_habitante_proyecto'),
+    path('proyectos/<int:pk>/remover-habitante/<int:habitante_id>/', views_proyectos.remover_habitante, name='remover_habitante_proyecto'),
+    path('proyectos/api/buscar-habitantes/', views_proyectos.buscar_habitantes_proyecto, name='buscar_habitantes_proyecto'),
+    path('proyectos/api/integrante/<int:integrante_id>/', views_proyectos.api_integrante, name='api_integrante'),
+    
+    # Dashboard de Proyectos
+    path('proyectos/dashboard/', views_proyectos.dashboard_proyectos, name='dashboard_proyectos'),
 
-    # Subir imagen para tinyMCE
-    path('upload-image/', views.upload_image, name='upload_image'),
+    # ============================================
+    # 🆕 NUEVO: Gestión de Censos Comunitarios
+    # ============================================
+    
+    # Censos
+    path('censos/', views_censos.censos, name='censos'),
+    path('censos/crear/', views_censos.crear_censo, name='crear_censo'),
+    path('censos/<int:pk>/', views_censos.detalle_censo, name='detalle_censo'),
+    path('censos/<int:pk>/editar/', views_censos.editar_censo, name='editar_censo'),
+    path('censos/<int:pk>/eliminar/', views_censos.eliminar_censo, name='eliminar_censo'),
+    path('censos/api/<int:pk>/', views_censos.api_censo, name='api_censo'),
+    
+    # Participantes de Censos
+    path('censos/<int:pk>/asignar-participante/', views_censos.asignar_participante, name='asignar_participante_censo'),
+    path('censos/<int:pk>/remover-participante/<int:habitante_id>/', views_censos.remover_participante, name='remover_participante_censo'),
+    path('censos/api/buscar-habitantes/', views_censos.buscar_habitantes_censo, name='buscar_habitantes_censo'),
+    path('censos/api/participante/<int:participante_id>/', views_censos.api_participante, name='api_participante_censo'),
+    
+    # Exportación de Censos
+    path('censos/<int:pk>/exportar/', views_censos.exportar_participantes_censo, name='exportar_participantes_censo'),
+    path('censos/<int:pk>/exportar-excel/', views_censos.exportar_participantes_censo_excel, name='exportar_participantes_censo_excel'),
+    
+    # Dashboard de Censos
+    path('censos/dashboard/', views_censos.dashboard_censos, name='dashboard_censos'),
+    
+    # ReportesDemográficos
+    path('documentacion/reportes/panel/', views_comunidad.panel_reportes, name='panel_reportes'),
+    # ReporteExcel
+    path('documentacion/reporte/excel/<int:reporte_id>/', views_comunidad.exportar_reporte_excel, name='exportar_reporte_excel'),
+    
+    # ReportePDF
+    path('documentacion/reporte/pdf/<int:reporte_id>/', views_comunidad.exportar_reporte_pdf, name='exportar_reporte_pdf'),
 
-    # test zone (BORRAR AL SALIR DE DESARROLLO)
-    path('test-zone/', views.test_zone, name='test_zone'),
-
-    # Pagos (BASICO SOLO VISTA SIN FUNCIONALIDAD)
-    path('pagos/', views.PagosView.as_view(), name='pagos'),
-
-
-    # Exportar datos
-    path('cedulas/export/', views_export.export_persons, name='export_persons'),
-    path('docentes/export/', views_export.export_tutors, name='export_tutors'),
-
-    # Calendario
-    # path('calendario/', views.calendario_view, name='calendario'),
-    # path('json/', views.eventos_json, name='eventos_json'),
-    # path('guardar-evento/', views.guardar_evento, name='guardar_evento'),
-    # path('modificar-evento/<int:evento_id>/', views.modificar_evento, name='modificar_evento'),
-    # path('eliminar-evento/<int:evento_id>/', views.eliminar_evento, name='eliminar_evento'),
-    # path('json/', views.eventos_json, name='eventos_json'),
-    # path('calendario/guardar/', views.guardar_evento, name='guardar_evento'),
-    # path('calendario/modificar/<int:evento_id>/', views.modificar_evento, name='modificar_evento'),
-    # path('calendario/eliminar/<int:evento_id>/', views.eliminar_evento, name='eliminar_evento'),
 ]
 
 if settings.DEBUG:

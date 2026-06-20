@@ -1,0 +1,744 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if familia.id %}Editar Familia{% else %}Nueva Familia{% endif %} - Consejo Comunal</title>
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  {% include 'partials/session_timeout.html' %}
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
+  
+  <style>
+    .custom-card-comunidad {
+      background: rgba(255, 255, 255, 0.986) !important;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      border-radius: 12px !important;
+    }
+    .seccion-bloque {
+      background: rgb(255, 255, 255) !important;
+      border: 1px solid rgb(0, 0, 0) !important;
+    }
+    .form-control-comunal, .form-select-comunal {
+      color: #000000 !important;
+      border: 1px solid rgb(0, 0, 0) !important;
+    }
+    .form-control-comunal:focus, .form-select-comunal:focus {
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25) !important;
+    }
+    .label-comunal {
+      color: #000000 !important;
+      font-weight: 600;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+    .table-comunidad {
+      color: #e2e8f0 !important;
+    }
+    .table-comunidad th {
+      background-color: rgb(255, 255, 255) !important;
+      color: #000000 !important;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white">
+    {% include 'partials/sidebar.html' %}
+
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      <div class="card custom-card-comunidad shadow">
+        
+        <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom border-secondary py-3">
+          <h4 class="m-0 text-black fw-bold">
+            <i class="fas fa-edit text-primary me-2"></i>
+            {% if familia.id %}Actualizar Censo Familiar #{{ familia.id }}{% else %}Registrar Ficha Única Familiar{% endif %}
+          </h4>
+          <a href="{% url 'familias' %}" class="btn btn-secondary btn-sm px-3">
+            <i class="fas fa-arrow-left me-1"></i> Volver al Listado
+          </a>
+        </div>
+
+        <div class="card-body">
+            <div class="alert alert-danger" id="form-errors" style="display: none;">
+              <i class="fas fa-exclamation-triangle me-2"></i><span id="error-message"></span>
+            </div>
+
+            <form id="mainFamiliaForm" class="mb-4">
+              {% csrf_token %}
+              <div class="p-4 mb-3 seccion-bloque rounded-3">
+                <h5 class="mb-3 text-primary fw-bold"><i class="fas fa-map-marker-alt me-2"></i>1. Ubicación Geográfica e Inmueble</h5>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">APELLIDO DE FAMILIA / IDENTIFICADOR</label>
+                    <input type="text" id="nombre_familia" class="form-control form-control-comunal" value="{{ familia.nombre_familia|default:'' }}" placeholder="Ej: Familia Colmenares" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">NÚMERO DE VIVIENDA / CASA</label>
+                    <input type="text" id="vivienda" class="form-control form-control-comunal" value="{{ familia.vivienda|default:'' }}" placeholder="Ej: Casa Nro 12-B" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">CALLE/VEREDA</label>
+                    <input type="text" id="catastro" class="form-control form-control-comunal" value="{{ familia.catastro|default:'' }}" placeholder="Código único de catastro" required>
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label label-comunal">DIRECCIÓN EXACTA DENTRO DE LA COMUNIDAD</label>
+                    <textarea id="direccion" class="form-control form-control-comunal" rows="2" placeholder="Vereda, calle, avenida o puntos de referencia..." required>{{ familia.direccion|default:'' }}</textarea>
+                  </div>
+                </div>
+              </div>
+            </form>
+
+            <div class="p-4 seccion-bloque rounded-3 mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="m-0 text-primary fw-bold"><i class="fas fa-users me-2"></i>2. Censo de Integrantes del Hogar</h5>
+                <button type="button" class="btn btn-primary btn-sm px-3" onclick="abrirModalHabitante()">
+                  <i class="fas fa-user-plus me-1"></i> Agregar Miembro
+                </button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-comunidad align-middle m-0" id="tableHabitantes">
+                  <thead>
+                    <tr>
+                      <th>Cédula</th>
+                      <th>Nombre y Apellido</th>
+                      <th>Nacimiento</th>
+                      <th>Género</th>
+                      <th>Filiación / Rol</th>
+                      <th>Ocupación</th>
+                      <th>Nivel Educativo</th>
+                      <th class="text-center">Operaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end">
+              <button type="button" class="btn btn-success px-5 py-2 fw-bold" id="btnGuardarTodo">
+                <i class="fas fa-save me-2"></i> Guardar Ficha Completa
+              </button>
+            </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal fade" id="habitanteModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content text-white" style="background-color: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15);">
+        <div class="modal-header border-bottom border-secondary">
+          <h5 class="modal-title text-black fw-bold" id="habitanteModalLabel">Datos del Ciudadano</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="habitanteForm">
+            <input type="hidden" id="habitante_index" value="-1">
+            <input type="hidden" id="habitante_id" value="">
+            
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label label-comunal">CÉDULA DE IDENTIDAD</label>
+                <div class="input-group">
+                  <select id="h_cedula_tipo" class="form-select form-select-comunal" style="max-width: 80px; border-top-right-radius: 0; border-bottom-right-radius: 0;" required>
+                    <option value="V">V-</option>
+                    <option value="E">E-</option>
+                  </select>
+                  <input type="text" id="h_cedula_numero" class="form-control form-control-comunal" placeholder="Ej: 26123456" inputmode="numeric" pattern="[0-9]*" required style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">GÉNERO / SEXO</label>
+                <select id="h_genero" class="form-select form-select-comunal" required>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">NOMBRES</label>
+                <input type="text" id="h_nombre" class="form-control form-control-comunal" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">APELLIDOS</label>
+                <input type="text" id="h_apellido" class="form-control form-control-comunal" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">FECHA DE NACIMIENTO</label>
+                <input type="date" id="h_fecha_nacimiento" class="form-control form-control-comunal" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label label-comunal">NIVEL EDUCATIVO <span class="text-danger">*</span></label>
+                <select id="h_nivel_educativo" class="form-select form-select-comunal" required>
+                  <option value="">Seleccione...</option>
+                  <option value="ninguno">Ninguno</option>
+                  <option value="primaria">Primaria</option>
+                  <option value="secundaria">Secundaria</option>
+                  <option value="tecnico">Técnico Medio</option>
+                  <option value="universitario">Universitario</option>
+                  <option value="postgrado">Postgrado</option>
+                </select>
+              </div>
+              <div class="col-md-12">
+                <label class="form-label label-comunal">OCUPACIÓN / OFICIO</label>
+                <input type="text" id="h_ocupacion" class="form-control form-control-comunal" placeholder="Ej: Empleado público, comerciante, estudiante...">
+              </div>
+              <div class="col-md-12">
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="h_es_jefe_familia">
+                  <label class="form-check-label text-warning small fw-bold" for="h_es_jefe_familia">¿Designar como Jefe de Familia?</label>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer border-top border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarFilaHabitante()">Guardar Integrante</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+
+<script>
+    let habitantesList = JSON.parse('{{ habitantes_json|safe }}');
+    const familiaId = "{{ familia.id|default:'' }}";
+
+    $(document).ready(function() {
+      renderHabitantesTable();
+      
+      // Restringir solo números en el campo de cédula
+      $('#h_cedula_numero').on('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+      });
+      
+      // También prevenir pegar caracteres no numéricos
+      $('#h_cedula_numero').on('paste', function(e) {
+        e.preventDefault();
+        const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+        this.value = text.replace(/[^0-9]/g, '');
+      });
+      
+      // Prevenir escribir caracteres no numéricos con teclado
+      $('#h_cedula_numero').on('keydown', function(e) {
+        // Permitir: backspace, delete, tab, escape, enter, flechas
+        if ([8, 9, 13, 27, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+            (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1)) {
+          return;
+        }
+        // Verificar que sea un número (teclas 0-9 del teclado principal y numérico)
+        if ((e.shiftKey === false && e.keyCode >= 48 && e.keyCode <= 57) || 
+            (e.keyCode >= 96 && e.keyCode <= 105)) {
+          return;
+        }
+        e.preventDefault();
+      });
+    });
+
+    function renderHabitantesTable() {
+      const tbody = $('#tableHabitantes tbody');
+      tbody.empty();
+      
+      if (habitantesList.length === 0) {
+        tbody.html('<tr><td colspan="7" class="text-center text-muted py-3">No se han ingresado ciudadanos a esta vivienda.</td></tr>');
+        return;
+      }
+
+      habitantesList.forEach((h, index) => {
+        // Construir cédula completa de forma segura con prioridad: 
+        // 1) cedula_completa, 2) tipo_cedula + cedula, 3) fallback
+        let cedulaMostrar;
+        
+        if (h.cedula_completa) {
+          cedulaMostrar = h.cedula_completa;
+        } else if (h.tipo_cedula && h.cedula !== undefined) {
+          const cedulaStr = String(h.cedula);
+          // Verificar si h.cedula ya tiene prefijo para evitar duplicación
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaMostrar = cedulaStr;
+          } else {
+            cedulaMostrar = `${h.tipo_cedula}-${cedulaStr}`;
+          }
+        } else if (h.cedula) {
+          const cedulaStr = String(h.cedula);
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaMostrar = cedulaStr;
+          } else {
+            cedulaMostrar = `V-${cedulaStr}`;
+          }
+        } else {
+          cedulaMostrar = '';
+        }
+        
+        const jefeBadge = h.es_jefe_familia ? '<span class="badge bg-success">JEFE(A)</span>' : '<span class="badge bg-secondary">Carga</span>';
+        const nivelEducativo = h.nivel_educativo ? h.nivel_educativo.toUpperCase() : 'SIN ESPECIFICAR';
+        tbody.append(`
+          <tr>
+            <td>${cedulaMostrar}</td>
+            <td>${h.nombre} ${h.apellido}</td>
+            <td>${h.fecha_nacimiento}</td>
+            <td>${h.genero === 'M' ? 'M' : 'F'}</td>
+            <td>${jefeBadge}</td>
+            <td>${h.ocupacion || 'N/A'}</td>
+            <td><small class="text-info">${nivelEducativo}</small></td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-warning text-dark me-1" onclick="editarFilaHabitante(${index})"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-sm btn-danger" onclick="eliminarFilaHabitante(${index})"><i class="fas fa-user-minus"></i></button>
+            </td>
+          </tr>
+        `);
+      });
+    }
+
+    function abrirModalHabitante() {
+      $('#habitanteForm')[0].reset();
+      $('#habitante_index').val(-1);
+      $('#habitante_id').val('');
+      $('#h_cedula_tipo').val('V'); // Valor por defecto: Venezolano
+      $('#h_cedula_numero').val('');
+      $('#habitanteModalLabel').html('<i class="fas fa-user-plus text-primary me-2"></i>Agregar Miembro Familiar');
+      new bootstrap.Modal(document.getElementById('habitanteModal')).show();
+    }
+
+    // Función auxiliar para validar formato de cédula (5-9 dígitos)
+    function validarCedulaFormato(cedula) {
+      // Limpia caracteres no numéricos
+      const cedulaLimpia = cedula.replace(/\D/g, '');
+      // Verifica longitud entre 5 y 9 dígitos
+      if (cedulaLimpia.length < 5 || cedulaLimpia.length > 9) {
+        return { valido: false, mensaje: 'La cédula de identidad debe tener entre 5 y 9 dígitos.' };
+      }
+      return { valido: true, cedulaLimpia: cedulaLimpia };
+    }
+
+    function validarFechaNacimiento(fechaNacimiento, esJefeFamilia) {
+      if (!fechaNacimiento) {
+        return { valido: true }; // Se valida como campo requerido aparte
+      }
+      
+      const hoy = new Date();
+      const fechaNac = new Date(fechaNacimiento);
+      
+      // No puede ser igual o posterior al día de hoy
+      if (fechaNac >= hoy) {
+        return { valido: false, mensaje: 'La fecha de nacimiento no puede ser igual o posterior al día de hoy.' };
+      }
+      
+      // Calcular edad
+      let edad = hoy.getFullYear() - fechaNac.getFullYear();
+      const mesDiff = hoy.getMonth() - fechaNac.getMonth();
+      if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < fechaNac.getDate())) {
+        edad--;
+      }
+      
+      // No mayor a 115 años
+      if (edad > 115) {
+        return { valido: false, mensaje: `La edad calculada es de ${edad} años. Por favor verifique el año de nacimiento.` };
+      }
+      
+      // Si es jefe de familia, debe ser mayor de 18
+      if (esJefeFamilia && edad < 18) {
+        return { valido: false, mensaje: `No se puede designar como Jefe de Familia a un menor de edad (Tiene ${edad} años).` };
+      }
+      
+      return { valido: true, edad: edad };
+    }
+
+    function validarCoherenciaAcademica(nivelEducativo, edad) {
+      if (!nivelEducativo || !edad) {
+        return { valido: true };
+      }
+      
+      const nivelUpper = nivelEducativo.toUpperCase();
+      
+      // Técnico o universitario con menos de 16 años
+      if ((nivelUpper.includes('UNIVERSITARIO') || nivelUpper.includes('TECNICO')) && edad < 16) {
+        return { valido: false, mensaje: `Posee ${edad} años. No es lógico asignar un nivel educativo superior o técnico a esa edad.` };
+      }
+      
+      // Menor de 4 años con nivel escolar (excepto maternal o ninguno)
+      if (edad < 4 && nivelUpper && !nivelUpper.includes('MATERNAL') && !nivelUpper.includes('NINGUNO')) {
+        return { valido: false, mensaje: `Un infante de ${edad} años no cumple con el rango mínimo de edad para el nivel escolar '${nivelEducativo}'.` };
+      }
+      
+      return { valido: true };
+    }
+
+    function validarCoherenciaLaboral(ocupacion, edad) {
+      if (!ocupacion || !edad) {
+        return { valido: true };
+      }
+      
+      const ocupacionUpper = ocupacion.toUpperCase();
+      const ocupacionesExcluidas = ['NINGUNA', 'ESTUDIANTE', 'HOGAR', 'N/A'];
+      
+      // Si tiene una ocupación laboral activa y es menor de 14
+      if (!ocupacionesExcluidas.some(exc => ocupacionUpper.includes(exc)) && edad < 14) {
+        return { valido: false, mensaje: `El menor posee ${edad} años y registra una ocupación laboral activa. Verifique los datos filiales según la normativa legal vigente.` };
+      }
+      
+      return { valido: true };
+    }
+
+    function guardarFilaHabitante() {
+      const index = parseInt($('#habitante_index').val());
+      
+      // Construir cédula con prefijo V- o E-
+      const cedulaTipo = $('#h_cedula_tipo').val();
+      const cedulaNumero = $('#h_cedula_numero').val().trim();
+      const cedulaCompleta = `${cedulaTipo}-${cedulaNumero}`;
+      
+      const habitanteData = {
+        id: $('#habitante_id').val() ? parseInt($('#habitante_id').val()) : null,
+        cedula: cedulaNumero,  // Guardar solo la parte numérica para consistencia con la BD
+        tipo_cedula: cedulaTipo,  // Tipo de cédula separado
+        cedula_completa: cedulaCompleta,  // Formato completo para visualización
+        nombre: $('#h_nombre').val().trim(),
+        apellido: $('#h_apellido').val().trim(),
+        fecha_nacimiento: $('#h_fecha_nacimiento').val(),
+        genero: $('#h_genero').val(),
+        nivel_educativo: $('#h_nivel_educativo').val(),
+        ocupacion: $('#h_ocupacion').val().trim(),
+        es_jefe_familia: $('#h_es_jefe_familia').is(':checked')
+      };
+
+      // 1. Validación de campos obligatorios
+      if (!cedulaNumero || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento || !habitanteData.nivel_educativo) {
+        Swal.fire('Campos vacíos', 'Por favor complete los campos obligatorios del ciudadano, incluyendo el NIVEL EDUCATIVO.', 'warning');
+        return;
+      }
+
+      // 2. Validación de formato de cédula (5-9 dígitos)
+      if (cedulaNumero.length < 5 || cedulaNumero.length > 9) {
+        $('#h_cedula_numero').focus();
+        Swal.fire('Cédula Inválida', 'La cédula de identidad debe tener entre 5 y 9 dígitos.', 'error');
+        return;
+      }
+
+      // 3. Validación de fecha de nacimiento y edad
+      const validacionFecha = validarFechaNacimiento(habitanteData.fecha_nacimiento, habitanteData.es_jefe_familia);
+      if (!validacionFecha.valido) {
+        $('#h_fecha_nacimiento').focus();
+        Swal.fire('Fecha Inválida', validacionFecha.mensaje, 'error');
+        return;
+      }
+      const edadCalculada = validacionFecha.edad;
+
+      // 4. Validación de coherencia académica
+      const validacionAcademica = validarCoherenciaAcademica(habitanteData.nivel_educativo, edadCalculada);
+      if (!validacionAcademica.valido) {
+        $('#h_nivel_educativo').focus();
+        Swal.fire('Incoherencia Académica', validacionAcademica.mensaje, 'warning');
+        return;
+      }
+
+      // 5. Validación de coherencia laboral
+      const validacionLaboral = validarCoherenciaLaboral(habitanteData.ocupacion, edadCalculada);
+      if (!validacionLaboral.valido) {
+        $('#h_ocupacion').focus();
+        Swal.fire('Inconsistencia Laboral', validacionLaboral.mensaje, 'warning');
+        return;
+      }
+
+      // 6. Validación de duplicidad de cédula dentro de la lista temporal
+      // Comparar usando solo la parte numérica para evitar falsos positivos
+      const cedulaRepetida = habitantesList.some((h, idx) => {
+        if (idx === index) return false;  // Ignorar el mismo registro que se está editando
+        
+        // Obtener la cédula numérica del habitante existente
+        let cedulaExistenteNum = h.cedula || '';
+        if (cedulaExistenteNum.includes('-')) {
+          cedulaExistenteNum = cedulaExistenteNum.split('-')[1] || '';
+        }
+        
+        return cedulaExistenteNum === cedulaNumero;
+      });
+      
+      if (cedulaRepetida) {
+        $('#h_cedula_numero').focus();
+        Swal.fire('Cédula Duplicada', `La cédula ${cedulaCompleta} ya se encuentra en la lista de integrantes de esta ficha.`, 'error');
+        return;
+      }
+
+      // 7. Validación de único jefe de familia en la lista
+      if (habitanteData.es_jefe_familia) {
+        const hayOtroJefe = habitantesList.some((h, idx) => h.es_jefe_familia && idx !== index);
+        if (hayOtroJefe) {
+          $('#h_es_jefe_familia').focus();
+          Swal.fire('Conflicto de Estructura', 'Solo puede existir un (1) jefe por cada hogar. Ya existe otro integrante marcado como Jefe de Familia.', 'error');
+          return;
+        }
+        // Remover jefatura de otros si se está editando
+        habitantesList.forEach((h, idx) => {
+          if (idx !== index) h.es_jefe_familia = false;
+        });
+      }
+
+      // Todas las validaciones pasaron, agregar o actualizar el miembro
+      if (index === -1) {
+        habitantesList.push(habitanteData);
+      } else {
+        habitantesList[index] = habitanteData;
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('habitanteModal')).hide();
+      renderHabitantesTable();
+    }
+
+    function editarFilaHabitante(index) {
+      const h = habitantesList[index];
+      
+      // Parsear cédula para separar tipo y número (ej: "V-26123456")
+      let cedulaTipo = 'V';
+      let cedulaNumero = '';
+      
+      // Prioridad 1: Usar tipo_cedula y cedula por separado si existen (formato normalizado)
+      if (h.tipo_cedula && h.cedula !== undefined) {
+        cedulaTipo = h.tipo_cedula.toUpperCase();
+        // Si h.cedula ya tiene prefijo, extraer solo la parte numérica
+        const cedulaStr = String(h.cedula);
+        if (cedulaStr.includes('-')) {
+          const partes = cedulaStr.split('-');
+          cedulaNumero = partes[1] || '';
+        } else {
+          cedulaNumero = cedulaStr.replace(/[^0-9]/g, '');
+        }
+      } 
+      // Prioridad 2: Usar cedula_completa si existe
+      else if (h.cedula_completa) {
+        const cedulaFuente = h.cedula_completa;
+        if (cedulaFuente && cedulaFuente.includes('-')) {
+          const partes = cedulaFuente.split('-');
+          cedulaTipo = partes[0].toUpperCase();
+          cedulaNumero = partes[1] || '';
+        }
+      }
+      // Prioridad 3: Fallback a h.cedula directamente
+      else {
+        let cedulaFuente = h.cedula || '';
+        if (cedulaFuente && cedulaFuente.includes('-')) {
+          const partes = cedulaFuente.split('-');
+          cedulaTipo = partes[0].toUpperCase();
+          cedulaNumero = partes[1] || '';
+        } else if (cedulaFuente) {
+          cedulaNumero = cedulaFuente.replace(/[^0-9]/g, '');
+        }
+      }
+      
+      $('#habitante_index').val(index);
+      $('#habitante_id').val(h.id || '');
+      $('#h_cedula_tipo').val(cedulaTipo);
+      $('#h_cedula_numero').val(cedulaNumero);
+      $('#h_nombre').val(h.nombre);
+      $('#h_apellido').val(h.apellido);
+      $('#h_fecha_nacimiento').val(h.fecha_nacimiento);
+      $('#h_genero').val(h.genero);
+      $('#h_nivel_educativo').val(h.nivel_educativo);
+      $('#h_ocupacion').val(h.ocupacion);
+      $('#h_es_jefe_familia').prop('checked', h.es_jefe_familia);
+
+      $('#habitanteModalLabel').html('<i class="fas fa-edit text-warning me-2"></i>Modificar Datos del Ciudadano');
+      new bootstrap.Modal(document.getElementById('habitanteModal')).show();
+    }
+
+    function eliminarFilaHabitante(index) {
+      habitantesList.splice(index, 1);
+      renderHabitantesTable();
+    }
+
+    $('#btnGuardarTodo').on('click', function() {
+      const nombreFamilia = $('#nombre_familia').val().trim();
+      const vivienda = $('#vivienda').val().trim();
+      const catastro = $('#catastro').val().trim();
+      const direccion = $('#direccion').val().trim();
+
+      if (!nombreFamilia || !vivienda || !catastro || !direccion) {
+        Swal.fire('Formulario Incompleto', 'Los datos del inmueble y vivienda son requeridos.', 'error');
+        return;
+      }
+
+      if (habitantesList.length === 0) {
+        Swal.fire('Falta Carga', 'Debe agregar al menos un ciudadano a la vivienda.', 'warning');
+        return;
+      }
+
+      const tieneJefe = habitantesList.some(h => h.es_jefe_familia);
+      if (!tieneJefe) {
+        Swal.fire('Falta Jerarquía', 'Debe marcar obligatoriamente a un integrante como Jefe de Familia.', 'warning');
+        return;
+      }
+
+      // Normalizar datos de habitantes antes de enviar al backend
+      const habitantesNormalizados = habitantesList.map(h => {
+        // Construir cedula_completa para el backend si no existe
+        let cedulaCompleta = h.cedula_completa;
+        if (!cedulaCompleta && h.tipo_cedula && h.cedula !== undefined) {
+          const cedulaStr = String(h.cedula);
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaCompleta = cedulaStr;
+          } else {
+            cedulaCompleta = `${h.tipo_cedula}-${cedulaStr}`;
+          }
+        }
+        
+        return {
+          id: h.id,
+          cedula: cedulaCompleta,  // Backend espera formato completo "V-12345678"
+          nombre: h.nombre,
+          apellido: h.apellido,
+          fecha_nacimiento: h.fecha_nacimiento,
+          genero: h.genero,
+          nivel_educativo: h.nivel_educativo,
+          ocupacion: h.ocupacion,
+          es_jefe_familia: h.es_jefe_familia
+        };
+      });
+
+      const payload = {
+        nombre_familia: nombreFamilia,
+        vivienda: vivienda,
+        catastro: catastro,
+        direccion: direccion,
+        habitantes: habitantesNormalizados
+      };
+
+      const url = familiaId ? `/api/familias/${familiaId}/` : '/api/familias/';
+      const method = familiaId ? 'PUT' : 'POST';
+
+      Swal.fire({
+        title: 'Sincronizando...',
+        text: 'Escribiendo en Postgres...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
+      fetch(url, {
+        method: method,
+        headers: { // 💡 Corregido typo 'headeSrs' anterior
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(errData => {
+            throw { isValidationError: true, errors: errData };
+          }).catch(err => {
+            if (err.isValidationError) throw err;
+            throw new Error('Error crítico en el servidor');
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        Swal.fire({
+          icon: 'success',
+          title: '¡Ficha Guardada!',
+          text: 'Creación éxitosa.',
+          background: '#1e293b',
+          color: '#fff'
+        }).then(() => {
+          window.location.href = "{% url 'familias' %}";
+        });
+      })
+      .catch(error => {
+        if (error.isValidationError && error.errors) {
+          let errorHtml = '<div class="text-start mt-2" style="font-size: 0.95rem; max-height: 350px; overflow-y: auto;">';
+          
+          let contenidoRaw = error.errors.detail || error.errors.non_field_errors || error.errors;
+          
+          if (Array.isArray(contenidoRaw) && contenidoRaw.length > 0 && typeof contenidoRaw[0] !== 'string') {
+            contenidoRaw = contenidoRaw[0];
+          }
+
+          let procesado = false;
+
+          // Si el backend envió la lista serializada de forma segura
+          if (typeof contenidoRaw === 'string' && contenidoRaw.trim().startsWith('[')) {
+            try {
+              let listaErrores = JSON.parse(contenidoRaw);
+              
+              // Al ser un Array de JS, se recorre garantizando el orden exacto del backend
+              if (listaErrores.length > 0) {
+                errorHtml += '<h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Se encontraron los siguientes problemas:</h6>';
+                listaErrores.forEach((mensaje, index) => {
+                  // Identificar el tipo de error para mostrar ícono específico
+                  let icono = 'fa-circle';
+                  let color = '#f59e0b';
+                  
+                  if (mensaje.includes('vivienda') || mensaje.includes('Inmueble') || mensaje.includes('registrada')) {
+                    icono = 'fa-home';
+                    color = '#ef4444';
+                  } else if (mensaje.includes('Cédula')) {
+                    icono = 'fa-id-card';
+                    color = '#f59e0b';
+                  } else if (mensaje.includes('edad') || mensaje.includes('años') || mensaje.includes('biológico')) {
+                    icono = 'fa-user-clock';
+                    color = '#3b82f6';
+                  } else if (mensaje.includes('Jefe') || mensaje.includes('jerarquía')) {
+                    icono = 'fa-user-shield';
+                    color = '#10b981';
+                  }
+                  
+                  errorHtml += `
+                    <div class="mb-2 p-3 rounded" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid ${color};">
+                      <div class="d-flex align-items-start">
+                        <i class="fas ${icono} me-2 mt-1" style="color: ${color};"></i>
+                        <span class="text-white">${mensaje}</span>
+                      </div>
+                    </div>`;
+                });
+                procesado = true;
+              }
+            } catch (e) {
+              console.error("Error al parsear el arreglo seguro:", e);
+            }
+          }
+
+          // Respaldo genérico de seguridad si el formato varía
+          if (!procesado) {
+            errorHtml += `
+              <h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Error de validación:</h6>
+              <div class="mb-2 p-3 rounded" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #f59e0b;">
+                <span class="text-white">Se detectaron inconsistencias en los datos ingresados. Por favor, revise cuidadosamente las cédulas, edades y campos del formulario.</span>
+              </div>`;
+          }
+          
+          errorHtml += '</div>';
+
+          Swal.fire({
+            icon: 'error',
+            title: 'Error en Validación',
+            html: errorHtml,
+            background: '#1e293b',
+            color: '#fff',
+            confirmButtonColor: '#3085d6'
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error de Comunicación',
+            text: 'Ocurrió un problema físico al intentar conectar con el servidor local o la base de datos.',
+            background: '#1e293b',
+            color: '#fff'
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

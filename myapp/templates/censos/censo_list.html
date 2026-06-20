@@ -1,0 +1,397 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Censos Comunitarios - Consejo Comunal</title>
+  <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
+  <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  {% include 'partials/session_timeout.html' %}
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
+</head>
+
+<body class="m-0 p-0">
+  {% include 'partials/header.html' %}
+  <div class="bg-my-background-color d-flex text-white">
+    {% include 'partials/sidebar.html' %}
+
+    <main class="main-content vh-100 p-3 mx-3 flex-grow-1 overflow-auto pt-4">
+      <!-- Breadcrumbs -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'welcome' %}" class="text-decoration-none">Inicio</a></li>
+          <li class="breadcrumb-item active text-white" aria-current="page">Censos Comunitarios</li>
+        </ol>
+      </nav>
+
+      <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">
+            <i class="fas fa-clipboard-list me-2"></i>Gestión de Censos
+          </h4>
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#censoModal">
+            <i class="fas fa-plus me-1"></i>Nuevo Censo
+          </button>
+        </div>
+        
+        <div class="card-body">
+          <!-- Filtros -->
+          <div class="row mb-4">
+            <div class="col-md-3">
+              <label for="filtro-estatus" class="form-label">Filtrar por Estatus</label>
+              <select class="form-select" id="filtro-estatus" onchange="filtrarPorEstatus(this.value)">
+                <option value="">Todos los estatus</option>
+                <option value="activo" {% if estatus == 'activo' %}selected{% endif %}>Activo</option>
+                <option value="cerrado" {% if estatus == 'cerrado' %}selected{% endif %}>Cerrado</option>
+                <option value="archivado" {% if estatus == 'archivado' %}selected{% endif %}>Archivado</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label for="filtro-categoria" class="form-label">Filtrar por Categoría</label>
+              <select class="form-select" id="filtro-categoria" onchange="filtrarPorCategoria(this.value)">
+                <option value="">Todas las categorías</option>
+                {% for value, label in categoria_choices %}
+                <option value="{{ value }}" {% if categoria == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <form method="get" action="{% url 'censos' %}" class="mt-4">
+                <div class="input-group">
+                  <input type="text" name="q" class="form-control" placeholder="Buscar por nombre..." 
+                         value="{{ query|default_if_none:'' }}">
+                  <button class="btn btn-secondary" type="submit">
+                    <i class="fa fa-search"></i>
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div class="col-md-2 mt-4">
+              <a href="{% url 'censos' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-redo me-1"></i>Limpiar
+              </a>
+            </div>
+          </div>
+
+          <!-- Resumen de estatus -->
+          <div class="row mb-4">
+            <div class="col-md-4">
+              <div class="card bg-success text-white">
+                <div class="card-body text-center py-2">
+                  <i class="fas fa-check-circle fa-2x mb-1"></i>
+                  <h5 class="mb-0">Activos</h5>
+                  <small id="count-activo">{{ count_activo|default:0 }}</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-secondary text-white">
+                <div class="card-body text-center py-2">
+                  <i class="fas fa-lock fa-2x mb-1"></i>
+                  <h5 class="mb-0">Cerrados</h5>
+                  <small id="count-cerrado">{{ count_cerrado|default:0 }}</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light text-dark">
+                <div class="card-body text-center py-2">
+                  <i class="fas fa-archive fa-2x mb-1"></i>
+                  <h5 class="mb-0">Archivados</h5>
+                  <small id="count-archivado">{{ count_archivado|default:0 }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de Censos -->
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <th style="width: 140px;">Acciones</th>
+                  <th>Nombre del Censo</th>
+                  <th>Categoría</th>
+                  <th>Fecha Inicio</th>
+                  <th>Fecha Cierre</th>
+                  <th>Estatus</th>
+                  <th>Participantes</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-censos">
+                {% for censo in censos %}
+                <tr data-estatus="{{ censo.estatus }}" data-categoria="{{ censo.categoria_enfoque }}">
+                  <td>
+                    <a href="{% url 'detalle_censo' censo.pk %}" class="btn btn-sm btn-info mb-1" title="Ver detalle">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-warning mb-1" data-bs-toggle="modal" 
+                            data-bs-target="#censoModal" data-censo-id="{{ censo.pk }}" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <form action="{% url 'eliminar_censo' censo.pk %}" method="post" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-danger mb-1 eliminar-censo-btn" 
+                              data-censo-nombre="{{ censo.nombre_censo }}" 
+                              data-delete-url="{% url 'eliminar_censo' censo.pk %}"
+                              title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                  <td>
+                    <a>
+                      <span>{{ censo.nombre_censo }}</span>
+                    </a>
+                    {% if censo.descripcion %}
+                    <br><small class="text-muted">{{ censo.descripcion|truncatechars:50 }}</small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge {{ censo.get_categoria_badge_class }}">
+                      {{ censo.get_categoria_enfoque_display }}
+                    </span>
+                  </td>
+                  <td>{{ censo.fecha_inicio|date:"d/m/Y" }}</td>
+                  <td>
+                    {% if censo.fecha_fin %}
+                      {{ censo.fecha_fin|date:"d/m/Y" }}
+                    {% else %}
+                      <span class="text-muted">Sin definir</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge {{ censo.get_estatus_badge_class }}">
+                      {{ censo.get_estatus_display }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-primary">{{ censo.num_participantes }}</span>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center text-muted py-4">
+                    <i class="fas fa-folder-open fa-3x mb-2 d-block"></i>
+                    No se encontraron censos registrados.
+                    <br>
+                    <small>Haga clic en "Nuevo Censo" para comenzar.</small>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paginación -->
+          {% if censos.has_other_pages %}
+          <div class="pagination-container d-flex justify-content-center align-items-center my-4">
+            <button id="prev-page" class="btn pagination-btn" {% if not censos.has_previous %}disabled{% endif %}>
+              <img src="{% static 'assets/images/flecha_izq.png' %}" alt="Anterior" width="40" height="30">
+            </button>
+            <span class="page-info text-white mx-3">
+              {{ censos.number }} / {{ censos.paginator.num_pages }}
+            </span>
+            <button id="next-page" class="btn pagination-btn" {% if not censos.has_next %}disabled{% endif %}>
+              <img src="{% static 'assets/images/flecha_der.png' %}" alt="Siguiente" width="40" height="30">
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para Censo -->
+  <div class="modal fade" id="censoModal" tabindex="-1" aria-labelledby="censoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="modalCensoTitle">Registrar Censo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="censoForm" method="POST" action="">
+            {% csrf_token %}
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="id_nombre_censo" class="form-label">{{ censo_form.nombre_censo.label }}</label>
+                {{ censo_form.nombre_censo }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="id_fecha_inicio" class="form-label">{{ censo_form.fecha_inicio.label }}</label>
+                {{ censo_form.fecha_inicio }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_fecha_fin" class="form-label">{{ censo_form.fecha_fin.label }}</label>
+                {{ censo_form.fecha_fin }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="id_categoria_enfoque" class="form-label">{{ censo_form.categoria_enfoque.label }}</label>
+                {{ censo_form.categoria_enfoque }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_estatus" class="form-label">{{ censo_form.estatus.label }}</label>
+                {{ censo_form.estatus }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="id_descripcion" class="form-label">{{ censo_form.descripcion.label }}</label>
+                {{ censo_form.descripcion }}
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="censoForm" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>  
+    // Lógica para modal de censo
+    const censoModal = document.getElementById('censoModal');
+    if (censoModal) {
+      censoModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const censoId = button ? button.getAttribute('data-censo-id') : null;
+        const form = document.getElementById('censoForm');
+        const title = document.getElementById('modalCensoTitle');
+        
+        if (censoId) {
+          title.textContent = 'Editar Censo';
+          form.action = `/censos/${censoId}/editar/`;
+          // AJAX para cargar datos
+          fetch(`/censos/api/${censoId}/`)
+            .then(response => response.json())
+            .then(data => {
+              document.getElementById('id_nombre_censo').value = data.nombre_censo || '';
+              document.getElementById('id_fecha_inicio').value = data.fecha_inicio || '';
+              document.getElementById('id_fecha_fin').value = data.fecha_fin || '';
+              document.getElementById('id_descripcion').value = data.descripcion || '';
+              document.getElementById('id_categoria_enfoque').value = data.categoria_enfoque || 'general';
+              document.getElementById('id_estatus').value = data.estatus || 'activo';
+            });
+        } else {
+          title.textContent = 'Registrar Censo';
+          form.action = "{% url 'crear_censo' %}";
+          form.reset();
+        }
+      });
+    }
+    
+    // Función para filtrar por estatus
+    function filtrarPorEstatus(estatus) {
+      const url = new URL(window.location.href.split('?')[0], window.location.origin);
+      if (estatus) url.searchParams.append('estatus', estatus);
+      const categoria = document.getElementById('filtro-categoria').value;
+      if (categoria) url.searchParams.append('categoria', categoria);
+      const query = "{{ query|default:'' }}";
+      if (query && query !== 'None') url.searchParams.append('q', query);
+      window.location.href = url.toString();
+    }
+    
+    // Función para filtrar por categoría
+    function filtrarPorCategoria(categoria) {
+      const url = new URL(window.location.href.split('?')[0], window.location.origin);
+      if (categoria) url.searchParams.append('categoria', categoria);
+      const estatus = document.getElementById('filtro-estatus').value;
+      if (estatus) url.searchParams.append('estatus', estatus);
+      const query = "{{ query|default:'' }}";
+      if (query && query !== 'None') url.searchParams.append('q', query);
+      window.location.href = url.toString();
+    }
+    
+    // Confirmar eliminación con SweetAlert2
+    document.querySelectorAll('.eliminar-censo-btn').forEach(function(button) {
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+        const nombre = this.getAttribute('data-censo-nombre');
+        const url = this.getAttribute('data-delete-url');
+        
+        Swal.fire({
+          title: '¿Está seguro?',
+          html: `Va a eliminar el censo: <strong>${nombre}</strong><br><br>
+                 <span class="text-danger">Esta acción no se puede deshacer.</span>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Enviar formulario
+            const form = button.closest('form');
+            form.submit();
+          }
+        });
+      });
+    });
+    
+    // Mensajes de Django
+    $(document).ready(function () {
+      
+      {% if messages %}
+      {% for message in messages %}
+      Swal.fire({
+        icon: '{{ message.tags }}',
+        title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% else %}Notificación{% endif %}',
+        html: '{{ message.message|safe }}',
+        showConfirmButton: true
+      });
+      {% endfor %}
+      {% endif %}
+    });
+    
+    // Lógica de paginación
+    document.addEventListener('DOMContentLoaded', function() {
+      const prevButton = document.getElementById('prev-page');
+      const nextButton = document.getElementById('next-page');
+      const currentPage = {{ censos.number|default:1 }};
+      const totalPages = {{ censos.paginator.num_pages|default:1 }};
+      const query = "{{ query|default:'' }}";
+      const estatusFilter = "{{ estatus|default:'' }}";
+      const categoriaFilter = "{{ categoria|default:'' }}";
+      
+      function buildURL(page) {
+        const url = new URL(window.location.href.split('?')[0], window.location.origin);
+        if (page > 1) url.searchParams.append('page', page);
+        if (query && query !== 'None' && query.trim() !== '') url.searchParams.append('q', query);
+        if (estatusFilter && estatusFilter !== 'None') url.searchParams.append('estatus', estatusFilter);
+        if (categoriaFilter && categoriaFilter !== 'None') url.searchParams.append('categoria', categoriaFilter);
+        return url.toString();
+      }
+      
+      if (prevButton && !prevButton.disabled) {
+        prevButton.addEventListener('click', function() {
+          if (currentPage > 1) window.location.href = buildURL(currentPage - 1);
+        });
+      }
+      
+      if (nextButton && !nextButton.disabled) {
+        nextButton.addEventListener('click', function() {
+          if (currentPage < totalPages) window.location.href = buildURL(currentPage + 1);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
