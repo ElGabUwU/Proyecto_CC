@@ -88,13 +88,32 @@ def crear_censo(request):
         if form.is_valid():
             censo = form.save()
             messages.success(request, f'Censo "{censo.nombre_censo}" creado exitosamente.')
+            # Si es una petición AJAX, devolver respuesta JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Censo "{censo.nombre_censo}" creado exitosamente.',
+                    'redirect_url': str(reverse('detalle_censo', kwargs={'pk': censo.pk}))
+                })
             return redirect('censos')
         else:
+            # Si es una petición AJAX, devolver los errores del formulario en JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    field_label = form.fields[field].label if field in form.fields else field
+                    errors[field] = [str(e) for e in error_list]
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors,
+                    'message': 'Por favor corrija los errores en el formulario.'
+                }, status=400)
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = CensoForm(user=request.user)
     
-    return render(request, 'censos/censo_list.html', {'form': form})
+    context = {'form': form}
+    return render(request, 'censos/censo_list.html', context)
 
 
 def detalle_censo(request, pk):
@@ -137,19 +156,38 @@ def detalle_censo(request, pk):
 
 def editar_censo(request, pk):
     censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         form = CensoForm(request.POST, instance=censo, user=request.user)
         if form.is_valid():
             censo = form.save()
             messages.success(request, f'Censo "{censo.nombre_censo}" actualizado exitosamente.')
-            return redirect('detalle_censo', pk=censo.pk)
+            # Si es una petición AJAX, devolver respuesta JSON
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({
+                    "success": True,
+                    "message": f'Censo "{censo.nombre_censo}" actualizado exitosamente.',
+                    "redirect_url": str(reverse("detalle_censo", kwargs={"pk": censo.pk}))
+                })
+            return redirect("detalle_censo", pk=censo.pk)
         else:
-            messages.error(request, 'Por favor corrija los errores en el formulario.')
+            # Si es una petición AJAX, devolver los errores del formulario en JSON
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                errors = {}
+                for field, error_list in form.errors.items():
+                    field_label = form.fields[field].label if field in form.fields else field
+                    errors[field] = [str(e) for e in error_list]
+                return JsonResponse({
+                    "success": False,
+                    "errors": errors,
+                    "message": "Por favor corrija los errores en el formulario."
+                }, status=400)
+            messages.error(request, "Por favor corrija los errores en el formulario.")
     else:
         form = CensoForm(instance=censo, user=request.user)
-    
-    return render(request, 'censos/censo_form.html', {'form': form, 'censo': censo})
+
+    context = {"form": form, "censo": censo}
+    return render(request, "censos/censo_form.html", context)
 
 
 @require_POST
