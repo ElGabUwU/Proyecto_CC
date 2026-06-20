@@ -224,13 +224,8 @@ def crear_proyecto(request):
     else:
         form = ProyectoForm(user=request.user)
     
-    # Si es AJAX GET, devolver solo el formulario renderizado (opcional)
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        from django.template.loader import render_to_string
-        html = render_to_string('proyectos/proyecto_form_partial.html', {'form': form})
-        return JsonResponse({'html': html})
-    
-    return render(request, 'proyectos/proyecto_list.html', {'form': form})
+    context = {'form': form}
+    return render(request, 'proyectos/proyecto_list.html', context)
 
 
 def detalle_proyecto(request, pk):
@@ -266,13 +261,32 @@ def editar_proyecto(request, pk):
         if form.is_valid():
             proyecto = form.save()
             messages.success(request, f'Proyecto "{proyecto.nombre}" actualizado exitosamente.')
+            # Si es una petición AJAX, devolver respuesta JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Proyecto "{proyecto.nombre}" actualizado exitosamente.',
+                    'redirect_url': str(reverse('detalle_proyecto', kwargs={'pk': proyecto.pk}))
+                })
             return redirect('detalle_proyecto', pk=proyecto.pk)
         else:
+            # Si es una petición AJAX, devolver los errores del formulario en JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    field_label = form.fields[field].label if field in form.fields else field
+                    errors[field] = [str(e) for e in error_list]
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors,
+                    'message': 'Por favor corrija los errores en el formulario.'
+                }, status=400)
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = ProyectoForm(instance=proyecto, user=request.user)
     
-    return render(request, 'proyectos/proyecto_form.html', {'form': form, 'proyecto': proyecto})
+    context = {'form': form, 'proyecto': proyecto}
+    return render(request, 'proyectos/proyecto_form.html', context)
 
 
 @require_POST

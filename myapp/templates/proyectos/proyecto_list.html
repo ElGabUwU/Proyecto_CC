@@ -230,35 +230,45 @@
         <div class="modal-body">
           <form id="proyectoForm" method="POST" action="">
             {% csrf_token %}
+            <!-- Contenedor de errores generales del formulario -->
+            <div id="form-errors-container" class="alert alert-danger d-none" role="alert">
+              <ul class="mb-0" id="form-errors-list"></ul>
+            </div>
             <div class="row">
               <div class="col-md-12 mb-3">
                 <label for="id_nombre" class="form-label">{{ proyecto_form.nombre.label }}</label>
                 {{ proyecto_form.nombre }}
                 <small class="text-muted">{{ proyecto_form.nombre.help_text }}</small>
+                <div class="invalid-feedback d-block" id="error-nombre"></div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="id_fecha_inicio" class="form-label">{{ proyecto_form.fecha_inicio.label }}</label>
                 {{ proyecto_form.fecha_inicio }}
+                <div class="invalid-feedback d-block" id="error-fecha_inicio"></div>
               </div>
               <div class="col-md-6 mb-3">
                 <label for="id_fecha_fin" class="form-label">{{ proyecto_form.fecha_fin.label }}</label>
                 {{ proyecto_form.fecha_fin }}
+                <div class="invalid-feedback d-block" id="error-fecha_fin"></div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="id_comite" class="form-label">{{ proyecto_form.comite.label }}</label>
                 {{ proyecto_form.comite }}
+                <div class="invalid-feedback d-block" id="error-comite"></div>
               </div>
               <div class="col-md-3 mb-3">
                 <label for="id_monto_estimado" class="form-label">{{ proyecto_form.monto_estimado.label }}</label>
                 {{ proyecto_form.monto_estimado }}
+                <div class="invalid-feedback d-block" id="error-monto_estimado"></div>
               </div>
               <div class="col-md-3 mb-3">
                 <label for="id_estatus" class="form-label">{{ proyecto_form.estatus.label }}</label>
                 {{ proyecto_form.estatus }}
+                <div class="invalid-feedback d-block" id="error-estatus"></div>
               </div>
             </div>
             <div class="row">
@@ -269,6 +279,7 @@
                 <div class="text-end">
                   <small class="text-muted" id="descripcion-counter">0/1000</small>
                 </div>
+                <div class="invalid-feedback d-block" id="error-descripcion"></div>
               </div>
             </div>
           </form>
@@ -298,6 +309,9 @@
         const form = document.getElementById('proyectoForm');
         const title = document.getElementById('modalProyectoTitle');
         
+        // Limpiar errores anteriores al abrir el modal
+        limpiarErrores();
+        
         if (proyectoId) {
           title.textContent = 'Editar Proyecto';
           form.action = `/proyectos/${proyectoId}/editar/`;
@@ -318,6 +332,123 @@
           form.action = "{% url 'crear_proyecto' %}";
           form.reset();
         }
+      });
+    }
+    
+    // Función para limpiar errores del formulario
+    function limpiarErrores() {
+      // Ocultar contenedor de errores generales
+      document.getElementById('form-errors-container').classList.add('d-none');
+      document.getElementById('form-errors-list').innerHTML = '';
+      
+      // Limpiar errores específicos de cada campo
+      const campos = ['nombre', 'fecha_inicio', 'fecha_fin', 'comite', 'monto_estimado', 'estatus', 'descripcion'];
+      campos.forEach(campo => {
+        const errorDiv = document.getElementById(`error-${campo}`);
+        const inputField = document.getElementById(`id_${campo}`);
+        if (errorDiv) {
+          errorDiv.textContent = '';
+          errorDiv.classList.remove('d-block');
+        }
+        if (inputField) {
+          inputField.classList.remove('is-invalid');
+        }
+      });
+    }
+    
+    // Función para mostrar errores del formulario
+    function mostrarErrores(errors) {
+      const errorContainer = document.getElementById('form-errors-container');
+      const errorList = document.getElementById('form-errors-list');
+      
+      // Mostrar contenedor de errores generales si hay errores
+      if (Object.keys(errors).length > 0) {
+        errorContainer.classList.remove('d-none');
+        errorList.innerHTML = '';
+        
+        // Mapeo de nombres de campo a etiquetas legibles
+        const fieldLabels = {
+          'nombre': 'Nombre',
+          'fecha_inicio': 'Fecha de inicio',
+          'fecha_fin': 'Fecha de fin',
+          'comite': 'Comité',
+          'monto_estimado': 'Monto estimado',
+          'estatus': 'Estatus',
+          'descripcion': 'Descripción',
+          '__all__': 'Error general'
+        };
+        
+        for (const [field, errorMessages] of Object.entries(errors)) {
+          // Mostrar error específico del campo
+          const errorDiv = document.getElementById(`error-${field}`);
+          const inputField = document.getElementById(`id_${field}`);
+          
+          if (errorDiv && inputField) {
+            errorDiv.textContent = errorMessages.join('. ');
+            errorDiv.classList.add('d-block');
+            inputField.classList.add('is-invalid');
+          }
+          
+          // Agregar a la lista de errores generales
+          const label = fieldLabels[field] || field;
+          errorMessages.forEach(msg => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${label}:</strong> ${msg}`;
+            errorList.appendChild(li);
+          });
+        }
+      }
+    }
+    
+    // Manejar envío del formulario con AJAX
+    const proyectoForm = document.getElementById('proyectoForm');
+    if (proyectoForm) {
+      proyectoForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        limpiarErrores();
+        
+        const formData = new FormData(this);
+        const actionUrl = this.action;
+        
+        fetch(actionUrl, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Éxito: recargar la página o redirigir
+            Swal.fire({
+              icon: 'success',
+              title: '¡Éxito!',
+              text: data.message,
+              showConfirmButton: false,
+              timer: 1500
+            }).then(() => {
+              window.location.href = data.redirect_url || window.location.href.split('?')[0];
+            });
+          } else {
+            // Error: mostrar errores en el formulario
+            mostrarErrores(data.errors || {});
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              html: data.message || 'Por favor corrija los errores en el formulario.'
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Ocurrió un error al procesar el formulario. Intente nuevamente.'
+          });
+        });
       });
     }
     
