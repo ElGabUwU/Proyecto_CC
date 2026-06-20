@@ -157,11 +157,18 @@
                       <label for="id_descripcion" class="form-label">
                         <i class="fas fa-align-left me-1"></i>Descripción del Proyecto <span class="text-danger">*</span>
                       </label>
-                      <textarea name="descripcion" id="id_descripcion" rows="5"
+                      <textarea name="descripcion" id="id_descripcion_proyecto" rows="5"
                                 class="form-control {% if form.descripcion.errors %}is-invalid{% endif %}"
-                                placeholder="Describa los objetivos, alcance y detalles del proyecto..." required>{% if form.descripcion.value %}{{ form.descripcion.value }}{% endif %}</textarea>
+                                placeholder="Describa los objetivos, alcance y detalles del proyecto..." 
+                                required maxlength="1000">{% if form.descripcion.value %}{{ form.descripcion.value }}{% endif %}</textarea>
+                      <div class="d-flex justify-content-between align-items-center mt-1">
+                        <small class="text-muted">Descripción detallada del proyecto (máximo 1000 caracteres)</small>
+                        <small class="text-muted" id="contador_descripcion_proyecto">
+                          <span class="current-count">0</span>/<span class="max-count">1000</span> caracteres
+                        </small>
+                      </div>
                       {% if form.descripcion.errors %}
-                        <div class="invalid-feedback">
+                        <div class="invalid-feedback d-block">
                           {% for error in form.descripcion.errors %}{{ error }}{% endfor %}
                         </div>
                       {% endif %}
@@ -195,6 +202,48 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
+    // ============================================
+    // CONTADOR DE CARACTERES PARA DESCRIPCIÓN
+    // ============================================
+    function initCharacterCounter(textareaId, counterId, maxChars) {
+      const textarea = document.getElementById(textareaId);
+      const counter = document.getElementById(counterId);
+      
+      if (textarea && counter) {
+        const currentCountSpan = counter.querySelector('.current-count');
+        
+        // Función para actualizar el contador
+        const updateCounter = () => {
+          const currentLength = textarea.value.length;
+          currentCountSpan.textContent = currentLength;
+          
+          // Cambiar color si se acerca al límite
+          if (currentLength >= maxChars * 0.9) {
+            counter.classList.add('text-danger');
+            counter.classList.remove('text-muted', 'text-warning');
+          } else if (currentLength >= maxChars * 0.7) {
+            counter.classList.add('text-warning');
+            counter.classList.remove('text-muted', 'text-danger');
+          } else {
+            counter.classList.add('text-muted');
+            counter.classList.remove('text-warning', 'text-danger');
+          }
+        };
+        
+        // Inicializar con el valor actual
+        updateCounter();
+        
+        // Escuchar eventos de entrada
+        textarea.addEventListener('input', updateCounter);
+        textarea.addEventListener('change', updateCounter);
+      }
+    }
+    
+    // Inicializar contador para descripción del proyecto
+    document.addEventListener('DOMContentLoaded', function() {
+      initCharacterCounter('id_descripcion_proyecto', 'contador_descripcion_proyecto', 1000);
+    });
+
     // Validación de fechas
     document.getElementById('id_fecha_fin').addEventListener('change', function() {
       const fechaInicio = document.getElementById('id_fecha_inicio').value;

@@ -167,20 +167,50 @@
         <div class="modal-body">
           <form id="comiteForm" method="POST" action="">
             {% csrf_token %}
+            
+            <!-- Mostrar errores específicos del formulario -->
+            {% if comite_form.errors %}
+              <div class="alert alert-danger">
+                <strong><i class="fas fa-exclamation-triangle me-1"></i>Por favor corrija los siguientes errores:</strong>
+                <ul class="mb-0 mt-2">
+                  {% for field in comite_form %}
+                    {% if field.errors %}
+                      <li>{{ field.label }}: {{ field.errors|striptags }}</li>
+                    {% endif %}
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+            
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="id_nombre" class="form-label">{{ comite_form.nombre.label }}</label>
+                <label for="id_nombre" class="form-label">{{ comite_form.nombre.label }} <span class="text-danger">*</span></label>
                 {{ comite_form.nombre }}
+                {% if comite_form.nombre.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in comite_form.nombre.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
               </div>
               <div class="col-md-6 mb-3">
-                <label for="id_tipo_comite" class="form-label">{{ comite_form.tipo_comite.label }}</label>
+                <label for="id_tipo_comite" class="form-label">{{ comite_form.tipo_comite.label }} <span class="text-danger">*</span></label>
                 {{ comite_form.tipo_comite }}
+                {% if comite_form.tipo_comite.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in comite_form.tipo_comite.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="id_vocero_principal" class="form-label">{{ comite_form.vocero_principal.label }}</label>
+                <label for="id_vocero_principal" class="form-label">{{ comite_form.vocero_principal.label }} <span class="text-danger">*</span></label>
                 {{ comite_form.vocero_principal }}
+                {% if comite_form.vocero_principal.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in comite_form.vocero_principal.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
               </div>
               <div class="col-md-6 mb-3 d-flex align-items-end">
                 <div class="form-check">
@@ -193,6 +223,11 @@
               <div class="col-md-12 mb-3">
                 <label for="id_descripcion" class="form-label">{{ comite_form.descripcion.label }}</label>
                 {{ comite_form.descripcion }}
+                {% if comite_form.descripcion.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in comite_form.descripcion.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
               </div>
             </div>
           </form>

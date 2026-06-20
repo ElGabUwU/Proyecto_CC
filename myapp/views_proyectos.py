@@ -2,7 +2,7 @@
 Vistas para la gestión de proyectos comunitarios del Consejo Comunal.
 """
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, reverse
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum, Count
@@ -200,11 +200,35 @@ def crear_proyecto(request):
         if form.is_valid():
             proyecto = form.save()
             messages.success(request, f'Proyecto "{proyecto.nombre}" creado exitosamente.')
+            # Si es una petición AJAX, devolver respuesta JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Proyecto "{proyecto.nombre}" creado exitosamente.',
+                    'redirect_url': str(reverse('detalle_proyecto', kwargs={'pk': proyecto.pk}))
+                })
             return redirect('proyectos')
         else:
+            # Si es una petición AJAX, devolver los errores del formulario en JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    field_label = form.fields[field].label if field in form.fields else field
+                    errors[field] = [str(e) for e in error_list]
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors,
+                    'message': 'Por favor corrija los errores en el formulario.'
+                }, status=400)
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = ProyectoForm(user=request.user)
+    
+    # Si es AJAX GET, devolver solo el formulario renderizado (opcional)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        from django.template.loader import render_to_string
+        html = render_to_string('proyectos/proyecto_form_partial.html', {'form': form})
+        return JsonResponse({'html': html})
     
     return render(request, 'proyectos/proyecto_list.html', {'form': form})
 
