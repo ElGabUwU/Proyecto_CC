@@ -1,7 +1,6 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-
 from . import views
 from . import views_comunidad
 from . import views_proyectos
@@ -15,6 +14,10 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('welcome/', views.welcome, name='welcome'),
 
+    # ============================================
+    # Dashboard Comunitario
+    # ============================================
+    # path('welcome/', views_comunidad.welcome, name='dashboard_comunitario'),
     # Endpoint para cambio de contraseña forzado
     path('change_password/', change_password, name='change_password'),
 
@@ -65,11 +68,6 @@ urlpatterns = [
     # Descarga e Impresión de PDFs Reales
     path('comunidad/documentacion/constancia/descargar/<int:id>/', views_comunidad.descargar_constancia, name='descargar_constancia'),
     path('comunidad/documentacion/acta/descargar/<int:id>/', views_comunidad.descargar_acta, name='descargar_acta'),
-
-    # ============================================
-    # Dashboard Comunitario
-    # ============================================
-    path('dashboard-comunitario/', views_comunidad.dashboard_comunitario, name='dashboard_comunitario'),
 
     # ============================================
     # 🆕 NUEVO: Gestión de Proyectos Comunitarios

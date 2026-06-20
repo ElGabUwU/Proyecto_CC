@@ -110,16 +110,20 @@ class FechaToleranteMixin:
 # ============================================
 
 class HabitanteSerializer(serializers.ModelSerializer):
-    # Asegurar que el campo tipo_cedula esté mapeado si se maneja en el frontend
-    tipo_cedula = serializers.CharField(max_length=1, default='V')
-
+    # Campo combinado para mostrar cédula completa (ej: "V-26123456")
+    cedula_completa = serializers.SerializerMethodField()
+    
     class Meta:
         model = Habitante
-        fields = ['id', 'tipo_cedula', 'cedula', 'nombre', 'apellido', 'genero', 'fecha_nacimiento', 'es_jefe_familia']
+        fields = ['id', 'tipo_cedula', 'cedula', 'cedula_completa', 'nombre', 'apellido', 'genero', 'fecha_nacimiento', 'es_jefe_familia', 'nivel_educativo', 'ocupacion']
+
+    def get_cedula_completa(self, obj):
+        """Retorna la cédula con formato completo: V-12345678 o E-12345678"""
+        return f"{obj.tipo_cedula}-{obj.cedula}"
 
     def validate_cedula(self, value):
-        # Limpieza de caracteres no numéricos
-        cedula_limpia = re.sub(r'\D', '', str(value).strip())
+        # Limpieza de caracteres no numéricos y del prefijo V- o E-
+        cedula_limpia = re.sub(r'[^0-9]', '', str(value).strip())
         if not (5 <= len(cedula_limpia) <= 9):
             raise serializers.ValidationError("La cédula de identidad debe tener entre 5 y 9 dígitos.")
         
@@ -189,8 +193,35 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
         }
     
     def validate_cedula(self, value):
-        """Valida únicamente el formato de la cédula."""
-        return validar_cedula_venezolana(value)
+        """
+        Valida únicamente el formato de la cédula.
+        La validación de unicidad se maneja en el validate() del serializer padre
+        para poder excluir correctamente los habitantes de la misma familia en edición.
+        """
+        # Normalizar cédula: quitar espacios y convertir a mayúsculas
+        cedula = str(value).strip().upper()
+        
+        # Si el usuario metió solo números, le añadimos la V- por defecto
+        if cedula.isdigit():
+            cedula = f"V-{cedula}"
+        
+        # Patrones válidos
+        patron_con_guion = r'^[VE]-\d{6,8}$'
+        patron_sin_guion = r'^[VE]\d{6,8}$'
+        
+        if not (re.match(patron_con_guion, cedula) or re.match(patron_sin_guion, cedula)):
+            raise serializers.ValidationError(
+                "Formato de cédula inválido. Use: V-12345678 o E-12345678"
+            )
+        
+        # Normalizar con guion si venía pegado
+        if re.match(patron_sin_guion, cedula):
+            cedula = f"{cedula[0]}-{cedula[1:]}"
+        
+        # Extraer solo la parte numérica para retorno
+        cedula_numerica = re.sub(r'\D', '', cedula)
+        
+        return cedula_numerica
     
     def validate_fecha_nacimiento(self, value):
         """Valida que la fecha de nacimiento no sea futura."""
@@ -198,6 +229,12 @@ class HabitanteNestedSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'La fecha de nacimiento no puede ser futura.'
             )
+        return value
+    
+    def validate_nivel_educativo(self, value):
+        """Valida que el nivel educativo no esté vacío."""
+        if not value:
+            raise serializers.ValidationError('El campo NIVEL EDUCATIVO es obligatorio.')
         return value
 
 # ============================================
@@ -275,8 +312,9 @@ import re
 import json
 
 class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
-    # Usamos tu serializador de habitantes maestro-detalle
-    habitantes = HabitanteSerializer(many=True, required=False)
+    # Usamos el serializer anidado diseñado para operaciones maestro-detalle
+    # Este serializer declara explícitamente el campo 'id' como opcional
+    habitantes = HabitanteNestedSerializer(many=True, required=False)
     
     class Meta:
         model = Familia
@@ -402,6 +440,7 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Crea la Familia y vincula sus habitantes sanitizando las cédulas de forma estricta.
+        Extrae el tipo de cédula (V/E) del formato completo enviado por el frontend.
         """
         habitantes_data = validated_data.pop('habitantes', [])
         
@@ -411,7 +450,19 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
         # Iterar y poblar la tabla relacional de Habitantes
         for h_data in habitantes_data:
             if 'cedula' in h_data:
-                h_data['cedula'] = re.sub(r'\D', '', h_data['cedula'])
+                cedula_completa = str(h_data['cedula']).strip()
+                # Extraer tipo de cédula (V o E) del formato "V-12345678" o "E-12345678"
+                if '-' in cedula_completa:
+                    partes = cedula_completa.split('-')
+                    tipo_cedula = partes[0].upper() if partes[0] else 'V'
+                    cedula_numerica = re.sub(r'\D', '', partes[1] if len(partes) > 1 else cedula_completa)
+                else:
+                    tipo_cedula = 'V'
+                    cedula_numerica = re.sub(r'\D', '', cedula_completa)
+                
+                h_data['tipo_cedula'] = tipo_cedula
+                h_data['cedula'] = cedula_numerica
+                
             Habitante.objects.create(familia=familia, **h_data)
             
         return familia
@@ -442,11 +493,21 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
             for h_data in habitantes_data:
                 habitante_id = h_data.get('id')
                 cedula_enviada = h_data.get('cedula', '').strip()
-                cedula_limpia = re.sub(r'\D', '', cedula_enviada)
                 
-                # Normalizamos la cédula antes de realizar comparaciones u operaciones de guardado
+                # Extraer tipo de cédula (V o E) del formato "V-12345678" o "E-12345678"
+                if '-' in cedula_enviada:
+                    partes = cedula_enviada.split('-')
+                    tipo_cedula = partes[0].upper() if partes[0] else 'V'
+                    cedula_limpia = re.sub(r'\D', '', partes[1] if len(partes) > 1 else cedula_enviada)
+                else:
+                    tipo_cedula = 'V'
+                    cedula_limpia = re.sub(r'\D', '', cedula_enviada)
+                
+                # Normalizamos la cédula y agregamos el tipo antes de realizar comparaciones u operaciones de guardado
                 if 'cedula' in h_data:
                     h_data['cedula'] = cedula_limpia
+                if 'tipo_cedula' not in h_data:
+                    h_data['tipo_cedula'] = tipo_cedula
 
                 habitante_instancia = None
                 

@@ -10,7 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   {% include 'partials/session_timeout.html' %}
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
 </head>
 
 <body class="m-0 p-0">
@@ -85,7 +85,7 @@
                 <div class="col-12">
                   <div class="card shadow-sm border-start border-success border-3">
                     <div class="card-body">
-                      <h6 class="card-title text-success fw-bold"><i class="fas fa-user-check me-2"></i>Emitir Carta de Buena Conducta</h6>
+                      <h6 class="card-title text-success fw-bold"><i class="fas fa-user-check me-2"></i>Constancia de Buena Conducta</h6>
                       <form id="formBuenaConducta" method="POST" action="{% url 'generar_buena_conducta' %}">
                         {% csrf_token %}
                         
@@ -128,7 +128,7 @@
                         </div>
                         
                         <button type="submit" class="btn btn-success w-100 fw-bold">
-                          <i class="fas fa-file-pdf me-2"></i>Generar Buena Conducta
+                          <i class="fas fa-file-pdf me-2"></i>Generar Constancia
                         </button>
                       </form>
                     </div>

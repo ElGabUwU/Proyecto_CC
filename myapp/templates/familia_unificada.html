@@ -10,30 +10,29 @@
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   {% include 'partials/session_timeout.html' %}
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
   
   <style>
     .custom-card-comunidad {
-      background: rgba(30, 41, 59, 0.45) !important;
+      background: rgba(255, 255, 255, 0.986) !important;
       backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       border-radius: 12px !important;
     }
     .seccion-bloque {
-      background: rgba(15, 23, 42, 0.45) !important;
-      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      background: rgb(255, 255, 255) !important;
+      border: 1px solid rgb(0, 0, 0) !important;
     }
     .form-control-comunal, .form-select-comunal {
-      background-color: rgba(15, 23, 42, 0.6) !important;
-      color: #ffffff !important;
-      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      color: #000000 !important;
+      border: 1px solid rgb(0, 0, 0) !important;
     }
     .form-control-comunal:focus, .form-select-comunal:focus {
       border-color: #38bdf8 !important;
       box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25) !important;
     }
     .label-comunal {
-      color: #94a3b8 !important;
+      color: #000000 !important;
       font-weight: 600;
       font-size: 0.85rem;
       letter-spacing: 0.5px;
@@ -42,8 +41,8 @@
       color: #e2e8f0 !important;
     }
     .table-comunidad th {
-      background-color: rgba(15, 23, 42, 0.7) !important;
-      color: #38bdf8 !important;
+      background-color: rgb(255, 255, 255) !important;
+      color: #000000 !important;
       font-weight: 600;
     }
   </style>
@@ -58,7 +57,7 @@
       <div class="card custom-card-comunidad shadow">
         
         <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom border-secondary py-3">
-          <h4 class="m-0 text-white fw-bold">
+          <h4 class="m-0 text-black fw-bold">
             <i class="fas fa-edit text-primary me-2"></i>
             {% if familia.id %}Actualizar Censo Familiar #{{ familia.id }}{% else %}Registrar Ficha Única Familiar{% endif %}
           </h4>
@@ -68,68 +67,68 @@
         </div>
 
         <div class="card-body">
-          <div class="alert alert-danger" id="form-errors" style="display: none;">
-            <i class="fas fa-exclamation-triangle me-2"></i><span id="error-message"></span>
-          </div>
+            <div class="alert alert-danger" id="form-errors" style="display: none;">
+              <i class="fas fa-exclamation-triangle me-2"></i><span id="error-message"></span>
+            </div>
 
-          <form id="mainFamiliaForm" class="mb-4">
-            {% csrf_token %}
-            <div class="p-4 mb-3 seccion-bloque rounded-3">
-              <h5 class="mb-3 text-primary fw-bold"><i class="fas fa-map-marker-alt me-2"></i>1. Ubicación Geográfica e Inmueble</h5>
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <label class="form-label label-comunal">APELLIDO DE FAMILIA / IDENTIFICADOR</label>
-                  <input type="text" id="nombre_familia" class="form-control form-control-comunal" value="{{ familia.nombre_familia|default:'' }}" placeholder="Ej: Familia Colmenares" required>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label label-comunal">NÚMERO DE VIVIENDA / CASA</label>
-                  <input type="text" id="vivienda" class="form-control form-control-comunal" value="{{ familia.vivienda|default:'' }}" placeholder="Ej: Casa Nro 12-B" required>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label label-comunal">CALLE/VEREDA</label>
-                  <input type="text" id="catastro" class="form-control form-control-comunal" value="{{ familia.catastro|default:'' }}" placeholder="Código único de catastro" required>
-                </div>
-                <div class="col-md-12">
-                  <label class="form-label label-comunal">DIRECCIÓN EXACTA DENTRO DE LA COMUNIDAD</label>
-                  <textarea id="direccion" class="form-control form-control-comunal" rows="2" placeholder="Vereda, calle, avenida o puntos de referencia..." required>{{ familia.direccion|default:'' }}</textarea>
+            <form id="mainFamiliaForm" class="mb-4">
+              {% csrf_token %}
+              <div class="p-4 mb-3 seccion-bloque rounded-3">
+                <h5 class="mb-3 text-primary fw-bold"><i class="fas fa-map-marker-alt me-2"></i>1. Ubicación Geográfica e Inmueble</h5>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">APELLIDO DE FAMILIA / IDENTIFICADOR</label>
+                    <input type="text" id="nombre_familia" class="form-control form-control-comunal" value="{{ familia.nombre_familia|default:'' }}" placeholder="Ej: Familia Colmenares" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">NÚMERO DE VIVIENDA / CASA</label>
+                    <input type="text" id="vivienda" class="form-control form-control-comunal" value="{{ familia.vivienda|default:'' }}" placeholder="Ej: Casa Nro 12-B" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label label-comunal">CALLE/VEREDA</label>
+                    <input type="text" id="catastro" class="form-control form-control-comunal" value="{{ familia.catastro|default:'' }}" placeholder="Código único de catastro" required>
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label label-comunal">DIRECCIÓN EXACTA DENTRO DE LA COMUNIDAD</label>
+                    <textarea id="direccion" class="form-control form-control-comunal" rows="2" placeholder="Vereda, calle, avenida o puntos de referencia..." required>{{ familia.direccion|default:'' }}</textarea>
+                  </div>
                 </div>
               </div>
-            </div>
-          </form>
+            </form>
 
-          <div class="p-4 seccion-bloque rounded-3 mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="m-0 text-primary fw-bold"><i class="fas fa-users me-2"></i>2. Censo de Integrantes del Hogar</h5>
-              <button type="button" class="btn btn-primary btn-sm px-3" onclick="abrirModalHabitante()">
-                <i class="fas fa-user-plus me-1"></i> Agregar Miembro
+            <div class="p-4 seccion-bloque rounded-3 mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="m-0 text-primary fw-bold"><i class="fas fa-users me-2"></i>2. Censo de Integrantes del Hogar</h5>
+                <button type="button" class="btn btn-primary btn-sm px-3" onclick="abrirModalHabitante()">
+                  <i class="fas fa-user-plus me-1"></i> Agregar Miembro
+                </button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-comunidad align-middle m-0" id="tableHabitantes">
+                  <thead>
+                    <tr>
+                      <th>Cédula</th>
+                      <th>Nombre y Apellido</th>
+                      <th>Nacimiento</th>
+                      <th>Género</th>
+                      <th>Filiación / Rol</th>
+                      <th>Ocupación</th>
+                      <th>Nivel Educativo</th>
+                      <th class="text-center">Operaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end">
+              <button type="button" class="btn btn-success px-5 py-2 fw-bold" id="btnGuardarTodo">
+                <i class="fas fa-save me-2"></i> Guardar Ficha Completa
               </button>
             </div>
-
-            <div class="table-responsive">
-              <table class="table table-comunidad align-middle m-0" id="tableHabitantes">
-                <thead>
-                  <tr>
-                    <th>Cédula</th>
-                    <th>Nombre y Apellido</th>
-                    <th>Nacimiento</th>
-                    <th>Género</th>
-                    <th>Filiación / Rol</th>
-                    <th>Ocupación</th>
-                    <th class="text-center">Operaciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-end">
-            <button type="button" class="btn btn-success px-5 py-2 fw-bold" id="btnGuardarTodo">
-              <i class="fas fa-save me-2"></i> Guardar Ficha Completa
-            </button>
-          </div>
-
         </div>
       </div>
     </main>
@@ -137,9 +136,9 @@
 
   <div class="modal fade" id="habitanteModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered">
-      <div class="modal-content text-white" style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.15);">
+      <div class="modal-content text-white" style="background-color: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15);">
         <div class="modal-header border-bottom border-secondary">
-          <h5 class="modal-title text-white fw-bold" id="habitanteModalLabel">Datos del Ciudadano</h5>
+          <h5 class="modal-title text-black fw-bold" id="habitanteModalLabel">Datos del Ciudadano</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -150,7 +149,13 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label label-comunal">CÉDULA DE IDENTIDAD</label>
-                <input type="text" id="h_cedula" class="form-control form-control-comunal" placeholder="Ej: V-26123456" required>
+                <div class="input-group">
+                  <select id="h_cedula_tipo" class="form-select form-select-comunal" style="max-width: 80px; border-top-right-radius: 0; border-bottom-right-radius: 0;" required>
+                    <option value="V">V-</option>
+                    <option value="E">E-</option>
+                  </select>
+                  <input type="text" id="h_cedula_numero" class="form-control form-control-comunal" placeholder="Ej: 26123456" inputmode="numeric" pattern="[0-9]*" required style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                </div>
               </div>
               <div class="col-md-6">
                 <label class="form-label label-comunal">GÉNERO / SEXO</label>
@@ -172,14 +177,15 @@
                 <input type="date" id="h_fecha_nacimiento" class="form-control form-control-comunal" required>
               </div>
               <div class="col-md-6">
-                <label class="form-label label-comunal">NIVEL EDUCATIVO</label>
-                <select id="h_nivel_educativo" class="form-select form-select-comunal">
+                <label class="form-label label-comunal">NIVEL EDUCATIVO <span class="text-danger">*</span></label>
+                <select id="h_nivel_educativo" class="form-select form-select-comunal" required>
+                  <option value="">Seleccione...</option>
+                  <option value="ninguno">Ninguno</option>
                   <option value="primaria">Primaria</option>
                   <option value="secundaria">Secundaria</option>
-                  <option value="tecnico">Técnico</option>
+                  <option value="tecnico">Técnico Medio</option>
                   <option value="universitario">Universitario</option>
                   <option value="postgrado">Postgrado</option>
-                  <option value="ninguno">Ninguno</option>
                 </select>
               </div>
               <div class="col-md-12">
@@ -213,6 +219,33 @@
 
     $(document).ready(function() {
       renderHabitantesTable();
+      
+      // Restringir solo números en el campo de cédula
+      $('#h_cedula_numero').on('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+      });
+      
+      // También prevenir pegar caracteres no numéricos
+      $('#h_cedula_numero').on('paste', function(e) {
+        e.preventDefault();
+        const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+        this.value = text.replace(/[^0-9]/g, '');
+      });
+      
+      // Prevenir escribir caracteres no numéricos con teclado
+      $('#h_cedula_numero').on('keydown', function(e) {
+        // Permitir: backspace, delete, tab, escape, enter, flechas
+        if ([8, 9, 13, 27, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+            (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1)) {
+          return;
+        }
+        // Verificar que sea un número (teclas 0-9 del teclado principal y numérico)
+        if ((e.shiftKey === false && e.keyCode >= 48 && e.keyCode <= 57) || 
+            (e.keyCode >= 96 && e.keyCode <= 105)) {
+          return;
+        }
+        e.preventDefault();
+      });
     });
 
     function renderHabitantesTable() {
@@ -225,15 +258,42 @@
       }
 
       habitantesList.forEach((h, index) => {
+        // Construir cédula completa de forma segura con prioridad: 
+        // 1) cedula_completa, 2) tipo_cedula + cedula, 3) fallback
+        let cedulaMostrar;
+        
+        if (h.cedula_completa) {
+          cedulaMostrar = h.cedula_completa;
+        } else if (h.tipo_cedula && h.cedula !== undefined) {
+          const cedulaStr = String(h.cedula);
+          // Verificar si h.cedula ya tiene prefijo para evitar duplicación
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaMostrar = cedulaStr;
+          } else {
+            cedulaMostrar = `${h.tipo_cedula}-${cedulaStr}`;
+          }
+        } else if (h.cedula) {
+          const cedulaStr = String(h.cedula);
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaMostrar = cedulaStr;
+          } else {
+            cedulaMostrar = `V-${cedulaStr}`;
+          }
+        } else {
+          cedulaMostrar = '';
+        }
+        
         const jefeBadge = h.es_jefe_familia ? '<span class="badge bg-success">JEFE(A)</span>' : '<span class="badge bg-secondary">Carga</span>';
+        const nivelEducativo = h.nivel_educativo ? h.nivel_educativo.toUpperCase() : 'SIN ESPECIFICAR';
         tbody.append(`
           <tr>
-            <td>${h.cedula}</td>
+            <td>${cedulaMostrar}</td>
             <td>${h.nombre} ${h.apellido}</td>
             <td>${h.fecha_nacimiento}</td>
             <td>${h.genero === 'M' ? 'M' : 'F'}</td>
             <td>${jefeBadge}</td>
             <td>${h.ocupacion || 'N/A'}</td>
+            <td><small class="text-info">${nivelEducativo}</small></td>
             <td class="text-center">
               <button class="btn btn-sm btn-warning text-dark me-1" onclick="editarFilaHabitante(${index})"><i class="fas fa-edit"></i></button>
               <button class="btn btn-sm btn-danger" onclick="eliminarFilaHabitante(${index})"><i class="fas fa-user-minus"></i></button>
@@ -247,10 +307,13 @@
       $('#habitanteForm')[0].reset();
       $('#habitante_index').val(-1);
       $('#habitante_id').val('');
+      $('#h_cedula_tipo').val('V'); // Valor por defecto: Venezolano
+      $('#h_cedula_numero').val('');
       $('#habitanteModalLabel').html('<i class="fas fa-user-plus text-primary me-2"></i>Agregar Miembro Familiar');
       new bootstrap.Modal(document.getElementById('habitanteModal')).show();
     }
 
+    // Función auxiliar para validar formato de cédula (5-9 dígitos)
     function validarCedulaFormato(cedula) {
       // Limpia caracteres no numéricos
       const cedulaLimpia = cedula.replace(/\D/g, '');
@@ -333,9 +396,16 @@
     function guardarFilaHabitante() {
       const index = parseInt($('#habitante_index').val());
       
+      // Construir cédula con prefijo V- o E-
+      const cedulaTipo = $('#h_cedula_tipo').val();
+      const cedulaNumero = $('#h_cedula_numero').val().trim();
+      const cedulaCompleta = `${cedulaTipo}-${cedulaNumero}`;
+      
       const habitanteData = {
         id: $('#habitante_id').val() ? parseInt($('#habitante_id').val()) : null,
-        cedula: $('#h_cedula').val().trim(),
+        cedula: cedulaNumero,  // Guardar solo la parte numérica para consistencia con la BD
+        tipo_cedula: cedulaTipo,  // Tipo de cédula separado
+        cedula_completa: cedulaCompleta,  // Formato completo para visualización
         nombre: $('#h_nombre').val().trim(),
         apellido: $('#h_apellido').val().trim(),
         fecha_nacimiento: $('#h_fecha_nacimiento').val(),
@@ -346,20 +416,17 @@
       };
 
       // 1. Validación de campos obligatorios
-      if (!habitanteData.cedula || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento) {
-        Swal.fire('Campos vacíos', 'Por favor complete los campos obligatorios del ciudadano.', 'warning');
+      if (!cedulaNumero || !habitanteData.nombre || !habitanteData.apellido || !habitanteData.fecha_nacimiento || !habitanteData.nivel_educativo) {
+        Swal.fire('Campos vacíos', 'Por favor complete los campos obligatorios del ciudadano, incluyendo el NIVEL EDUCATIVO.', 'warning');
         return;
       }
 
-      // 2. Validación de formato de cédula
-      const validacionCedula = validarCedulaFormato(habitanteData.cedula);
-      if (!validacionCedula.valido) {
-        $('#h_cedula').focus();
-        Swal.fire('Cédula Inválida', validacionCedula.mensaje, 'error');
+      // 2. Validación de formato de cédula (5-9 dígitos)
+      if (cedulaNumero.length < 5 || cedulaNumero.length > 9) {
+        $('#h_cedula_numero').focus();
+        Swal.fire('Cédula Inválida', 'La cédula de identidad debe tener entre 5 y 9 dígitos.', 'error');
         return;
       }
-      // Actualizar la cédula con el valor limpio
-      habitanteData.cedula = validacionCedula.cedulaLimpia;
 
       // 3. Validación de fecha de nacimiento y edad
       const validacionFecha = validarFechaNacimiento(habitanteData.fecha_nacimiento, habitanteData.es_jefe_familia);
@@ -387,12 +454,22 @@
       }
 
       // 6. Validación de duplicidad de cédula dentro de la lista temporal
-      const cedulaRepetida = habitantesList.some((h, idx) => 
-        h.cedula === habitanteData.cedula && idx !== index
-      );
+      // Comparar usando solo la parte numérica para evitar falsos positivos
+      const cedulaRepetida = habitantesList.some((h, idx) => {
+        if (idx === index) return false;  // Ignorar el mismo registro que se está editando
+        
+        // Obtener la cédula numérica del habitante existente
+        let cedulaExistenteNum = h.cedula || '';
+        if (cedulaExistenteNum.includes('-')) {
+          cedulaExistenteNum = cedulaExistenteNum.split('-')[1] || '';
+        }
+        
+        return cedulaExistenteNum === cedulaNumero;
+      });
+      
       if (cedulaRepetida) {
-        $('#h_cedula').focus();
-        Swal.fire('Cédula Duplicada', `La cédula num. '${habitanteData.cedula}' ya se encuentra en la lista de integrantes de esta ficha.`, 'error');
+        $('#h_cedula_numero').focus();
+        Swal.fire('Cédula Duplicada', `La cédula ${cedulaCompleta} ya se encuentra en la lista de integrantes de esta ficha.`, 'error');
         return;
       }
 
@@ -423,9 +500,48 @@
 
     function editarFilaHabitante(index) {
       const h = habitantesList[index];
+      
+      // Parsear cédula para separar tipo y número (ej: "V-26123456")
+      let cedulaTipo = 'V';
+      let cedulaNumero = '';
+      
+      // Prioridad 1: Usar tipo_cedula y cedula por separado si existen (formato normalizado)
+      if (h.tipo_cedula && h.cedula !== undefined) {
+        cedulaTipo = h.tipo_cedula.toUpperCase();
+        // Si h.cedula ya tiene prefijo, extraer solo la parte numérica
+        const cedulaStr = String(h.cedula);
+        if (cedulaStr.includes('-')) {
+          const partes = cedulaStr.split('-');
+          cedulaNumero = partes[1] || '';
+        } else {
+          cedulaNumero = cedulaStr.replace(/[^0-9]/g, '');
+        }
+      } 
+      // Prioridad 2: Usar cedula_completa si existe
+      else if (h.cedula_completa) {
+        const cedulaFuente = h.cedula_completa;
+        if (cedulaFuente && cedulaFuente.includes('-')) {
+          const partes = cedulaFuente.split('-');
+          cedulaTipo = partes[0].toUpperCase();
+          cedulaNumero = partes[1] || '';
+        }
+      }
+      // Prioridad 3: Fallback a h.cedula directamente
+      else {
+        let cedulaFuente = h.cedula || '';
+        if (cedulaFuente && cedulaFuente.includes('-')) {
+          const partes = cedulaFuente.split('-');
+          cedulaTipo = partes[0].toUpperCase();
+          cedulaNumero = partes[1] || '';
+        } else if (cedulaFuente) {
+          cedulaNumero = cedulaFuente.replace(/[^0-9]/g, '');
+        }
+      }
+      
       $('#habitante_index').val(index);
       $('#habitante_id').val(h.id || '');
-      $('#h_cedula').val(h.cedula);
+      $('#h_cedula_tipo').val(cedulaTipo);
+      $('#h_cedula_numero').val(cedulaNumero);
       $('#h_nombre').val(h.nombre);
       $('#h_apellido').val(h.apellido);
       $('#h_fecha_nacimiento').val(h.fecha_nacimiento);
@@ -465,12 +581,38 @@
         return;
       }
 
+      // Normalizar datos de habitantes antes de enviar al backend
+      const habitantesNormalizados = habitantesList.map(h => {
+        // Construir cedula_completa para el backend si no existe
+        let cedulaCompleta = h.cedula_completa;
+        if (!cedulaCompleta && h.tipo_cedula && h.cedula !== undefined) {
+          const cedulaStr = String(h.cedula);
+          if (cedulaStr.startsWith('V-') || cedulaStr.startsWith('E-')) {
+            cedulaCompleta = cedulaStr;
+          } else {
+            cedulaCompleta = `${h.tipo_cedula}-${cedulaStr}`;
+          }
+        }
+        
+        return {
+          id: h.id,
+          cedula: cedulaCompleta,  // Backend espera formato completo "V-12345678"
+          nombre: h.nombre,
+          apellido: h.apellido,
+          fecha_nacimiento: h.fecha_nacimiento,
+          genero: h.genero,
+          nivel_educativo: h.nivel_educativo,
+          ocupacion: h.ocupacion,
+          es_jefe_familia: h.es_jefe_familia
+        };
+      });
+
       const payload = {
         nombre_familia: nombreFamilia,
         vivienda: vivienda,
         catastro: catastro,
         direccion: direccion,
-        habitantes: habitantesList
+        habitantes: habitantesNormalizados
       };
 
       const url = familiaId ? `/api/familias/${familiaId}/` : '/api/familias/';
@@ -506,7 +648,7 @@
         Swal.fire({
           icon: 'success',
           title: '¡Ficha Guardada!',
-          text: 'El censo familiar se ha procesado con total éxito.',
+          text: 'Creación éxitosa.',
           background: '#1e293b',
           color: '#fff'
         }).then(() => {
@@ -580,7 +722,7 @@
 
           Swal.fire({
             icon: 'error',
-            title: 'Validación del Censo',
+            title: 'Error en Validación',
             html: errorHtml,
             background: '#1e293b',
             color: '#fff',

@@ -10,7 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   {% include 'partials/session_timeout.html' %}
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/aguila.ico' %}">
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/images/CC_logo.ico' %}">
   
   
 </head>
@@ -132,6 +132,7 @@
                   <th>Género</th>
                   <th>Filiación / Rol</th>
                   <th>Ocupación</th>
+                  <th>Nivel Educativo</th>
                 </tr>
               </thead>
               <tbody>
@@ -164,24 +165,26 @@
         .then(data => {
           tbody.empty();
           if (!data.habitantes || data.habitantes.length === 0) {
-            tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No hay integrantes registrados en este hogar.</td></tr>');
+            tbody.html('<tr><td colspan="6" class="text-center text-muted py-3">No hay integrantes registrados en este hogar.</td></tr>');
             return;
           }
           data.habitantes.forEach(h => {
             const esJefe = h.es_jefe_familia ? '<span class="badge bg-success">Jefe de Familia</span>' : '<span class="badge bg-secondary">Carga Familiar</span>';
+            const nivelEducativo = h.nivel_educativo ? h.nivel_educativo.toUpperCase() : 'SIN ESPECIFICAR';
             tbody.append(`
               <tr>
-                <td class="ps-3">${h.cedula}</td>
+                <td class="ps-3">${h.cedula_completa || h.cedula}</td>
                 <td>${h.nombre} ${h.apellido}</td>
                 <td>${h.genero === 'M' ? 'Masculino' : 'Femenino'}</td>
                 <td>${esJefe}</td>
                 <td>${h.ocupacion || 'Ninguna'}</td>
+                <td><small class="text-info">${nivelEducativo}</small></td>
               </tr>
             `);
           });
         })
         .catch(error => {
-          tbody.html('<tr><td colspan="5" class="text-center text-danger py-3">Error al conectar con el servidor.</td></tr>');
+          tbody.html('<tr><td colspan="6" class="text-center text-danger py-3">Error al conectar con el servidor.</td></tr>');
         });
     }
 

@@ -1,0 +1,5 @@
+# .qwenignore
+.gitignore
+.env
+.env.local
+.env.*.local

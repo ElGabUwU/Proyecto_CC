@@ -36,12 +36,13 @@ from django.contrib.postgres.search import TrigramSimilarity
 import os
 import uuid
 from django.http import JsonResponse
-
 from django.conf import settings
 from PIL import Image
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
+from django.db.models import Sum
+from .models import Familia, Habitante, IngresoComunal, EgresoComunal, ConstanciaResidencia, ActaReunion
 
 # ==============================
 # Función home - Redirigir raíz a login o welcome
@@ -65,9 +66,45 @@ def home(request):
 
 @django_login_required
 def welcome(request):
-    
+    """
+    Vista del dashboard principal de la comunidad (Antiguo Welcome).
+    Mantiene el control de cambio de contraseña e inyecta las estadísticas en tiempo real.
+    """
+    # 🔒 Mantener la lógica del proyecto viejo intacta
     must_change_password = request.session.get('must_change_password', False)
-    return render(request, 'welcome.html', {'must_change_password': must_change_password})
+    
+    # 📊 Estadísticas generales
+    total_familias = Familia.objects.filter(is_deleted=False).count()
+    total_habitantes = Habitante.objects.filter(is_deleted=False).count()
+    
+    # 📊 Estadísticas financieras
+    total_ingresos = IngresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
+    total_egresos = EgresoComunal.objects.aggregate(Sum('monto'))['monto__sum'] or 0
+    saldo_actual = total_ingresos - total_egresos
+    
+    # 📋 Historiales rápidos para el panel
+    ultimos_ingresos = IngresoComunal.objects.all().order_by('-id')[:5]
+    ultimos_egresos = EgresoComunal.objects.all().order_by('-id')[:5]
+    ultimas_familias = Familia.objects.filter(is_deleted=False).order_by('-id')[:5]
+    ultimas_constancias = ConstanciaResidencia.objects.all().order_by('-id')[:3]
+    ultimas_actas = ActaReunion.objects.all().order_by('-id')[:3]
+    
+    context = {
+        'must_change_password': must_change_password,
+        'total_familias': total_familias,
+        'total_habitantes': total_habitantes,
+        'saldo_actual': saldo_actual,
+        'total_ingresos': total_ingresos,
+        'total_egresos': total_egresos,
+        'ultimos_ingresos': ultimos_ingresos,
+        'ultimos_egresos': ultimos_egresos,
+        'ultimas_familias': ultimas_familias,
+        'ultimas_constancias': ultimas_constancias,
+        'ultimas_actas': ultimas_actas,
+    }
+    
+    # Renderizamos directamente el archivo del dashboard
+    return render(request, 'dashboard_comunitario.html', context)
 
 
 @admin_required
