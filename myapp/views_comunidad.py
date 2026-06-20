@@ -463,9 +463,16 @@ def finanzas(request):
     egresos_periodo = egresos_qs.aggregate(Sum('monto'))['monto__sum'] or 0
     saldo_periodo = ingresos_periodo - egresos_periodo
     
-    # 🔹 DATOS PARA PESTAÑAS (limitados a 50 para rendimiento)
-    ingresos_tab = ingresos_qs.order_by('-fecha', '-fecha_registro')[:50]
-    egresos_tab = egresos_qs.order_by('-fecha', '-fecha_registro')[:50]
+    # 🔹 DATOS PARA PESTAÑAS (con paginación)
+    # Paginación para ingresos
+    paginator_ingresos = Paginator(ingresos_qs.order_by('-fecha', '-fecha_registro'), 10)
+    page_number_ingresos = request.GET.get('page_ingresos', 1)
+    ingresos_page = paginator_ingresos.get_page(page_number_ingresos)
+    
+    # Paginación para egresos
+    paginator_egresos = Paginator(egresos_qs.order_by('-fecha', '-fecha_registro'), 10)
+    page_number_egresos = request.GET.get('page_egresos', 1)
+    egresos_page = paginator_egresos.get_page(page_number_egresos)
     
     # 🔹 DATOS PARA REPORTE (SIN límite, usa todo el queryset filtrado)
     movimientos_periodo = []
@@ -485,8 +492,8 @@ def finanzas(request):
         'saldo_actual': saldo_actual, 'total_ingresos': total_ingresos, 'total_egresos': total_egresos,
         'total_ingresos_periodo': ingresos_periodo, 'total_egresos_periodo': egresos_periodo,
         'saldo_periodo': saldo_periodo,
-        'ingresos': ingresos_tab,       # 👈 Solo para pestañas
-        'egresos': egresos_tab,         # 👈 Solo para pestañas
+        'ingresos': ingresos_page,       # 👈 Página actual para pestañas
+        'egresos': egresos_page,         # 👈 Página actual para pestañas
         'movimientos_periodo': movimientos_periodo, # 👈 Para reporte completo
         'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin,
         'ingreso_form': IngresoComunalForm(user=request.user),
@@ -978,13 +985,22 @@ def documentacion(request):
     # 💡 CORRECCIÓN: Cambiado .ordering() por .order_by()
     familias = Familia.objects.filter(is_deleted=False).order_by('nombre_familia')
     
-    constancias_recientes = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:10]
-    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:10]
+    # Paginación para constancias (10 por página)
+    constancias_list = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')
+    paginator_constancias = Paginator(constancias_list, 10)
+    page_constancias = request.GET.get('page_constancias')
+    constancias_page = paginator_constancias.get_page(page_constancias)
+    
+    # Paginación para actas (10 por página)
+    actas_list = ActaReunion.objects.all().order_by('-fecha_reunion')
+    paginator_actas = Paginator(actas_list, 10)
+    page_actas = request.GET.get('page_actas')
+    actas_page = paginator_actas.get_page(page_actas)
     
     context = {
         'familias': familias,
-        'constancias_recientes': constancias_recientes,
-        'actas_recientes': actas_recientes,
+        'constancias_recientes': constancias_page,
+        'actas_recientes': actas_page,
         'constancia_form': ConstanciaResidenciaForm(user=request.user),
         'acta_form': ActaReunionForm(user=request.user),
         'buena_conducta_form': BuenaConductaForm(user=request.user),
