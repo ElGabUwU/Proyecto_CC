@@ -69,7 +69,8 @@
                         
                         <div class="mb-3">
                           <label for="finalidad_constancia" class="form-label text-black fw-semibold">Título</label>
-                          <textarea class="form-control" id="finalidad_constancia" name="finalidad" rows="2" placeholder="Escriba Residencia: [Nombre Apellido de la persona a quién va dirigida la carta]" required></textarea>
+                          <textarea class="form-control" id="finalidad_constancia" name="finalidad" rows="2" placeholder="Escriba Residencia: [Nombre Apellido de la persona a quién va dirigida la carta]" required maxlength="500"></textarea>
+                          <small class="text-muted">Máximo 500 caracteres</small>
                         </div>
                         
                         <button type="submit" class="btn btn-primary w-100 fw-bold">
@@ -111,12 +112,14 @@
 
                         <div class="mb-3">
                             <label for="tiempo_residencia" class="form-label text-black fw-semibold">Tiempo de Residencia en el Sector</label>
-                            <input type="text" class="form-control text-black" id="tiempo_residencia" name="tiempo_residencia" placeholder="Ej. Cinco (05) años" required>
+                            <input type="text" class="form-control text-black" id="tiempo_residencia" name="tiempo_residencia" placeholder="Ej. Cinco (05) años" required maxlength="100">
+                            <small class="text-muted">Máximo 100 caracteres</small>
                         </div>
 
                         <div class="mb-3">
                             <label for="organismo_destino" class="form-label text-black fw-semibold">Organismo o Destino del Trámite</label>
-                            <input type="text" class="form-control text-black" id="organismo_destino" name="organismo_destino" placeholder="Ej. Universidad, Trámites Laborales" required>
+                            <input type="text" class="form-control text-black" id="organismo_destino" name="organismo_destino" placeholder="Ej. Universidad, Trámites Laborales" required maxlength="200">
+                            <small class="text-muted">Máximo 200 caracteres</small>
                         </div>
         
                         <div class="mb-3">
@@ -168,13 +171,15 @@
 
                         <div class="mb-3">
                           <label for="solicitante_defuncion" class="form-label text-black fw-semibold">Nombre del Familiar Solicitante</label>
-                          <input type="text" class="form-control" id="solicitante_defuncion" name="solicitante_defuncion" placeholder="Ej: María Alejandra Pérez" required>
+                          <input type="text" class="form-control" id="solicitante_defuncion" name="solicitante_defuncion" placeholder="Ej: María Alejandra Pérez" required maxlength="150">
+                          <small class="text-muted">Máximo 150 caracteres</small>
                         </div>
 
                         <div class="row">
                           <div class="col-md-6 mb-3">
                             <label for="solicitante_cedula" class="form-label text-black fw-semibold">Cédula del Solicitante</label>
-                            <input type="text" class="form-control" id="solicitante_cedula" name="solicitante_cedula" placeholder="Ej: 12345678" required>
+                            <input type="text" class="form-control" id="solicitante_cedula" name="solicitante_cedula" placeholder="Ej: 12345678" required maxlength="20">
+                            <small class="text-muted">Máximo 20 caracteres</small>
                         </div>
 
                         <div class="col-md-6 mb-3">
