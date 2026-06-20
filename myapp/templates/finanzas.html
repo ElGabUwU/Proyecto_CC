@@ -147,6 +147,41 @@
                   </tbody>
                 </table>
               </div>
+              
+              <!-- Paginación Ingresos -->
+              {% if ingresos.has_other_pages %}
+              <nav aria-label="Paginación de ingresos" class="mt-3">
+                <ul class="pagination justify-content-center">
+                  {% if ingresos.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page_ingresos={{ ingresos.previous_page_number }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">Anterior</a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                  </li>
+                  {% endif %}
+
+                  {% for num in ingresos.paginator.page_range %}
+                    {% if ingresos.number == num %}
+                      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > ingresos.number|add:'-3' and num < ingresos.number|add:'3' %}
+                      <li class="page-item"><a class="page-link" href="?page_ingresos={{ num }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">{{ num }}</a></li>
+                    {% endif %}
+                  {% endfor %}
+
+                  {% if ingresos.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page_ingresos={{ ingresos.next_page_number }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">Siguiente</a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Siguiente</span>
+                  </li>
+                  {% endif %}
+                </ul>
+              </nav>
+              {% endif %}
             </div>
 
             <!-- Pestaña Egresos -->
@@ -223,6 +258,41 @@
                   </tbody>
                 </table>
               </div>
+              
+              <!-- Paginación Egresos -->
+              {% if egresos.has_other_pages %}
+              <nav aria-label="Paginación de egresos" class="mt-3">
+                <ul class="pagination justify-content-center">
+                  {% if egresos.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page_egresos={{ egresos.previous_page_number }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">Anterior</a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                  </li>
+                  {% endif %}
+
+                  {% for num in egresos.paginator.page_range %}
+                    {% if egresos.number == num %}
+                      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > egresos.number|add:'-3' and num < egresos.number|add:'3' %}
+                      <li class="page-item"><a class="page-link" href="?page_egresos={{ num }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">{{ num }}</a></li>
+                    {% endif %}
+                  {% endfor %}
+
+                  {% if egresos.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page_egresos={{ egresos.next_page_number }}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}">Siguiente</a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Siguiente</span>
+                  </li>
+                  {% endif %}
+                </ul>
+              </nav>
+              {% endif %}
             </div>
 
             <!-- Pestaña Reportes -->
