@@ -156,15 +156,13 @@
                           <td>{{ participante.fecha_registro|date:"d/m/Y H:i" }}</td>
                           <td>
                             {% if censo.estatus == 'activo' %}
-                            <form action="{% url 'remover_participante_censo' censo.pk participante.habitante.id %}" 
-                                  method="post" style="display:inline;">
-                              {% csrf_token %}
-                              <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                      onclick="return confirm('¿Remover a {{ participante.habitante.nombre }} del censo?')"
-                                      title="Remover del censo">
-                                <i class="fas fa-user-minus"></i>
-                              </button>
-                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-danger remover-participante-btn"
+                                    data-censo-id="{{ censo.pk }}"
+                                    data-habitante-id="{{ participante.habitante.id }}"
+                                    data-habitante-nombre="{{ participante.habitante.nombre }}"
+                                    title="Remover del censo">
+                              <i class="fas fa-user-minus"></i>
+                            </button>
                             {% endif %}
                           </td>
                         </tr>
@@ -480,6 +478,33 @@
         }
       });
     }
+    
+    // Remover participante del censo con SweetAlert
+    $(document).on('click', '.remover-participante-btn', function() {
+      const censoId = $(this).data('censo-id');
+      const habitanteId = $(this).data('habitante-id');
+      const habitanteNombre = $(this).data('habitante-nombre');
+      
+      Swal.fire({
+        title: '¿Remover participante?',
+        html: `¿Estás seguro de que deseas remover a <strong>${habitanteNombre}</strong> del censo?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, remover',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/censos/${censoId}/remover-participante/${habitanteId}/`;
+          form.innerHTML = '{% csrf_token %}';
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    });
     
     // Mensajes de Django
     $(document).ready(function () {

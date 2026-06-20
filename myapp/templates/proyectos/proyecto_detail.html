@@ -155,15 +155,13 @@
                           </td>
                           <td>{{ integrante.fecha_asignacion|date:"d/m/Y" }}</td>
                           <td>
-                            <form action="{% url 'remover_habitante_proyecto' proyecto.pk integrante.habitante.id %}" 
-                                  method="post" style="display:inline;">
-                              {% csrf_token %}
-                              <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                      onclick="return confirm('¿Remover a {{ integrante.habitante.nombre }} del proyecto?')"
-                                      title="Remover del proyecto">
-                                <i class="fas fa-user-minus"></i>
-                              </button>
-                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-danger remover-integrante-btn"
+                                    data-proyecto-id="{{ proyecto.pk }}"
+                                    data-habitante-id="{{ integrante.habitante.id }}"
+                                    data-habitante-nombre="{{ integrante.habitante.nombre }}"
+                                    title="Remover del proyecto">
+                              <i class="fas fa-user-minus"></i>
+                            </button>
                           </td>
                         </tr>
                         {% empty %}
@@ -553,6 +551,33 @@
         }
       });
     }
+    
+    // Remover integrante del proyecto con SweetAlert
+    $(document).on('click', '.remover-integrante-btn', function() {
+      const proyectoId = $(this).data('proyecto-id');
+      const habitanteId = $(this).data('habitante-id');
+      const habitanteNombre = $(this).data('habitante-nombre');
+      
+      Swal.fire({
+        title: '¿Remover integrante?',
+        html: `¿Estás seguro de que deseas remover a <strong>${habitanteNombre}</strong> del proyecto?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, remover',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/proyectos/${proyectoId}/remover-habitante/${habitanteId}/`;
+          form.innerHTML = '{% csrf_token %}';
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    });
     
     // Mensajes de Django
     $(document).ready(function () {
