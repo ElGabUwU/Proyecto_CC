@@ -451,12 +451,20 @@ class ConstanciaResidenciaForm(forms.ModelForm):
     def clean_finalidad(self):
         """Sanitiza el motivo a mayúsculas limpias para el documento legal"""
         return self.cleaned_data.get('finalidad', '').strip().upper()
-
+    
     def clean_fecha_documento(self):
-        """Validar que la fecha del documento no sea una incoherencia futura"""
+        """Validar que la fecha no sea futura ni mayor a 6 meses en el pasado"""
         fecha_doc = self.cleaned_data.get('fecha_documento')
-        if fecha_doc and fecha_doc > datetime.date.today():
-            raise ValidationError("La fecha formal de la constancia no puede ser una fecha futura.")
+        if fecha_doc:
+            # Validar Futuro
+            if fecha_doc > datetime.date.today():
+                raise ValidationError("La fecha formal de la constancia no puede ser una fecha futura.")
+            
+            # 🎯 LÍMITE Antiguedad (3 días atrás)
+            limite_pasado = datetime.date.today() - datetime.timedelta(days=3)
+            if fecha_doc < limite_pasado:
+                raise ValidationError("La fecha de emisión no puede ser mayor a 3 días desde la solicitud de la constancia.")
+                
         return fecha_doc
     
     def save(self, commit=True):
@@ -522,89 +530,107 @@ from django import forms
 from django.utils import timezone
 from .models import ActaReunion
 
+import re
+from django import forms
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from datetime import date
+from .models import ActaReunion
+
 class ActaReunionForm(forms.ModelForm):
     # 1. Campos explícitos para la interfaz estética del formulario (No alteran el modelo)
     titulo = forms.CharField(
         max_length=200,
+        label="Título de la Asamblea",
         widget=forms.TextInput(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
             'placeholder': 'Ej. Acta de Asamblea General Extraordinaria'
         })
     )
     fecha_reunion = forms.DateTimeField(
         initial=timezone.now,
+        label="Fecha y Hora de la Reunión",
         widget=forms.DateTimeInput(attrs={
-            'type': 'datetime-local',
-            'class': 'form-control bg-dark text-white border-secondary'
+            'type': 'datetime-local'
         })
     )
     lugar = forms.CharField(
         max_length=200,
+        label="Lugar del Encuentro",
         widget=forms.TextInput(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
             'placeholder': 'Ej. Cancha Techada del Sector Manuel Pulido Méndez'
         })
     )
     director_debate = forms.CharField(
         max_length=100,
+        label="Director de Debate",
         widget=forms.TextInput(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
             'placeholder': 'Nombre del vocero que dirige el debate'
         })
     )
     tipo_asamblea = forms.ChoiceField(
         choices=[('ORDINARIA', 'Ordinaria'), ('EXTRAORDINARIA', 'Extraordinaria')],
-        widget=forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary'})
+        label="Tipo de Asamblea",
+        widget=forms.Select()
     )
+    
     problema_identificado = forms.CharField(
+        label="Problemática Identificada (Máx. 150 palabras)",
         widget=forms.Textarea(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
             'rows': '3',
             'placeholder': 'Describa detalladamente la problemática planteada por la comunidad...'
         })
     )
+    
     propuesta_solucion = forms.CharField(
+        label="Propuesta de Solución / Proyecto (Máx. 150 palabras)",
         widget=forms.Textarea(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
             'rows': '3',
             'placeholder': 'Detalle el nombre del proyecto o acciones aprobadas para solventar...'
         })
     )
+    
+    # 🎯 VALIDACIÓN DE MONTO: Obliga a que sea un monto estrictamente positivo
     monto_estimado = forms.DecimalField(
         max_digits=12,
         decimal_places=2,
+        min_value=0.00,  # Bloquea números negativos
         required=False,
+        label="Monto Estimado de Financiamiento (Bs.)",
         widget=forms.NumberInput(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
-            'placeholder': '0.00 (Dejar vacío si no requiere financiamiento)'
+            'placeholder': '0.00 (Dejar vacío si no requiere financiamiento)',
+            'step': '0.01'
         })
     )
     banco_receptor = forms.CharField(
         max_length=100,
         required=False,
+        label="Banco Receptor",
         widget=forms.TextInput(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
             'placeholder': 'Ej. Banco de Venezuela (Si aplica)'
         })
     )
+    
+    # 🎯 LÍMITE DE INPUT HTML: maxlength="20" impide que el navegador escriba más dígitos
     cuenta_bancaria = forms.CharField(
         max_length=20,
         required=False,
+        label="Cuenta Bancaria Comunal",
         widget=forms.TextInput(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
-            'placeholder': '20 dígitos de la cuenta comunal'
+            'placeholder': '20 dígitos de la cuenta comunal',
+            'maxlength': '20',
+            'pattern': '[0-9]*' # Sugiere teclado numérico en móviles
         })
     )
     votos_favor = forms.IntegerField(
         min_value=0,
+        label="Votos a Favor",
         widget=forms.NumberInput(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
             'placeholder': 'Cantidad de ciudadanos que aprobaron'
         })
     )
     asistentes = forms.CharField(
+        label="Listado de Asistentes",
         widget=forms.Textarea(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
             'rows': '3',
             'placeholder': 'Nombre y apellido de los asistentes separados por comas...'
         })
@@ -612,44 +638,104 @@ class ActaReunionForm(forms.ModelForm):
 
     class Meta:
         model = ActaReunion
-        # Mapeamos únicamente los campos reales que existen en la base de datos de tu modelo
         fields = ['titulo', 'fecha_reunion', 'lugar', 'asistentes']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-
-    def save(self, commit=True):
-        # 1. Instanciamos el objeto sin guardarlo en la base de datos todavía
-        acta = super().save(commit=False)
         
-        # 2. Asociamos el usuario validador que extrajimos de la vista
+        # Aplicamos de forma dinámica tus estilos unificados oscuros
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs.update({'class': 'form-select bg-dark text-white border-secondary'})
+            else:
+                field.widget.attrs.update({'class': 'form-control bg-dark text-white border-secondary'})
+
+    # ==========================================================
+    # 🔒 SECCIÓN DE CANDADOS DE VALIDACIÓN (CLEAN)
+    # ==========================================================
+
+    def clean_titulo(self):
+        titulo = self.cleaned_data.get('titulo', '').strip()
+        # Verificar que no contenga números utilizando expresiones regulares
+        if re.search(r'\d', titulo):
+            raise ValidationError("El título de la asamblea no puede contener caracteres numéricos.")
+        return titulo.upper()
+
+    def clean_banco_receptor(self):
+        banco = self.cleaned_data.get('banco_receptor', '').strip()
+        if banco:
+            # Denegar si se ingresan números en el nombre de la entidad bancaria
+            if re.search(r'\d', banco):
+                raise ValidationError("El nombre del banco receptor no puede contener números.")
+        return banco.upper()
+
+    def clean_cuenta_bancaria(self):
+        cuenta = self.cleaned_data.get('cuenta_bancaria', '').strip()
+        if cuenta:
+            cuenta = cuenta.replace('-', '').replace(' ', '')
+            if not cuenta.isdigit():
+                raise ValidationError("La cuenta bancaria debe contener únicamente números.")
+            if len(cuenta) != 20:
+                raise ValidationError(f"La cuenta bancaria en Venezuela debe tener exactamente 20 dígitos (introdujo {len(cuenta)}).")
+        return cuenta
+
+    def clean_problema_identificado(self):
+        texto = self.cleaned_data.get('problema_identificado', '').strip()
+        palabras = texto.split()
+        if len(palabras) > 150:
+            raise ValidationError(f"La descripción del problema excede el límite de 150 palabras (actualmente tiene {len(palabras)}). Por favor, resuma el planteamiento.")
+        return texto
+
+    def clean_propuesta_solucion(self):
+        texto = self.cleaned_data.get('propuesta_solucion', '').strip()
+        palabras = texto.split()
+        if len(palabras) > 150:
+            raise ValidationError(f"La propuesta de solución excede el límite de 150 palabras (actualmente tiene {len(palabras)}). Reduzca la explicación del proyecto.")
+        return texto
+
+    def clean_lugar(self):
+        return self.cleaned_data.get('lugar', '').strip().upper()
+
+    def clean_director_debate(self):
+        director = self.cleaned_data.get('director_debate', '').strip()
+        if re.search(r'\d', director):
+            raise ValidationError("El nombre del director de debate no puede contener números.")
+        return director.upper()
+
+    # ==========================================================
+    # 💾 PROCESAMIENTO CORPORATIVO / S.I.N.C.O.
+    # ==========================================================
+    def save(self, commit=True):
+        acta = super().save(commit=False)
         acta.generado_por = self.user
         
-        # 3. Extraemos de forma segura los valores del formulario limpitos (cleaned_data)
         titulo = self.cleaned_data.get('titulo', 'REUNIÓN')
         lugar = self.cleaned_data.get('lugar', 'Comunidad')
         fecha_reunion = self.cleaned_data.get('fecha_reunion')
         tipo_asamblea = self.cleaned_data.get('tipo_asamblea', 'Ordinaria')
         director_debate = self.cleaned_data.get('director_debate', 'Vocero Autorizado')
-        problematica = self.cleaned_data.get('problematica', 'No especificada')
-        proyecto = self.cleaned_data.get('proyecto', 'No especificado')
+        
+        problematica = self.cleaned_data.get('problema_identificado', 'No especificada')
+        proyecto = self.cleaned_data.get('propuesta_solucion', 'No especificado')
         votos_favor = self.cleaned_data.get('votos_favor', 0)
-        asistentes = self.cleaned_data.get('asistentes', '') # Nombres separados por comas
+        asistentes = self.cleaned_data.get('asistentes', '')
         
-        # 🔑 AQUÍ EXTRAEMOS LOS CAMPOS DE LA INTERFAZ SIN ASIGNARLOS AL MODELO DIRECTAMENTE
-        monto_estimado = self.cleaned_data.get('monto_estimado', '0,00')
-        banco_receptor = self.cleaned_data.get('banco_receptor', 'No asignado')
-        cuenta_comunal = self.cleaned_data.get('cuenta_comunal', 'No asignada')
+        monto_estimado = self.cleaned_data.get('monto_estimado') or '0,00'
+        banco_receptor = self.cleaned_data.get('banco_receptor', 'NO ASIGNADO')
+        cuenta_comunal = self.cleaned_data.get('cuenta_bancaria') or 'NO ASIGNADA'
         
-        # Formatear la fecha para la redacción legal venezolana
+        meses = {
+            1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+            7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+        }
+        
         if fecha_reunion:
-            fecha_texto = fecha_reunion.strftime("Hoy %d del mes de %B del año %Y, siendo las %I:%M %p")
+            hora_12 = fecha_reunion.strftime("%I:%M %p")
+            fecha_texto = f"Hoy {fecha_reunion.day} del mes de {meses[fecha_reunion.month]} del año {fecha_reunion.year}, siendo las {hora_12}"
         else:
             fecha_texto = "En la fecha correspondiente"
 
-        # 🔑 COMPILACIÓN REDACCIONAL CONTEXTUAL (Formato Ministerio / SINCO)
-        # Aquí incrustamos el monto, banco y cuenta directamente en la narrativa unificada
         acta.contenido = (
             f"{fecha_texto}, constituidos en asamblea de ciudadanos y ciudadanas en el lugar: {lugar}, "
             f"como Máxima Instancia de Deliberación y Decisión para el ejercicio del Poder Popular; reunidos "
@@ -673,13 +759,21 @@ class BuenaConductaForm(forms.Form):
     familia = forms.ModelChoiceField(
         queryset=Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
         label="Seleccionar Grupo Familiar",
-        empty_label="Elija una familia..."
+        help_text="Seleccione la familia para filtrar los ciudadanos de manera ágil."
     )
     habitante = forms.ModelChoiceField(
         queryset=Habitante.objects.none(),
         label="Cargar Ciudadano",
         empty_label="Primero seleccione una familia..."
     )
+    
+    # 🎯 CORRECCIÓN INTEGRADA: Campo de fecha explícito que faltaba en Python
+    fecha_documento = forms.DateField(
+        label="Fecha del Documento",
+        initial=timezone.now,
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    
     tiempo_residencia = forms.CharField(
         label="Tiempo de Residencia en el Sector",
         max_length=100,
@@ -692,11 +786,10 @@ class BuenaConductaForm(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
-        # Extraemos 'user' de manera segura para mantener consistencia con tus otros forms
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Aplicamos tus mismos estilos visuales Glassmorphism de forma dinámica
+        # Aplicamos tus mismos estilos visuales de forma dinámica
         for field_name, field in self.fields.items():
             if isinstance(field.widget, forms.Select):
                 field.widget.attrs.update({'class': 'form-select text-black border-secondary', 'style': 'font-size: 14px;'})
@@ -713,7 +806,26 @@ class BuenaConductaForm(forms.Form):
         elif self.initial.get('familia'):
             familia_id = self.initial.get('familia')
             self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=familia_id, is_deleted=False).order_by('nombre')
+    
+    def clean_tiempo_residencia(self):
+        return self.cleaned_data.get('tiempo_residencia', '').strip().upper()
 
+    def clean_organismo_destino(self):
+        return self.cleaned_data.get('organismo_destino', '').strip().upper()
+
+    def clean_fecha_documento(self):
+        """Validar que la fecha formal no sea futura ni exceda los 3 días de antigüedad"""
+        fecha_doc = self.cleaned_data.get('fecha_documento')
+        if fecha_doc:
+            if fecha_doc > date.today():
+                raise ValidationError("La fecha formal de la constancia no puede ser una fecha futura.")
+            
+            # 🎯 LÍMITE DE ANTIGUEDAD (3 días atrás)
+            limite_pasado = date.today() - datetime.timedelta(days=3)
+            if fecha_doc < limite_pasado:
+                raise ValidationError("La fecha de emisión no puede ser mayor a 3 días desde la solicitud de la constancia.")
+                
+        return fecha_doc
 class ConstanciaFallecidoForm(forms.Form):
     """Formulario para la Constancia de Residencia Post-Mortem (Fallecidos)"""
     familia = forms.ModelChoiceField(
@@ -735,7 +847,6 @@ class ConstanciaFallecidoForm(forms.Form):
         max_length=150,
         widget=forms.TextInput(attrs={'placeholder': 'Ej. María Pérez'})
     )
-    # 🆕 AGREGADOS: Requeridos para rellenar de forma dinámica el PDF nativo
     solicitante_cedula = forms.CharField(
         label="Cédula del Familiar Solicitante",
         max_length=15,
@@ -766,7 +877,32 @@ class ConstanciaFallecidoForm(forms.Form):
         elif self.initial.get('familia'):
             family_id = self.initial.get('familia')
             self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=family_id, is_deleted=False).order_by('nombre')
+    
+    def clean_solicitante_defuncion(self):
+        return self.cleaned_data.get('solicitante_defuncion', '').strip().upper()
+
+    def clean_relacion_parentesco(self):
+        return self.cleaned_data.get('relacion_parentesco', '').strip().upper()
+
+    def clean_solicitante_cedula(self):
+        cedula = self.cleaned_data.get('solicitante_cedula', '').strip().replace('.', '')
+        if not cedula.isalnum():
+            raise ValidationError("La cédula del solicitante solo debe contener números o caracteres alfanuméricos válidos.")
+        return cedula
+
+    def clean_fecha_deceso(self):
+        """Validar consistencia cronológica del lamentable suceso"""
+        fecha_dec = self.cleaned_data.get('fecha_deceso')
+        if fecha_dec:
+            if fecha_dec > date.today():
+                raise ValidationError("La fecha del deceso no puede ser una fecha en el futuro.")
             
+            # 🎯 LÍMITE DE ANTIGÜEDAD (60 días atrás)
+            limite_pasado = date.today() - datetime.timedelta(days=60)
+            if fecha_dec < limite_pasado:
+                raise ValidationError("La fecha del deceso no puede ser mayor a 60 días desde la solicitud de la constancia.")
+                
+        return fecha_dec
 # ============================================
 # 🆕 NUEVO: Formularios para Gestión de Proyectos
 # ============================================
@@ -1174,3 +1310,50 @@ class AsignarParticipanteForm(forms.ModelForm):
             instance.save()
         return instance
         
+        
+# REPORTE FORM
+class ReporteDemograficoForm(forms.Form):
+    """
+    Formulario de control y sanitización avanzada para la 
+    configuración de Reportes Demográficos.
+    """
+    titulo_reporte = forms.CharField(
+        label="Nombre del Reporte",
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control bg-dark text-white border-secondary',
+            'placeholder': 'Ej: CENSO DE NIÑOS MAYORES A 15 AÑOS'
+        }),
+        help_text="Escriba un nombre descriptivo para identificarlo en el historial."
+    )
+    filtro_genero = forms.ChoiceField(
+        choices=[
+            ('TODOS', 'Todos (Masculino y Femenino)'),
+            ('M', 'Solo Masculino'),
+            ('F', 'Solo Femenino')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary'})
+    )
+    filtro_edad = forms.ChoiceField(
+        choices=[
+            ('TODOS', 'Todas las edades (Población general)'),
+            ('MENOR_12', 'Niños (Menores a 12 años)'),
+            ('MENOR_16', 'Adolescentes (Menores a 16 años)'),
+            ('TERCERA_EDAD', 'Adultos Mayores / 3ra Edad (>= 60 años)')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary'})
+    )
+
+    def clean_titulo_reporte(self):
+        titulo = self.cleaned_data.get('titulo_reporte', '').strip()
+
+        # 🔒 1. Validación de longitud mínima para que tenga sentido semántico
+        if len(titulo) < 6:
+            raise forms.ValidationError("El nombre del reporte es demasiado corto. Debe tener al menos 6 caracteres.")
+
+        # 🔒 2. Evitar que introduzcan solo números o símbolos maliciosos
+        if re.match(r'^[0-9\W_]+$', titulo):
+            raise forms.ValidationError("El nombre del reporte no puede contener únicamente números o símbolos.")
+
+        # 🔒 3. Sanitización institucional: Guardar limpio y en MAYÚSCULAS
+        return titulo.upper()

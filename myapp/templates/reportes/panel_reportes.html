@@ -19,22 +19,22 @@
   <style>
     /* Estilos réplica tomados de tus componentes de censo y familias */
     .custom-card-comunidad {
-      background: rgba(30, 41, 59, 0.45) !important;
+      background: rgb(255, 255, 255) !important;
       backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      border: 1px solid rgb(0, 0, 0) !important;
       border-radius: 12px !important;
     }
     .form-control, .form-select {
-      background-color: rgba(15, 23, 42, 0.6) !important;
-      border: 1px solid rgba(255, 255, 255, 0.15) !important;
-      color: #fff !important;
+      background-color: rgb(255, 255, 255) !important;
+      border: 1px solid rgb(0, 0, 0) !important;
+      color: #000000 !important;
     }
     .form-control:focus, .form-select:focus {
       border-color: #922323 !important;
       box-shadow: 0 0 0 0.25rem rgba(146, 35, 35, 0.25) !important;
     }
     .text-muted-custom {
-      color: #cbd5e1 !important;
+      color: #ffffff !important;
     }
   </style>
 </head>
@@ -50,24 +50,24 @@
         
         <div class="row mb-4">
           <div class="col-12">
-            <h2 class="h3 mb-0 text-white"><i class="fas fa-chart-pie me-2"></i> Módulo de Segmentación y Reportes Demográficos</h2>
-            <p class="text-muted-custom">Configure filtros en tiempo real para la extracción y descarga nominal de habitantes en formatos Excel y PDF.</p>
+            <h2 class="h3 mb-0 text-white"><i class="fas fa-chart-pie me-2"></i> Área de Estadística</h2>
+            <p class="text-muted-custom">Configure los filtros en tiempo real para la extracción y descarga de la nómina de habitantes registrados en el sistema actualmente</p>
           </div>
         </div>
 
         <div class="row">
           <div class="col-xl-4 col-lg-5 mb-4">
-            <div class="card custom-card-comunidad shadow text-white h-100">
+            <div class="card custom-card-comunidad shadow text-black h-100">
               <div class="card-header border-0 bg-transparent pt-3">
-                <h5 class="card-title mb-0"><i class="fas fa-filter text-danger me-2"></i> Nuevo Criterio de Reporte</h5>
+                <h5 class="card-title mb-0"><i class="fas fa-filter text-danger me-2"></i> Criterio del Reporte</h5>
               </div>
               <div class="card-body">
                 <form method="POST" action="{% url 'panel_reportes' %}">
                   {% csrf_token %}
                   <div class="mb-3">
                     <label class="form-label fw-semibold">Nombre del Reporte</label>
-                    <input type="text" name="titulo_reporte" class="form-control" placeholder="Ej: Niños del CLAP sector 1" required>
-                    <div class="form-text text-muted-custom" style="font-size: 0.8rem;">Escriba un nombre descriptivo para identificarlo en el historial.</div>
+                    <input type="text" name="titulo_reporte" class="form-control" placeholder="Ej: Censo de niños mayores a 15 años" required>
+                    <div class="form-text text-black" style="font-size: 0.8rem;">Escriba un nombre descriptivo para identificarlo en el historial.</div>
                   </div>
                   <div class="mb-3">
                     <label class="form-label fw-semibold">Filtro de Género</label>
@@ -95,25 +95,25 @@
           </div>
 
           <div class="col-xl-8 col-lg-7 mb-4">
-            <div class="card custom-card-comunidad shadow text-white h-100">
+            <div class="card custom-card-comunidad shadow text-black h-100">
               <div class="card-header border-0 bg-transparent pt-3">
                 <h5 class="card-title mb-0"><i class="fas fa-history text-info me-2"></i> Historial de Parámetros Registrados</h5>
               </div>
               <div class="card-body table-responsive">
-                <table class="table text-white align-middle mb-0" style="border-color: rgba(255,255,255,0.08);">
+                <table class="table text-white align-middle mb-0" style="border-color: rgb(0, 0, 0);">
                   <thead>
-                    <tr style="border-bottom: 2px solid rgba(255,255,255,0.15);">
-                      <th class="text-white" style="background: transparent;">Descripción / Configuración</th>
-                      <th class="text-white text-center" style="background: transparent;">Filtros Activos</th>
-                      <th class="text-white text-center" style="background: transparent;">Descargar</th>
+                    <tr style="border-bottom: 2px solid rgb(0, 0, 0);">
+                      <th class="text-black">Descripción / Configuración</th>
+                      <th class="text-black text-center">Filtros Activos</th>
+                      <th class="text-black text-center"">Descargar</th>
                     </tr>
                   </thead>
                   <tbody>
                     {% for r in reportes %}
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <tr style="border-bottom: 1px solid rgb(0, 0, 0);">
                       <td style="background: transparent;">
                         <span class="fw-bold">{{ r.titulo_reporte }}</span><br>
-                        <small style="color: #94a3b8;">Generado por: {{ r.solicitado_por.username }} | {{ r.fecha_generacion|date:"d/m/Y H:i" }}</small>
+                        <small style="color: #000000;">Generado por: {{ r.solicitado_por.username }} | {{ r.fecha_generacion|date:"d/m/Y H:i" }}</small>
                       </td>
                       <td class="text-center" style="background: transparent;">
                         <span class="badge bg-secondary px-2 py-1">{{ r.get_filtro_genero_display }}</span>
@@ -131,7 +131,7 @@
                     {% empty %}
                     <tr>
                       <td colspan="3" class="text-center py-5" style="background: transparent; color: #94a3b8; font-style: italic;">
-                        <i class="fas fa-info-circle me-1"></i> No se han configurado criterios de reportes demográficos. Use el formulario izquierdo para empezar.
+                        <i class="fas fa-info-circle me-1"></i> No se han configurado ningún criterio de reporte demográfico. Use el formulario izquierdo para empezar.
                       </td>
                     </tr>
                     {% endfor %}
