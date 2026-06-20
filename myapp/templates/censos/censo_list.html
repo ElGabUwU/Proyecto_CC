@@ -220,26 +220,31 @@
               <div class="col-md-12 mb-3">
                 <label for="id_nombre_censo" class="form-label">{{ censo_form.nombre_censo.label }}</label>
                 {{ censo_form.nombre_censo }}
+                <div class="invalid-feedback d-block" id="error_nombre_censo"></div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="id_fecha_inicio" class="form-label">{{ censo_form.fecha_inicio.label }}</label>
                 {{ censo_form.fecha_inicio }}
+                <div class="invalid-feedback d-block" id="error_fecha_inicio"></div>
               </div>
               <div class="col-md-6 mb-3">
                 <label for="id_fecha_fin" class="form-label">{{ censo_form.fecha_fin.label }}</label>
                 {{ censo_form.fecha_fin }}
+                <div class="invalid-feedback d-block" id="error_fecha_fin"></div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="id_categoria_enfoque" class="form-label">{{ censo_form.categoria_enfoque.label }}</label>
                 {{ censo_form.categoria_enfoque }}
+                <div class="invalid-feedback d-block" id="error_categoria_enfoque"></div>
               </div>
               <div class="col-md-6 mb-3">
                 <label for="id_estatus" class="form-label">{{ censo_form.estatus.label }}</label>
                 {{ censo_form.estatus }}
+                <div class="invalid-feedback d-block" id="error_estatus"></div>
               </div>
             </div>
             <div class="row">
@@ -250,6 +255,7 @@
                 <div class="text-end">
                   <small class="text-muted" id="descripcion-censo-counter">0/1000</small>
                 </div>
+                <div class="invalid-feedback d-block" id="error_descripcion"></div>
               </div>
             </div>
           </form>
@@ -279,6 +285,9 @@
         const form = document.getElementById('censoForm');
         const title = document.getElementById('modalCensoTitle');
         
+        // Limpiar errores anteriores
+        limpiarErrores();
+        
         if (censoId) {
           title.textContent = 'Editar Censo';
           form.action = `/censos/${censoId}/editar/`;
@@ -298,6 +307,74 @@
           form.action = "{% url 'crear_censo' %}";
           form.reset();
         }
+      });
+    }
+    
+    // Función para limpiar errores
+    function limpiarErrores() {
+      const fields = ['nombre_censo', 'fecha_inicio', 'fecha_fin', 'categoria_enfoque', 'estatus', 'descripcion'];
+      fields.forEach(field => {
+        const input = document.getElementById('id_' + field);
+        const errorDiv = document.getElementById('error_' + field);
+        if (input) input.classList.remove('is-invalid');
+        if (errorDiv) errorDiv.textContent = '';
+      });
+    }
+    
+    // Interceptar submit del formulario para manejar errores via AJAX
+    const censoForm = document.getElementById('censoForm');
+    if (censoForm) {
+      censoForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        limpiarErrores();
+        
+        const formData = new FormData(censoForm);
+        const actionUrl = censoForm.action;
+        
+        fetch(actionUrl, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Éxito: recargar página o redirigir
+            window.location.href = data.redirect_url || window.location.href;
+          } else {
+            // Mostrar errores
+            if (data.errors) {
+              for (const [field, errors] of Object.entries(data.errors)) {
+                const input = document.getElementById('id_' + field);
+                const errorDiv = document.getElementById('error_' + field);
+                if (input) {
+                  input.classList.add('is-invalid');
+                  if (errorDiv) {
+                    errorDiv.textContent = errors.join(', ');
+                  }
+                }
+              }
+            }
+            if (data.message) {
+              Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                html: data.message
+              });
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Ocurrió un error al procesar la solicitud.'
+          });
+        });
       });
     }
     

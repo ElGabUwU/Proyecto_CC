@@ -1,51 +1,5 @@
-```
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+(myapp/templates/censos/censo_list.html, myapp/views_censos.py are both source code files - no build artifacts, dependencies, or temp files in the changes)
 
-# Dependencies
-.venv/
-venv/
-env/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.DS_Store
-Thumbs.db
+```gitignore
 
-# Environment
-.env
-.env.local
-.env.*
-!.env.example
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Build and distribution artifacts
-dist/
-build/
-*.egg-info/
-.eggs/
-.installed.cfg
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg
 ```
