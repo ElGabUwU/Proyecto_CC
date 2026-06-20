@@ -119,6 +119,7 @@ urlpatterns = [
     
     # Exportación de Censos
     path('censos/<int:pk>/exportar/', views_censos.exportar_participantes_censo, name='exportar_participantes_censo'),
+    path('censos/<int:pk>/exportar-excel/', views_censos.exportar_participantes_censo_excel, name='exportar_participantes_censo_excel'),
     
     # Dashboard de Censos
     path('censos/dashboard/', views_censos.dashboard_censos, name='dashboard_censos'),

@@ -120,13 +120,50 @@ class FamiliaAPIView(View):
                     status=201
                 )
             except Exception as e:
+                # Manejo de errores específicos para mostrar mensajes claros al usuario
+                error_message = str(e)
+                if 'UNIQUE constraint failed' in error_message or 'unique' in error_message.lower():
+                    if 'cedula' in error_message.lower():
+                        return JsonResponse(
+                            {'error': 'Ya existe un habitante con esa cédula registrada en el sistema.'}, 
+                            status=400
+                        )
+                    elif 'vivienda' in error_message.lower() or 'nombre_familia' in error_message.lower():
+                        return JsonResponse(
+                            {'error': 'Ya existe una familia con ese nombre o número de vivienda registrado.'}, 
+                            status=400
+                        )
                 return JsonResponse(
-                    {'error': str(e)}, 
+                    {'error': f'Error al guardar los datos: {error_message}'}, 
                     status=500
                 )
         else:
+            # Procesar errores del serializer para mostrar mensajes específicos
+            errors = serializer.errors
+            error_messages = []
+            
+            if 'habitantes' in errors:
+                for idx, habitante_error in enumerate(errors['habitantes']):
+                    if 'cedula' in habitante_error:
+                        error_messages.append(f'Habitante {idx + 1}: Ya existe un registro con esa cédula.')
+                    if 'nombre' in habitante_error:
+                        error_messages.append(f'Habitante {idx + 1}: El nombre es requerido.')
+            
+            if 'nombre_familia' in errors:
+                error_messages.append('El nombre de la familia es requerido.')
+            if 'vivienda' in errors:
+                error_messages.append('El número de vivienda es requerido y debe ser único.')
+            if 'direccion' in errors:
+                error_messages.append('La dirección es requerida.')
+            
+            # Si no hay errores específicos, agregar los errores genéricos
+            if not error_messages:
+                for field, field_errors in errors.items():
+                    for error in field_errors:
+                        error_messages.append(f'{field}: {error}')
+            
             return JsonResponse(
-                {'errors': serializer.errors}, 
+                {'errors': error_messages}, 
                 status=400
             )
     
@@ -168,13 +205,50 @@ class FamiliaAPIView(View):
                     status=200
                 )
             except Exception as e:
+                # Manejo de errores específicos para mostrar mensajes claros al usuario
+                error_message = str(e)
+                if 'UNIQUE constraint failed' in error_message or 'unique' in error_message.lower():
+                    if 'cedula' in error_message.lower():
+                        return JsonResponse(
+                            {'error': 'Ya existe un habitante con esa cédula registrada en el sistema.'}, 
+                            status=400
+                        )
+                    elif 'vivienda' in error_message.lower() or 'nombre_familia' in error_message.lower():
+                        return JsonResponse(
+                            {'error': 'Ya existe una familia con ese nombre o número de vivienda registrado.'}, 
+                            status=400
+                        )
                 return JsonResponse(
-                    {'error': str(e)}, 
+                    {'error': f'Error al guardar los datos: {error_message}'}, 
                     status=500
                 )
         else:
+            # Procesar errores del serializer para mostrar mensajes específicos
+            errors = serializer.errors
+            error_messages = []
+            
+            if 'habitantes' in errors:
+                for idx, habitante_error in enumerate(errors['habitantes']):
+                    if 'cedula' in habitante_error:
+                        error_messages.append(f'Habitante {idx + 1}: Ya existe un registro con esa cédula.')
+                    if 'nombre' in habitante_error:
+                        error_messages.append(f'Habitante {idx + 1}: El nombre es requerido.')
+            
+            if 'nombre_familia' in errors:
+                error_messages.append('El nombre de la familia es requerido.')
+            if 'vivienda' in errors:
+                error_messages.append('El número de vivienda es requerido y debe ser único.')
+            if 'direccion' in errors:
+                error_messages.append('La dirección es requerida.')
+            
+            # Si no hay errores específicos, agregar los errores genéricos
+            if not error_messages:
+                for field, field_errors in errors.items():
+                    for error in field_errors:
+                        error_messages.append(f'{field}: {error}')
+            
             return JsonResponse(
-                {'errors': serializer.errors}, 
+                {'errors': error_messages}, 
                 status=400
             )
     
@@ -469,9 +543,29 @@ def editar_ingreso(request, id):
         form = IngresoComunalForm(request.POST, request.FILES, instance=ingreso, user=request.user)
         if form.is_valid():
             ingreso = form.save()
+            
+            # Si es una petición asíncrona (AJAX)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Ingreso de Bs. {ingreso.monto} actualizado exitosamente.'
+                }, status=200)
+            
             messages.success(request, f'Ingreso de Bs. {ingreso.monto} actualizado exitosamente.')
             return redirect('finanzas')
         else:
+            # Si falla y es AJAX, extraemos los mensajes del diccionario de forma limpia
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errores_dict = {}
+                for campo, lista_errores in form.errors.get_json_data().items():
+                    # Extraemos el primer texto de error para simplificar la lectura en JS
+                    errores_dict[campo] = lista_errores[0]['message']
+                
+                return JsonResponse({
+                    'success': False,
+                    'errors': errores_dict
+                }, status=400)
+            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = IngresoComunalForm(instance=ingreso, user=request.user)
@@ -549,9 +643,29 @@ def editar_egreso(request, id):
         form = EgresoComunalForm(request.POST, request.FILES, instance=egreso, user=request.user)
         if form.is_valid():
             egreso = form.save()
+            
+            # Si es una petición asíncrona (AJAX)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Egreso de Bs. {egreso.monto} actualizado exitosamente.'
+                }, status=200)
+            
             messages.success(request, f'Egreso de Bs. {egreso.monto} actualizado exitosamente.')
             return redirect('finanzas')
         else:
+            # Si falla y es AJAX, extraemos los mensajes del diccionario de forma limpia
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errores_dict = {}
+                for campo, lista_errores in form.errors.get_json_data().items():
+                    # Extraemos el primer texto de error para simplificar la lectura en JS
+                    errores_dict[campo] = lista_errores[0]['message']
+                
+                return JsonResponse({
+                    'success': False,
+                    'errors': errores_dict
+                }, status=400)
+            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = EgresoComunalForm(instance=egreso, user=request.user)
@@ -590,7 +704,7 @@ def api_ingreso(request, id):
         'concepto': ingreso.concepto,
         'monto': str(ingreso.monto),
         'observaciones': ingreso.observaciones or '',
-        'soporte_digital_nombre': ingreso.soporte_digital.name if ingreso.soporte_digital else None,
+        'soporte': ingreso.soporte_digital.name if ingreso.soporte_digital else '',
     }
     
     return JsonResponse(data)
@@ -611,13 +725,17 @@ def api_egreso(request, id):
         'monto': str(egreso.monto),
         'beneficiario': egreso.beneficiario or '',
         'observaciones': egreso.observaciones or '',
-        'soporte_nombre': egreso.soporte.name if egreso.soporte else None,
+        'soporte': egreso.soporte.name if egreso.soporte else '',
     }
     
     return JsonResponse(data)
 
 
 def exportar_finanzas(request):
+    """
+    Genera un archivo Excel profesional (.xlsx) con los movimientos financieros
+    filtrados, aplicando el mismo estilizado institucional de los reportes demográficos.
+    """
     fecha_inicio_str = request.GET.get('fecha_inicio', '')
     fecha_fin_str = request.GET.get('fecha_fin', '')
     
@@ -637,26 +755,211 @@ def exportar_finanzas(request):
     elif fecha_fin:
         ingresos_qs = ingresos_qs.filter(fecha__lte=fecha_fin)
         egresos_qs = egresos_qs.filter(fecha__lte=fecha_fin)
-        
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="finanzas_{datetime.now().strftime("%Y%m%d")}.csv"'
     
-    # 👇 DELIMITADOR ; para que Excel en español abra las columnas correctamente
-    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_NONNUMERIC)
-    writer.writerow(['Fecha', 'Tipo', 'Concepto', 'Monto (Bs.)', 'Responsable', 'Beneficiario', 'Observaciones'])
+    # 1. Inicializamos el libro de openpyxl
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Movimientos Financieros"
     
+    # Habilitar líneas de cuadrícula visibles
+    ws.views.sheetView[0].showGridLines = True
+    
+    # 2. Definición de Estilos Institucionales (Azul y Gris)
+    fuente_titulo = Font(name='Arial', size=14, bold=True, color='0F2027')
+    fuente_subtitulo = Font(name='Arial', size=10, italic=True, color='555555')
+    fuente_cabecera = Font(name='Arial', size=11, bold=True, color='FFFFFF')
+    fuente_datos = Font(name='Arial', size=10)
+    
+    fill_cabecera = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
+    fill_cebra = PatternFill(start_color='F2F4F7', end_color='F2F4F7', fill_type='solid')
+    
+    borde_delgado = Border(
+        left=Side(style='thin', color='CCCCCC'),
+        right=Side(style='thin', color='CCCCCC'),
+        top=Side(style='thin', color='CCCCCC'),
+        bottom=Side(style='thin', color='CCCCCC')
+    )
+    
+    # 3. Construcción del Encabezado del Formato
+    ws['A1'] = "CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ"
+    ws['A1'].font = fuente_titulo
+    ws['A2'] = "REPORTE DE MOVIMIENTOS FINANCIEROS"
+    ws['A2'].font = Font(name='Arial', size=12, bold=True, color='1F4E78')
+    
+    # Detalle del período filtrado
+    periodo_txt = ""
+    if fecha_inicio and fecha_fin:
+        periodo_txt = f"Período: {fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}"
+    elif fecha_inicio:
+        periodo_txt = f"Período: Desde {fecha_inicio.strftime('%d/%m/%Y')}"
+    elif fecha_fin:
+        periodo_txt = f"Período: Hasta {fecha_fin.strftime('%d/%m/%Y')}"
+    else:
+        periodo_txt = "Período: Todos los registros"
+    
+    ws['A3'] = periodo_txt
+    ws['A3'].font = fuente_subtitulo
+    ws['A4'] = f"Fecha de exportación: {date.today().strftime('%d/%m/%Y')}"
+    ws['A4'].font = fuente_subtitulo
+    
+    # Espacio en blanco
+    ws.append([]) 
+    
+    # 4. Cabecera de la Tabla de Datos
+    columnas = ['N°', 'Fecha', 'Tipo', 'Concepto', 'Monto (Bs.)', 'Responsable', 'Beneficiario', 'Observaciones']
+    ws.append(columnas)
+    
+    fila_cabecera = 6
+    for col_num, columna in enumerate(columnas, 1):
+        celda = ws.cell(row=fila_cabecera, column=col_num)
+        celda.font = fuente_cabecera
+        celda.fill = fill_cabecera
+        celda.alignment = Alignment(horizontal='center', vertical='center')
+        celda.border = borde_delgado
+    
+    # 5. Llenado de los Registros
+    total_ingresos = 0
+    total_egresos = 0
+    contador = 0
+    
+    # Primero los ingresos
     for ing in ingresos_qs:
-        writer.writerow([
-            ing.fecha.strftime('%d/%m/%Y'), 'INGRESO', ing.concepto,
-            f"{ing.monto:.2f}", ing.responsable.get_full_name() or ing.responsable.username,
-            '', ing.observaciones or ''
-        ])
+        contador += 1
+        monto = ing.monto or 0
+        total_ingresos += monto
+        
+        fila_datos = [
+            contador,
+            ing.fecha.strftime('%d/%m/%Y'),
+            'INGRESO',
+            ing.concepto,
+            monto,
+            ing.responsable.get_full_name() or ing.responsable.username,
+            '',
+            ing.observaciones or ''
+        ]
+        
+        ws.append(fila_datos)
+        num_fila_actual = ws.max_row
+        
+        # Aplicamos estilos a las celdas de datos
+        for col_num in range(1, len(fila_datos) + 1):
+            celda = ws.cell(row=num_fila_actual, column=col_num)
+            celda.font = fuente_datos
+            celda.border = borde_delgado
+            
+            # Formato cebra intercalado
+            if contador % 2 == 0:
+                celda.fill = fill_cebra
+            
+            # Alineación específica según el tipo de dato
+            if col_num in [1, 2, 3, 5]:
+                celda.alignment = Alignment(horizontal='center')
+            elif col_num == 5:  # Monto
+                celda.number_format = '#,##0.00'
+            else:
+                celda.alignment = Alignment(horizontal='left')
+    
+    # Luego los egresos
     for eg in egresos_qs:
-        writer.writerow([
-            eg.fecha.strftime('%d/%m/%Y'), 'EGRESO', eg.concepto,
-            f"{eg.monto:.2f}", eg.responsable.get_full_name() or eg.responsable.username,
-            eg.beneficiario or '', eg.observaciones or ''
-        ])
+        contador += 1
+        monto = eg.monto or 0
+        total_egresos += monto
+        
+        fila_datos = [
+            contador,
+            eg.fecha.strftime('%d/%m/%Y'),
+            'EGRESO',
+            eg.concepto,
+            monto,
+            eg.responsable.get_full_name() or eg.responsable.username,
+            eg.beneficiario or '',
+            eg.observaciones or ''
+        ]
+        
+        ws.append(fila_datos)
+        num_fila_actual = ws.max_row
+        
+        # Aplicamos estilos a las celdas de datos
+        for col_num in range(1, len(fila_datos) + 1):
+            celda = ws.cell(row=num_fila_actual, column=col_num)
+            celda.font = fuente_datos
+            celda.border = borde_delgado
+            
+            # Formato cebra intercalado
+            if contador % 2 == 0:
+                celda.fill = fill_cebra
+            
+            # Alineación específica según el tipo de dato
+            if col_num in [1, 2, 3, 5]:
+                celda.alignment = Alignment(horizontal='center')
+            elif col_num == 5:  # Monto
+                celda.number_format = '#,##0.00'
+            else:
+                celda.alignment = Alignment(horizontal='left')
+    
+    # 6. Filas de Totales
+    ws.append([])  # Espacio en blanco
+    
+    fila_total = ws.max_row + 1
+    
+    # Total Ingresos (en verde)
+    ws.cell(row=fila_total, column=4, value="TOTAL INGRESOS:").font = Font(name='Arial', size=11, bold=True, color='1F4E78')
+    ws.cell(row=fila_total, column=5, value=total_ingresos).font = Font(name='Arial', size=11, bold=True, color='2E7D32')
+    ws.cell(row=fila_total, column=5).number_format = '#,##0.00'
+    ws.cell(row=fila_total, column=5).fill = PatternFill(start_color='E8F5E9', end_color='E8F5E9', fill_type='solid')
+    
+    # Total Egresos (en rojo)
+    fila_total += 1
+    ws.cell(row=fila_total, column=4, value="TOTAL EGRESOS:").font = Font(name='Arial', size=11, bold=True, color='1F4E78')
+    ws.cell(row=fila_total, column=5, value=total_egresos).font = Font(name='Arial', size=11, bold=True, color='C62828')
+    ws.cell(row=fila_total, column=5).number_format = '#,##0.00'
+    ws.cell(row=fila_total, column=5).fill = PatternFill(start_color='FFEBEE', end_color='FFEBEE', fill_type='solid')
+    
+    # Saldo (en azul)
+    fila_total += 1
+    saldo = total_ingresos - total_egresos
+    ws.cell(row=fila_total, column=4, value="SALDO:").font = Font(name='Arial', size=11, bold=True, color='1F4E78')
+    ws.cell(row=fila_total, column=5, value=saldo).font = Font(name='Arial', size=11, bold=True, color='1F4E78')
+    ws.cell(row=fila_total, column=5).number_format = '#,##0.00'
+    ws.cell(row=fila_total, column=5).fill = PatternFill(start_color='E3F2FD', end_color='E3F2FD', fill_type='solid')
+    
+    # Aplicar bordes a las filas de totales
+    for col_num in range(4, 6):
+        celda = ws.cell(row=fila_total - 2, column=col_num)
+        celda.border = borde_delgado
+        celda = ws.cell(row=fila_total - 1, column=col_num)
+        celda.border = borde_delgado
+        celda = ws.cell(row=fila_total, column=col_num)
+        celda.border = borde_delgado
+    
+    # 7. Autoajuste automático del ancho de las columnas
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            # Ignoramos las primeras filas de títulos para que no ensanchen de más la columna A
+            if cell.row < 6:
+                continue
+            if cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+    
+    # Ajustes manuales mínimos para columnas largas
+    ws.column_dimensions['D'].width = 35  # Concepto
+    ws.column_dimensions['H'].width = 35  # Observaciones
+    
+    # 8. Guardado en Buffer RAM y respuesta HTTP directa de descarga
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="Finanzas_{datetime.now().strftime("%Y%m%d")}.xlsx"'
+    
     return response
 
 

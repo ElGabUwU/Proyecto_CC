@@ -121,16 +121,16 @@
                       <td title="{{ ingreso.observaciones }}">
                         {{ ingreso.observaciones|truncatechars:40|default:"-" }}
                       </td>
-                      <td>{{ ingreso.responsable.get_full_name|default:"Usuario eliminado" }}</td>
+                      <td>{{ ingreso.responsable|default:"Usuario eliminado" }}</td>
                       <td>
                         <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
                                 data-bs-target="#ingresoModal" data-ingreso-id="{{ ingreso.id }}">
                           <i class="fas fa-edit"></i>
                         </button>
-                        <form action="{% url 'eliminar_ingreso' ingreso.id %}" method="post" style="display:inline;">
+                        <form action="{% url 'eliminar_ingreso' ingreso.id %}" method="post" style="display:inline;" id="form-delete-ingreso-{{ ingreso.id }}">
                           {% csrf_token %}
-                          <button type="submit" class="btn btn-sm btn-danger" 
-                                  onclick="return confirm('¿Estás seguro de eliminar este ingreso?')">
+                          <button type="button" class="btn btn-sm btn-danger btn-delete-ingreso" 
+                                  data-ingreso-id="{{ ingreso.id }}" data-ingreso-concepto="{{ ingreso.concepto }}">
                             <i class="fas fa-trash"></i>
                           </button>
                         </form>
@@ -197,16 +197,16 @@
                       <td title="{{ egreso.observaciones }}">
                         {{ egreso.observaciones|truncatechars:40|default:"-" }}
                       </td>
-                      <td>{{ egreso.responsable.get_full_name|default:"Usuario eliminado" }}</td>
+                      <td>{{ egreso.responsable|default:"Usuario eliminado" }}</td>
                       <td>
                         <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
                                 data-bs-target="#egresoModal" data-egreso-id="{{ egreso.id }}">
                           <i class="fas fa-edit"></i>
                         </button>
-                        <form action="{% url 'eliminar_egreso' egreso.id %}" method="post" style="display:inline;">
+                        <form action="{% url 'eliminar_egreso' egreso.id %}" method="post" style="display:inline;" id="form-delete-egreso-{{ egreso.id }}">
                           {% csrf_token %}
-                          <button type="submit" class="btn btn-sm btn-danger" 
-                                  onclick="return confirm('¿Estás seguro de eliminar este egreso?')">
+                          <button type="button" class="btn btn-sm btn-danger btn-delete-egreso" 
+                                  data-egreso-id="{{ egreso.id }}" data-egreso-concepto="{{ egreso.concepto }}">
                             <i class="fas fa-trash"></i>
                           </button>
                         </form>
@@ -306,7 +306,7 @@
                         <td class="{% if movimiento.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
                           Bs. {{ movimiento.monto|floatformat:2 }}
                         </td>
-                        <td>{{ movimiento.responsable.get_full_name }}</td>
+                        <td>{{ movimiento.responsable }}</td>
                       </tr>
                       {% empty %}
                       <tr>
@@ -457,10 +457,18 @@
                 for (const [key, value] of Object.entries(data)) {
                   const input = formIngreso.querySelector(`[name="${key}"]`);
                   if (input) {
-                    input.value = value !== null ? value : '';
+                    input.value = value !== null && value !== '' ? value : '';
                   }
                 }
-              });
+                // Manejo especial para campos select
+                if (data.tipo_ingreso) {
+                  const selectTipo = formIngreso.querySelector('[name="tipo_ingreso"]');
+                  if (selectTipo) {
+                    selectTipo.value = data.tipo_ingreso;
+                  }
+                }
+              })
+              .catch(err => console.error('Error al cargar datos del ingreso:', err));
           } else {
             title.textContent = 'Registrar Ingreso';
             formIngreso.action = "{% url 'crear_ingreso' %}";
@@ -494,8 +502,8 @@
             } else {
               let msgError = "Por favor corrija los errores en el formulario.";
               if (res.body.errors) {
-                if (res.body.errors.fecha_ingreso) {
-                  let err = res.body.errors.fecha_ingreso;
+                if (res.body.errors.fecha) {
+                  let err = res.body.errors.fecha;
                   msgError = Array.isArray(err) ? err[0] : (typeof err === 'object' ? err.message : err);
                 } else {
                   const primerCampoConError = Object.keys(res.body.errors)[0];
@@ -537,10 +545,18 @@
                 for (const [key, value] of Object.entries(data)) {
                   const input = formEgreso.querySelector(`[name="${key}"]`);
                   if (input) {
-                    input.value = value !== null ? value : '';
+                    input.value = value !== null && value !== '' ? value : '';
                   }
                 }
-              });
+                // Manejo especial para campos select
+                if (data.tipo_egreso) {
+                  const selectTipo = formEgreso.querySelector('[name="tipo_egreso"]');
+                  if (selectTipo) {
+                    selectTipo.value = data.tipo_egreso;
+                  }
+                }
+              })
+              .catch(err => console.error('Error al cargar datos del egreso:', err));
           } else {
             title.textContent = 'Registrar Egreso';
             formEgreso.action = "{% url 'crear_egreso' %}";
@@ -637,6 +653,48 @@
       });
       {% endfor %}
       {% endif %}
+      
+      // 🔹 SweetAlert para eliminar ingreso
+      $('.btn-delete-ingreso').on('click', function() {
+        const ingresoId = $(this).data('ingreso-id');
+        const ingresoConcepto = $(this).data('ingreso-concepto');
+        
+        Swal.fire({
+          title: '¿Eliminar ingreso?',
+          text: `¿Estás seguro de que deseas eliminar el ingreso "${ingresoConcepto}"? Esta acción no se puede deshacer.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            $(`#form-delete-ingreso-${ingresoId}`).submit();
+          }
+        });
+      });
+      
+      // 🔹 SweetAlert para eliminar egreso
+      $('.btn-delete-egreso').on('click', function() {
+        const egresoId = $(this).data('egreso-id');
+        const egresoConcepto = $(this).data('egreso-concepto');
+        
+        Swal.fire({
+          title: '¿Eliminar egreso?',
+          text: `¿Estás seguro de que deseas eliminar el egreso "${egresoConcepto}"? Esta acción no se puede deshacer.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            $(`#form-delete-egreso-${egresoId}`).submit();
+          }
+        });
+      });
     });
 </script>
 </body>
