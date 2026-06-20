@@ -252,7 +252,8 @@ class ActaReunion(models.Model):
     titulo = models.CharField(max_length=200, verbose_name="Título del Acta")
     fecha_reunion = models.DateTimeField(verbose_name="Fecha y Hora de la Reunión")
     lugar = models.CharField(max_length=200, verbose_name="Lugar de la Reunión")
-    asistentes = models.TextField(verbose_name="Lista de Asistentes")  # Separados por comas o texto libre
+    asistentes = models.TextField(verbose_name="Lista de Asistentes")
+    cuenta_bancaria = models.CharField(max_length=20, null=True, blank=True, verbose_name="Cuenta Bancaria Comunal")
     contenido = models.TextField(verbose_name="Contenido del Acta")
     acuerdos = models.TextField(blank=True, verbose_name="Acuerdos Tomados")
     generado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Generado por")
