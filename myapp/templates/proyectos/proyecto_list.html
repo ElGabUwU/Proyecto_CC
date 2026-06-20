@@ -265,6 +265,10 @@
               <div class="col-md-12 mb-3">
                 <label for="id_descripcion" class="form-label">{{ proyecto_form.descripcion.label }}</label>
                 {{ proyecto_form.descripcion }}
+                <small class="text-muted d-block mt-1">{{ proyecto_form.descripcion.help_text }}</small>
+                <div class="text-end">
+                  <small class="text-muted" id="descripcion-counter">0/1000</small>
+                </div>
               </div>
             </div>
           </form>

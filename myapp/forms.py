@@ -1002,9 +1002,11 @@ class ProyectoForm(forms.ModelForm):
         widget=forms.Textarea(attrs={
             'class': 'form-control',
             'rows': 4,
-            'placeholder': 'Describa los objetivos, alcance y detalles del proyecto...'
+            'placeholder': 'Describa los objetivos, alcance y detalles del proyecto...',
+            'maxlength': '1000',
+            'id': 'id_descripcion_proyecto'
         }),
-        help_text="Descripción detallada del proyecto"
+        help_text="Descripción detallada del proyecto (máximo 1000 caracteres)"
     )
     
     monto_estimado = forms.DecimalField(
@@ -1193,9 +1195,11 @@ class CensoForm(forms.ModelForm):
         widget=forms.Textarea(attrs={
             'class': 'form-control',
             'rows': 4,
-            'placeholder': 'Describa el objetivo y alcance del censo...'
+            'placeholder': 'Describa el objetivo y alcance del censo...',
+            'maxlength': '1000',
+            'id': 'id_descripcion_censo'
         }),
-        help_text="Descripción detallada del censo"
+        help_text="Descripción detallada del censo (máximo 1000 caracteres)"
     )
     
     categoria_enfoque = forms.ChoiceField(

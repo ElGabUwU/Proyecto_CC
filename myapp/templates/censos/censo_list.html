@@ -246,6 +246,10 @@
               <div class="col-md-12 mb-3">
                 <label for="id_descripcion" class="form-label">{{ censo_form.descripcion.label }}</label>
                 {{ censo_form.descripcion }}
+                <small class="text-muted d-block mt-1">{{ censo_form.descripcion.help_text }}</small>
+                <div class="text-end">
+                  <small class="text-muted" id="descripcion-censo-counter">0/1000</small>
+                </div>
               </div>
             </div>
           </form>

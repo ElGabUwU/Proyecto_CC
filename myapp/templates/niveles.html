@@ -394,24 +394,20 @@
               method="POST"
               action="{% url 'niveles' course.id %}"
             >
-              {% csrf_token %} {% if form.errors %}
-              <div class="alert alert-danger">
-                Por favor corrija los siguientes errores:
-                <ul>
-                  {% for field in form %} {% if field.errors %}
-                  <li>{{ field.label }}: {{ field.errors|striptags }}</li>
-                  {% endif %} {% endfor %}
-                </ul>
-              </div>
-              {% endif %}
+              {% csrf_token %}
 
               <div class="mb-3">
                 <label
                   for="{{ form.level_name.id_for_label }}"
                   class="form-label"
-                  >Nombre Del Nivel:</label
+                  >Nombre Del Nivel: <span class="text-danger">*</span></label
                 >
                 {{ form.level_name }}
+                {% if form.level_name.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.level_name.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
               </div>
               <div class="mb-3">
                 <label
@@ -420,12 +416,22 @@
                   >Descripción:</label
                 >
                 {{ form.description }}
+                {% if form.description.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.description.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
               </div>
               <div class="mb-3">
                 <label for="{{ form.duration.id_for_label }}" class="form-label"
                   >Duración (horas):</label
                 >
                 {{ form.duration }}
+                {% if form.duration.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.duration.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
               </div>
             </form>
           </div>

@@ -1,25 +1,51 @@
-# Examples 1:
-
-# Example 2 (Project with artifacts):
-#Compiled and build artifacts
-*.pyc
+```
+# Python
 __pycache__/
-*.o
-*.obj
-dist/
-build/
-#Dependencies
+*.pyc
+*.pyo
+*.pyd
+
+# Dependencies
 .venv/
 venv/
-node_modules/
-#Logs and temp files
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
-*.tmp
-*.swp
-#Environment
+.DS_Store
+Thumbs.db
+
+# Environment
 .env
 .env.local
 .env.*
-#Editors
+!.env.example
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*.tmp
+
+# Build and distribution artifacts
+dist/
+build/
+*.egg-info/
+.eggs/
+.installed.cfg
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+```
