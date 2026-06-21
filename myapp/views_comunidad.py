@@ -559,6 +559,7 @@ def editar_egreso(request, id):
     context = {
         'form': form,
         'egreso': egreso,
+        'egreso_form': form,  # Agregado para compatibilidad con el template
     }
     return render(request, 'finanzas.html', context)
 
