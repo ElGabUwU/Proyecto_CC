@@ -3,11 +3,10 @@
 __pycache__/
 *.o
 *.obj
-*.class
-*.exe
-*.dll
 *.so
-*.a
+*.dll
+*.exe
+*.class
 *.out
 
 # Dependencies
@@ -35,12 +34,13 @@ target/
 # Editors
 .vscode/
 .idea/
+*.bak
 
 # System files
 .DS_Store
 Thumbs.db
 
-# Coverage
+# Coverage reports
 coverage/
 htmlcov/
 .coverage
