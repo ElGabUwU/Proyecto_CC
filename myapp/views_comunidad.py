@@ -180,6 +180,18 @@ class FamiliaAPIView(View):
             else:
                 # Manejar errores de validación del serializer (incluye ValidationError)
                 errors = serializer.errors
+                
+                # Verificar si hay un error de cédula duplicada en non_field_errors
+                non_field_errors = errors.get('non_field_errors', [])
+                if non_field_errors:
+                    for error_msg in non_field_errors:
+                        if isinstance(error_msg, str) and 'ya pertenece a un ciudadano censado' in error_msg:
+                            # Retornar el mensaje específico directamente
+                            return JsonResponse(
+                                {'errors': {'detail': error_msg}}, 
+                                status=400
+                            )
+                
                 return JsonResponse(
                     {'errors': errors}, 
                     status=400
@@ -188,6 +200,22 @@ class FamiliaAPIView(View):
             # Capturar la excepción ValidationError lanzada desde el validate() del serializer
             # El mensaje ya viene en formato JSON seguro desde el serializer
             error_message = e.message_list[0] if hasattr(e, 'message_list') and len(e.message_list) > 0 else str(e)
+            
+            # Verificar si el mensaje es un JSON string (array serializado)
+            import json as json_module
+            try:
+                if isinstance(error_message, str) and error_message.strip().startswith('['):
+                    lista_errores = json_module.loads(error_message)
+                    # Buscar específicamente el error de cédula duplicada
+                    for msg in lista_errores:
+                        if isinstance(msg, str) and 'ya pertenece a un ciudadano censado' in msg:
+                            return JsonResponse(
+                                {'errors': {'detail': msg}}, 
+                                status=400
+                            )
+            except:
+                pass
+            
             return JsonResponse(
                 {'errors': {'detail': error_message}}, 
                 status=400
