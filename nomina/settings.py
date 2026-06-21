@@ -208,3 +208,19 @@ LOGGING = {
         },
     },
 }
+
+# ============================================
+# CONFIGURACIÓN DE DJANGO REST FRAMEWORK
+# ============================================
+
+INSTALLED_APPS.append('rest_framework')
+
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'myapp.utils.custom_exception_handler',
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ],
+}
