@@ -4,6 +4,7 @@ ARQUITECTURA NUEVA: Vista unificada maestro-detalle para Familias y Habitantes.
 """
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum, Count
@@ -22,6 +23,7 @@ from openpyxl.utils import get_column_letter
 import json
 from datetime import date, datetime, timedelta
 import os
+import re
 import base64
 import io
 from xhtml2pdf import pisa
@@ -121,50 +123,13 @@ class FamiliaAPIView(View):
                     status=201
                 )
             except Exception as e:
-                # Manejo de errores específicos para mostrar mensajes claros al usuario
-                error_message = str(e)
-                if 'UNIQUE constraint failed' in error_message or 'unique' in error_message.lower():
-                    if 'cedula' in error_message.lower():
-                        return JsonResponse(
-                            {'error': 'Ya existe un habitante con esa cédula registrada en el sistema.'}, 
-                            status=400
-                        )
-                    elif 'vivienda' in error_message.lower() or 'nombre_familia' in error_message.lower():
-                        return JsonResponse(
-                            {'error': 'Ya existe una familia con ese nombre o número de vivienda registrado.'}, 
-                            status=400
-                        )
                 return JsonResponse(
-                    {'error': f'Error al guardar los datos: {error_message}'}, 
+                    {'error': str(e)}, 
                     status=500
                 )
         else:
-            # Procesar errores del serializer para mostrar mensajes específicos
-            errors = serializer.errors
-            error_messages = []
-            
-            if 'habitantes' in errors:
-                for idx, habitante_error in enumerate(errors['habitantes']):
-                    if 'cedula' in habitante_error:
-                        error_messages.append(f'Habitante {idx + 1}: Ya existe un registro con esa cédula.')
-                    if 'nombre' in habitante_error:
-                        error_messages.append(f'Habitante {idx + 1}: El nombre es requerido.')
-            
-            if 'nombre_familia' in errors:
-                error_messages.append('El nombre de la familia es requerido.')
-            if 'vivienda' in errors:
-                error_messages.append('El número de vivienda es requerido y debe ser único.')
-            if 'direccion' in errors:
-                error_messages.append('La dirección es requerida.')
-            
-            # Si no hay errores específicos, agregar los errores genéricos
-            if not error_messages:
-                for field, field_errors in errors.items():
-                    for error in field_errors:
-                        error_messages.append(f'{field}: {error}')
-            
             return JsonResponse(
-                {'errors': error_messages}, 
+                {'errors': serializer.errors}, 
                 status=400
             )
     
@@ -206,50 +171,13 @@ class FamiliaAPIView(View):
                     status=200
                 )
             except Exception as e:
-                # Manejo de errores específicos para mostrar mensajes claros al usuario
-                error_message = str(e)
-                if 'UNIQUE constraint failed' in error_message or 'unique' in error_message.lower():
-                    if 'cedula' in error_message.lower():
-                        return JsonResponse(
-                            {'error': 'Ya existe un habitante con esa cédula registrada en el sistema.'}, 
-                            status=400
-                        )
-                    elif 'vivienda' in error_message.lower() or 'nombre_familia' in error_message.lower():
-                        return JsonResponse(
-                            {'error': 'Ya existe una familia con ese nombre o número de vivienda registrado.'}, 
-                            status=400
-                        )
                 return JsonResponse(
-                    {'error': f'Error al guardar los datos: {error_message}'}, 
+                    {'error': str(e)}, 
                     status=500
                 )
         else:
-            # Procesar errores del serializer para mostrar mensajes específicos
-            errors = serializer.errors
-            error_messages = []
-            
-            if 'habitantes' in errors:
-                for idx, habitante_error in enumerate(errors['habitantes']):
-                    if 'cedula' in habitante_error:
-                        error_messages.append(f'Habitante {idx + 1}: Ya existe un registro con esa cédula.')
-                    if 'nombre' in habitante_error:
-                        error_messages.append(f'Habitante {idx + 1}: El nombre es requerido.')
-            
-            if 'nombre_familia' in errors:
-                error_messages.append('El nombre de la familia es requerido.')
-            if 'vivienda' in errors:
-                error_messages.append('El número de vivienda es requerido y debe ser único.')
-            if 'direccion' in errors:
-                error_messages.append('La dirección es requerida.')
-            
-            # Si no hay errores específicos, agregar los errores genéricos
-            if not error_messages:
-                for field, field_errors in errors.items():
-                    for error in field_errors:
-                        error_messages.append(f'{field}: {error}')
-            
             return JsonResponse(
-                {'errors': error_messages}, 
+                {'errors': serializer.errors}, 
                 status=400
             )
     
@@ -464,16 +392,9 @@ def finanzas(request):
     egresos_periodo = egresos_qs.aggregate(Sum('monto'))['monto__sum'] or 0
     saldo_periodo = ingresos_periodo - egresos_periodo
     
-    # 🔹 DATOS PARA PESTAÑAS (con paginación)
-    # Paginación para ingresos
-    paginator_ingresos = Paginator(ingresos_qs.order_by('-fecha', '-fecha_registro'), 10)
-    page_number_ingresos = request.GET.get('page_ingresos', 1)
-    ingresos_page = paginator_ingresos.get_page(page_number_ingresos)
-    
-    # Paginación para egresos
-    paginator_egresos = Paginator(egresos_qs.order_by('-fecha', '-fecha_registro'), 10)
-    page_number_egresos = request.GET.get('page_egresos', 1)
-    egresos_page = paginator_egresos.get_page(page_number_egresos)
+    # 🔹 DATOS PARA PESTAÑAS (limitados a 50 para rendimiento)
+    ingresos_tab = ingresos_qs.order_by('-fecha', '-fecha_registro')[:50]
+    egresos_tab = egresos_qs.order_by('-fecha', '-fecha_registro')[:50]
     
     # 🔹 DATOS PARA REPORTE (SIN límite, usa todo el queryset filtrado)
     movimientos_periodo = []
@@ -493,8 +414,8 @@ def finanzas(request):
         'saldo_actual': saldo_actual, 'total_ingresos': total_ingresos, 'total_egresos': total_egresos,
         'total_ingresos_periodo': ingresos_periodo, 'total_egresos_periodo': egresos_periodo,
         'saldo_periodo': saldo_periodo,
-        'ingresos': ingresos_page,       # 👈 Página actual para pestañas
-        'egresos': egresos_page,         # 👈 Página actual para pestañas
+        'ingresos': ingresos_tab,       # 👈 Solo para pestañas
+        'egresos': egresos_tab,         # 👈 Solo para pestañas
         'movimientos_periodo': movimientos_periodo, # 👈 Para reporte completo
         'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin,
         'ingreso_form': IngresoComunalForm(user=request.user),
@@ -551,29 +472,9 @@ def editar_ingreso(request, id):
         form = IngresoComunalForm(request.POST, request.FILES, instance=ingreso, user=request.user)
         if form.is_valid():
             ingreso = form.save()
-            
-            # Si es una petición asíncrona (AJAX)
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Ingreso de Bs. {ingreso.monto} actualizado exitosamente.'
-                }, status=200)
-            
             messages.success(request, f'Ingreso de Bs. {ingreso.monto} actualizado exitosamente.')
             return redirect('finanzas')
         else:
-            # Si falla y es AJAX, extraemos los mensajes del diccionario de forma limpia
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                errores_dict = {}
-                for campo, lista_errores in form.errors.get_json_data().items():
-                    # Extraemos el primer texto de error para simplificar la lectura en JS
-                    errores_dict[campo] = lista_errores[0]['message']
-                
-                return JsonResponse({
-                    'success': False,
-                    'errors': errores_dict
-                }, status=400)
-            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = IngresoComunalForm(instance=ingreso, user=request.user)
@@ -651,29 +552,9 @@ def editar_egreso(request, id):
         form = EgresoComunalForm(request.POST, request.FILES, instance=egreso, user=request.user)
         if form.is_valid():
             egreso = form.save()
-            
-            # Si es una petición asíncrona (AJAX)
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Egreso de Bs. {egreso.monto} actualizado exitosamente.'
-                }, status=200)
-            
             messages.success(request, f'Egreso de Bs. {egreso.monto} actualizado exitosamente.')
             return redirect('finanzas')
         else:
-            # Si falla y es AJAX, extraemos los mensajes del diccionario de forma limpia
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                errores_dict = {}
-                for campo, lista_errores in form.errors.get_json_data().items():
-                    # Extraemos el primer texto de error para simplificar la lectura en JS
-                    errores_dict[campo] = lista_errores[0]['message']
-                
-                return JsonResponse({
-                    'success': False,
-                    'errors': errores_dict
-                }, status=400)
-            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = EgresoComunalForm(instance=egreso, user=request.user)
@@ -712,7 +593,7 @@ def api_ingreso(request, id):
         'concepto': ingreso.concepto,
         'monto': str(ingreso.monto),
         'observaciones': ingreso.observaciones or '',
-        'soporte': ingreso.soporte_digital.name if ingreso.soporte_digital else '',
+        'soporte_digital_nombre': ingreso.soporte_digital.name if ingreso.soporte_digital else None,
     }
     
     return JsonResponse(data)
@@ -733,17 +614,13 @@ def api_egreso(request, id):
         'monto': str(egreso.monto),
         'beneficiario': egreso.beneficiario or '',
         'observaciones': egreso.observaciones or '',
-        'soporte': egreso.soporte.name if egreso.soporte else '',
+        'soporte_nombre': egreso.soporte.name if egreso.soporte else None,
     }
     
     return JsonResponse(data)
 
 
 def exportar_finanzas(request):
-    """
-    Genera un archivo Excel profesional (.xlsx) con los movimientos financieros
-    filtrados, aplicando el mismo estilizado institucional de los reportes demográficos.
-    """
     fecha_inicio_str = request.GET.get('fecha_inicio', '')
     fecha_fin_str = request.GET.get('fecha_fin', '')
     
@@ -763,221 +640,32 @@ def exportar_finanzas(request):
     elif fecha_fin:
         ingresos_qs = ingresos_qs.filter(fecha__lte=fecha_fin)
         egresos_qs = egresos_qs.filter(fecha__lte=fecha_fin)
+        
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="finanzas_{datetime.now().strftime("%Y%m%d")}.csv"'
     
-    # 1. Inicializamos el libro de openpyxl
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Movimientos Financieros"
+    # 👇 DELIMITADOR ; para que Excel en español abra las columnas correctamente
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_NONNUMERIC)
+    writer.writerow(['Fecha', 'Tipo', 'Concepto', 'Monto (Bs.)', 'Responsable', 'Beneficiario', 'Observaciones'])
     
-    # Habilitar líneas de cuadrícula visibles
-    ws.views.sheetView[0].showGridLines = True
-    
-    # 2. Definición de Estilos Institucionales (Azul y Gris)
-    fuente_titulo = Font(name='Arial', size=14, bold=True, color='0F2027')
-    fuente_subtitulo = Font(name='Arial', size=10, italic=True, color='555555')
-    fuente_cabecera = Font(name='Arial', size=11, bold=True, color='FFFFFF')
-    fuente_datos = Font(name='Arial', size=10)
-    
-    fill_cabecera = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
-    fill_cebra = PatternFill(start_color='F2F4F7', end_color='F2F4F7', fill_type='solid')
-    
-    borde_delgado = Border(
-        left=Side(style='thin', color='CCCCCC'),
-        right=Side(style='thin', color='CCCCCC'),
-        top=Side(style='thin', color='CCCCCC'),
-        bottom=Side(style='thin', color='CCCCCC')
-    )
-    
-    # 3. Construcción del Encabezado del Formato
-    ws['A1'] = "CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ"
-    ws['A1'].font = fuente_titulo
-    ws['A2'] = "REPORTE DE MOVIMIENTOS FINANCIEROS"
-    ws['A2'].font = Font(name='Arial', size=12, bold=True, color='1F4E78')
-    
-    # Detalle del período filtrado
-    periodo_txt = ""
-    if fecha_inicio and fecha_fin:
-        periodo_txt = f"Período: {fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}"
-    elif fecha_inicio:
-        periodo_txt = f"Período: Desde {fecha_inicio.strftime('%d/%m/%Y')}"
-    elif fecha_fin:
-        periodo_txt = f"Período: Hasta {fecha_fin.strftime('%d/%m/%Y')}"
-    else:
-        periodo_txt = "Período: Todos los registros"
-    
-    ws['A3'] = periodo_txt
-    ws['A3'].font = fuente_subtitulo
-    ws['A4'] = f"Fecha de exportación: {date.today().strftime('%d/%m/%Y')}"
-    ws['A4'].font = fuente_subtitulo
-    
-    # Espacio en blanco
-    ws.append([]) 
-    
-    # 4. Cabecera de la Tabla de Datos
-    columnas = ['N°', 'Fecha', 'Tipo', 'Concepto', 'Monto (Bs.)', 'Responsable', 'Beneficiario', 'Observaciones']
-    ws.append(columnas)
-    
-    fila_cabecera = 6
-    for col_num, columna in enumerate(columnas, 1):
-        celda = ws.cell(row=fila_cabecera, column=col_num)
-        celda.font = fuente_cabecera
-        celda.fill = fill_cabecera
-        celda.alignment = Alignment(horizontal='center', vertical='center')
-        celda.border = borde_delgado
-    
-    # 5. Llenado de los Registros
-    total_ingresos = 0
-    total_egresos = 0
-    contador = 0
-    
-    # Primero los ingresos
     for ing in ingresos_qs:
-        contador += 1
-        monto = ing.monto or 0
-        total_ingresos += monto
-        
-        fila_datos = [
-            contador,
-            ing.fecha.strftime('%d/%m/%Y'),
-            'INGRESO',
-            ing.concepto,
-            monto,
-            ing.responsable.get_full_name() or ing.responsable.username,
-            '',
-            ing.observaciones or ''
-        ]
-        
-        ws.append(fila_datos)
-        num_fila_actual = ws.max_row
-        
-        # Aplicamos estilos a las celdas de datos
-        for col_num in range(1, len(fila_datos) + 1):
-            celda = ws.cell(row=num_fila_actual, column=col_num)
-            celda.font = fuente_datos
-            celda.border = borde_delgado
-            
-            # Formato cebra intercalado
-            if contador % 2 == 0:
-                celda.fill = fill_cebra
-            
-            # Alineación específica según el tipo de dato
-            if col_num in [1, 2, 3, 5]:
-                celda.alignment = Alignment(horizontal='center')
-            elif col_num == 5:  # Monto
-                celda.number_format = '#,##0.00'
-            else:
-                celda.alignment = Alignment(horizontal='left')
-    
-    # Luego los egresos
+        writer.writerow([
+            ing.fecha.strftime('%d/%m/%Y'), 'INGRESO', ing.concepto,
+            f"{ing.monto:.2f}", ing.responsable.get_full_name() or ing.responsable.username,
+            '', ing.observaciones or ''
+        ])
     for eg in egresos_qs:
-        contador += 1
-        monto = eg.monto or 0
-        total_egresos += monto
-        
-        fila_datos = [
-            contador,
-            eg.fecha.strftime('%d/%m/%Y'),
-            'EGRESO',
-            eg.concepto,
-            monto,
-            eg.responsable.get_full_name() or eg.responsable.username,
-            eg.beneficiario or '',
-            eg.observaciones or ''
-        ]
-        
-        ws.append(fila_datos)
-        num_fila_actual = ws.max_row
-        
-        # Aplicamos estilos a las celdas de datos
-        for col_num in range(1, len(fila_datos) + 1):
-            celda = ws.cell(row=num_fila_actual, column=col_num)
-            celda.font = fuente_datos
-            celda.border = borde_delgado
-            
-            # Formato cebra intercalado
-            if contador % 2 == 0:
-                celda.fill = fill_cebra
-            
-            # Alineación específica según el tipo de dato
-            if col_num in [1, 2, 3, 5]:
-                celda.alignment = Alignment(horizontal='center')
-            elif col_num == 5:  # Monto
-                celda.number_format = '#,##0.00'
-            else:
-                celda.alignment = Alignment(horizontal='left')
-    
-    # 6. Filas de Totales
-    ws.append([])  # Espacio en blanco
-    
-    fila_total = ws.max_row + 1
-    
-    # Total Ingresos (en verde)
-    ws.cell(row=fila_total, column=4, value="TOTAL INGRESOS:").font = Font(name='Arial', size=11, bold=True, color='1F4E78')
-    ws.cell(row=fila_total, column=5, value=total_ingresos).font = Font(name='Arial', size=11, bold=True, color='2E7D32')
-    ws.cell(row=fila_total, column=5).number_format = '#,##0.00'
-    ws.cell(row=fila_total, column=5).fill = PatternFill(start_color='E8F5E9', end_color='E8F5E9', fill_type='solid')
-    
-    # Total Egresos (en rojo)
-    fila_total += 1
-    ws.cell(row=fila_total, column=4, value="TOTAL EGRESOS:").font = Font(name='Arial', size=11, bold=True, color='1F4E78')
-    ws.cell(row=fila_total, column=5, value=total_egresos).font = Font(name='Arial', size=11, bold=True, color='C62828')
-    ws.cell(row=fila_total, column=5).number_format = '#,##0.00'
-    ws.cell(row=fila_total, column=5).fill = PatternFill(start_color='FFEBEE', end_color='FFEBEE', fill_type='solid')
-    
-    # Saldo (en azul)
-    fila_total += 1
-    saldo = total_ingresos - total_egresos
-    ws.cell(row=fila_total, column=4, value="SALDO:").font = Font(name='Arial', size=11, bold=True, color='1F4E78')
-    ws.cell(row=fila_total, column=5, value=saldo).font = Font(name='Arial', size=11, bold=True, color='1F4E78')
-    ws.cell(row=fila_total, column=5).number_format = '#,##0.00'
-    ws.cell(row=fila_total, column=5).fill = PatternFill(start_color='E3F2FD', end_color='E3F2FD', fill_type='solid')
-    
-    # Aplicar bordes a las filas de totales
-    for col_num in range(4, 6):
-        celda = ws.cell(row=fila_total - 2, column=col_num)
-        celda.border = borde_delgado
-        celda = ws.cell(row=fila_total - 1, column=col_num)
-        celda.border = borde_delgado
-        celda = ws.cell(row=fila_total, column=col_num)
-        celda.border = borde_delgado
-    
-    # 7. Autoajuste automático del ancho de las columnas
-    for col in ws.columns:
-        max_len = 0
-        col_letter = get_column_letter(col[0].column)
-        for cell in col:
-            # Ignoramos las primeras filas de títulos para que no ensanchen de más la columna A
-            if cell.row < 6:
-                continue
-            if cell.value:
-                max_len = max(max_len, len(str(cell.value)))
-        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
-    
-    # Ajustes manuales mínimos para columnas largas
-    ws.column_dimensions['D'].width = 35  # Concepto
-    ws.column_dimensions['H'].width = 35  # Observaciones
-    
-    # 8. Guardado en Buffer RAM y respuesta HTTP directa de descarga
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = f'attachment; filename="Finanzas_{datetime.now().strftime("%Y%m%d")}.xlsx"'
-    
+        writer.writerow([
+            eg.fecha.strftime('%d/%m/%Y'), 'EGRESO', eg.concepto,
+            f"{eg.monto:.2f}", eg.responsable.get_full_name() or eg.responsable.username,
+            eg.beneficiario or '', eg.observaciones or ''
+        ])
     return response
 
 
 # ============================================
 # Vistas para Documentación
 # ============================================
-
-# # Nota: Conserva o ajusta tus decoradores de permisos según los manejes en tu app
-# def vocero_secretaria_required(view_func):
-#     return view_func  # Si usas @admin_required, puedes dejarlo pasar para la beta
 
 def documentacion(request):
     """
@@ -986,22 +674,13 @@ def documentacion(request):
     # 💡 CORRECCIÓN: Cambiado .ordering() por .order_by()
     familias = Familia.objects.filter(is_deleted=False).order_by('nombre_familia')
     
-    # Paginación para constancias (10 por página)
-    constancias_list = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')
-    paginator_constancias = Paginator(constancias_list, 10)
-    page_constancias = request.GET.get('page_constancias')
-    constancias_page = paginator_constancias.get_page(page_constancias)
-    
-    # Paginación para actas (10 por página)
-    actas_list = ActaReunion.objects.all().order_by('-fecha_reunion')
-    paginator_actas = Paginator(actas_list, 10)
-    page_actas = request.GET.get('page_actas')
-    actas_page = paginator_actas.get_page(page_actas)
+    constancias_recientes = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:8]
+    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:5]
     
     context = {
         'familias': familias,
-        'constancias_recientes': constancias_page,
-        'actas_recientes': actas_page,
+        'constancias_recientes': constancias_recientes,
+        'actas_recientes': actas_recientes,
         'constancia_form': ConstanciaResidenciaForm(user=request.user),
         'acta_form': ActaReunionForm(user=request.user),
         'buena_conducta_form': BuenaConductaForm(user=request.user),
@@ -1009,11 +688,11 @@ def documentacion(request):
     }
     return render(request, 'documentacion.html', context)
 
-
 def generar_constancia(request):
     """
     Vista optimizada para AJAX: Procesa la constancia, retorna JSON de éxito 
     para actualizar la tabla histórica sin abrir pestañas automáticas.
+    Muestra mensajes de error detallados basados en la validación del Form.
     """
     if request.method == 'POST':
         form = ConstanciaResidenciaForm(request.POST, user=request.user)
@@ -1026,7 +705,7 @@ def generar_constancia(request):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': True,
-                    'message': f'La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito y se ha añadido al historial.'
+                    'message': f'La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito.'
                 }, status=200)
                 
             messages.success(request, f'¡Excelente! La constancia de residencia para <strong>{nombre_ciudadano}</strong> se ha generado con éxito.')
@@ -1052,12 +731,9 @@ def generar_constancia(request):
             mensaje_final_errores = "<br>".join(errores_visibles)
             
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                errores_dict = {}
-                for campo, lista_errores in form.errors.get_json_data().items():
-                    errores_dict[campo] = lista_errores[0]['message']
-                
                 return JsonResponse({
                     'success': False,
+                    'message': f'No se pudo procesar la solicitud:<br>{mensaje_final_errores}',
                     'errors': errores_dict
                 }, status=400)
                 
@@ -1141,8 +817,14 @@ def generar_buena_conducta(request):
     return redirect('documentacion')
 
 def generar_post_mortem(request):
+    """
+    Procesa y valida la Constancia Post-Mortem mediante AJAX/Nativo.
+    Aplica estrictamente el candado de los 60 días desde el deceso.
+    """
     if request.method == 'POST':
-        form = ConstanciaFallecidoForm(request.POST, user=request.user)
+        # 🎯 CORREGIDO: Eliminamos 'user=' para evitar conflictos de firma en el __init__
+        form = ConstanciaFallecidoForm(request.POST)
+        
         if form.is_valid():
             fallecido = form.cleaned_data.get('habitante')
             familia = fallecido.familia
@@ -1152,7 +834,7 @@ def generar_post_mortem(request):
             relacion_parentesco = form.cleaned_data.get('relacion_parentesco')
             
             logo_base64 = ""
-            ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_Logo.png')
+            ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_logo.png')
             if os.path.exists(ruta_logo):
                 with open(ruta_logo, "rb") as image_file:
                     logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
@@ -1164,23 +846,43 @@ def generar_post_mortem(request):
                 'solicitante_nombre': solicitante_defuncion,
                 'solicitante_cedula': solicitante_cedula,
                 'relacion_parentesco': relacion_parentesco,
-                'fecha_emision': date.today(),
+                'fecha_emision': date.today(), # La fecha de emisión de la carta sí es hoy
                 'logo_pdf': logo_base64,
             }
+            
             html_string = render_to_string('reportes/post_mortem_pdf.html', context)
             response = HttpResponse(content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="Constancia_PostMortem_{fallecido.cedula}.pdf"'
+            
             pisa_status = pisa.CreatePDF(src=html_string, dest=response, encoding='utf-8')
             if not pisa_status.err:
                 return response
-            messages.error(request, "Error técnico al compilar el PDF Post-Mortem.")
+                
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': 'Error técnico interno al compilar la estructura del PDF.'}, status=500)
+            messages.error(request, "Error técnico al compilar el PDF.")
             return redirect('documentacion')
+            
         else:
-            errores = "<br>".join([f"• <b>{form.fields[campo].label}:</b> {msg[0]}" for campo, msg in form.errors.items()])
-            messages.error(request, f"Errores en el formulario Post-Mortem:<br>{errores}")
+            # 🎯 EXTRACCIÓN AVANZADA DE ERRORES PARA SWEETALERT2
+            errores_lista = []
+            for campo, msg in form.errors.get_json_data().items():
+                label = form.fields[campo].label if campo in form.fields else "Global"
+                errores_lista.append(f"• <b>{label}:</b> {msg[0]['message']}")
+            errores_html = "<br>".join(errores_lista)
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': f'No se pudo generar el documento:<br>{errores_html}'
+                }, status=400)
+                
+            messages.error(request, f"Errores en el formulario:<br>{errores_html}")
             return redirect('documentacion')
+            
     return redirect('documentacion')
 
+@login_required
 @transaction.atomic
 def generar_acta(request):
     if request.method == 'POST':
@@ -1364,7 +1066,7 @@ def panel_reportes(request):
                 filtro_edad=edad,
                 solicitado_por=request.user
             )
-            messages.success(request, f"Filtro '{titulo}' creado con éxito. Ya puedes descargar los reportes.")
+            messages.success(request, f"Filtro {titulo} creado con éxito. Ya puedes descargar los reportes.")
             return redirect('panel_reportes')
         else:
             messages.error(request, "Debe indicarle un título descriptivo al reporte.")
