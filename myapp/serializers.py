@@ -431,8 +431,7 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
             # Ofuscamos los nombres de campos de la BD y variables internas serializando a un array simple
             json_seguro = json.dumps(lista_mensajes_seguros)
             
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied(json_seguro)
+            raise DjangoValidationError(json_seguro)
 
         return attrs
 
