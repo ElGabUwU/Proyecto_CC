@@ -141,13 +141,13 @@
                   <!-- Descripción -->
                   <div class="row mb-4">
                     <div class="col-md-12">
-                      <label for="id_descripcion" class="form-label">
+                      <label for="id_descripcion_censo" class="form-label">
                         <i class="fas fa-align-left me-1"></i>Descripción <span class="text-danger">*</span>
                       </label>
                       <textarea name="descripcion" id="id_descripcion_censo" rows="5"
                                 class="form-control {% if form.descripcion.errors %}is-invalid{% endif %}"
                                 placeholder="Describa el objetivo y alcance del censo..." 
-                                required maxlength="1000">{{ form.descripcion.value|default:'' }}</textarea>
+                                required maxlength="1000">{% if form.descripcion.value %}{{ form.descripcion.value }}{% endif %}</textarea>
                       <div class="d-flex justify-content-between align-items-center mt-1">
                         <small class="text-muted">Descripción detallada del censo (máximo 1000 caracteres)</small>
                         <small class="text-muted" id="contador_descripcion_censo">
