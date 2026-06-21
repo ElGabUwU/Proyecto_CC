@@ -656,10 +656,43 @@
         });
       })
       .catch(error => {
+        // Verificar si es un error de permisos específico (cedula duplicada en otra vivienda)
         if (error.isValidationError && error.errors) {
-          let errorHtml = '<div class="text-start mt-2" style="font-size: 0.95rem; max-height: 350px; overflow-y: auto;">';
-          
           let contenidoRaw = error.errors.detail || error.errors.non_field_errors || error.errors;
+          
+          // Manejar caso donde el backend envía un string con el mensaje de PermissionDenied
+          if (typeof contenidoRaw === 'string') {
+            if (contenidoRaw.includes('ya pertenece a un ciudadano censado')) {
+              Swal.fire({
+                icon: 'warning',
+                title: 'Cédula Duplicada',
+                html: `<div class="text-start"><p>${contenidoRaw}</p></div>`,
+                background: '#1e293b',
+                color: '#fff',
+                confirmButtonColor: '#f59e0b'
+              });
+              return;
+            }
+          }
+          
+          // Manejar caso donde viene en un array
+          if (Array.isArray(contenidoRaw)) {
+            for (let msg of contenidoRaw) {
+              if (typeof msg === 'string' && msg.includes('ya pertenece a un ciudadano censado')) {
+                Swal.fire({
+                  icon: 'warning',
+                  title: 'Cédula Duplicada',
+                  html: `<div class="text-start"><p>${msg}</p></div>`,
+                  background: '#1e293b',
+                  color: '#fff',
+                  confirmButtonColor: '#f59e0b'
+                });
+                return;
+              }
+            }
+          }
+          
+          let errorHtml = '<div class="text-start mt-2" style="font-size: 0.95rem; max-height: 350px; overflow-y: auto;">';
           
           if (Array.isArray(contenidoRaw) && contenidoRaw.length > 0 && typeof contenidoRaw[0] !== 'string') {
             contenidoRaw = contenidoRaw[0];
