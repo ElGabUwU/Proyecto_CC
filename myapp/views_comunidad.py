@@ -532,9 +532,26 @@ def editar_egreso(request, id):
         form = EgresoComunalForm(request.POST, request.FILES, instance=egreso, user=request.user)
         if form.is_valid():
             egreso = form.save()
+            # Si es AJAX, devolvemos JSON exitoso
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Egreso de Bs. {egreso.monto} actualizado exitosamente.'
+                })
             messages.success(request, f'Egreso de Bs. {egreso.monto} actualizado exitosamente.')
             return redirect('finanzas')
         else:
+            # Si falla y es AJAX, capturamos el diccionario de errores con sus códigos específicos
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errores_dict = {}
+                for campo, lista_errores in form.errors.get_json_data().items():
+                    # Tomamos solo el texto del primer error de cada campo
+                    errores_dict[campo] = lista_errores[0]['message']
+                return JsonResponse({
+                    'success': False,
+                    'errors': errores_dict
+                }, status=400)
+            
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = EgresoComunalForm(instance=egreso, user=request.user)
