@@ -627,20 +627,39 @@
 
       fetch(url, {
         method: method,
-        headers: { // 💡 Corregido typo 'headeSrs' anterior
+        headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': '{{ csrf_token }}'
         },
         body: JSON.stringify(payload)
       })
       .then(response => {
+        // Guardar referencia del response para leer texto si falla JSON
+        const responseClone = response.clone();
+        
         if (!response.ok) {
-          return response.json().then(errData => {
-            throw { isValidationError: true, errors: errData };
-          }).catch(err => {
-            if (err.isValidationError) throw err;
-            throw new Error('Error crítico en el servidor');
-          });
+          // Intentar obtener JSON, si falla obtener texto
+          return response.json()
+            .then(errData => {
+              throw { isValidationError: true, errors: errData };
+            })
+            .catch(parseErr => {
+              // Si no es JSON, intentar leer como texto para capturar mensajes de error
+              return responseClone.text().then(textData => {
+                // Buscar mensaje de duplicación de cédula en el texto
+                const match = textData.match(/La c[ée]dula ['"](\d+)['"] ya pertenece a un ciudadano censado en otra vivienda/i);
+                if (match) {
+                  throw { 
+                    isValidationError: true, 
+                    errors: { 
+                      non_field_errors: [`La V-${match[1]} ya pertenece a un ciudadano censado en otra vivienda.`] 
+                    } 
+                  };
+                }
+                // Si no hay mensaje específico, lanzar error genérico
+                throw new Error('Error crítico en el servidor');
+              });
+            });
         }
         return response.json();
       })
@@ -656,10 +675,37 @@
         });
       })
       .catch(error => {
+        console.log("Error capturado:", error);
+        
+        // Caso 1: Error de validación con estructura conocida
         if (error.isValidationError && error.errors) {
-          let errorHtml = '<div class="text-start mt-2" style="font-size: 0.95rem; max-height: 350px; overflow-y: auto;">';
-          
           let contenidoRaw = error.errors.detail || error.errors.non_field_errors || error.errors;
+          
+          // Manejar caso donde detail es un array con mensajes de error
+          if (Array.isArray(contenidoRaw)) {
+            contenidoRaw = contenidoRaw.join('\n');
+          }
+          
+          // Verificar si hay errores específicos de duplicación de cédula
+          let mensajeDuplicacion = null;
+          if (typeof contenidoRaw === 'string') {
+            const match = contenidoRaw.match(/La c[ée]dula ['"](\d+)['"] ya pertenece a un ciudadano censado en otra vivienda/i);
+            if (match) {
+              mensajeDuplicacion = `La V-${match[1]} ya pertenece a un ciudadano censado en otra vivienda.`;
+            }
+          }
+          
+          if (mensajeDuplicacion) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Error de Duplicación',
+              text: mensajeDuplicacion,
+              background: '#1e293b',
+              color: '#fff',
+              confirmButtonColor: '#f59e0b'
+            });
+            return;
+          }
           
           if (Array.isArray(contenidoRaw) && contenidoRaw.length > 0 && typeof contenidoRaw[0] !== 'string') {
             contenidoRaw = contenidoRaw[0];
