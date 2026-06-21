@@ -1315,6 +1315,14 @@ class CensoForm(forms.ModelForm):
         # Si es un nuevo censo, preestablecer la fecha de inicio
         if not self.instance.pk:
             self.fields['fecha_inicio'].initial = date.today()
+        
+        # Asegurar que el campo descripcion tenga el id correcto en el widget
+        if 'descripcion' in self.fields:
+            self.fields['descripcion'].widget.attrs['id'] = 'id_descripcion_censo'
+        # Asegurar que el widget textarea tenga el valor correcto al renderizar
+        if 'descripcion' in self.fields and self.instance.pk:
+            # Forzar que el valor se establezca en el widget
+            self.fields['descripcion'].widget.attrs['value'] = str(self.instance.descripcion) if self.instance.descripcion else ''
     
     def clean_fecha_fin(self):
         """Validar que la fecha de fin sea posterior a la fecha de inicio"""
