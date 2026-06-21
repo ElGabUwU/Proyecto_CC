@@ -17,6 +17,7 @@ from django.views import View
 from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.urls import reverse
+from rest_framework.exceptions import PermissionDenied
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -122,16 +123,36 @@ class FamiliaAPIView(View):
                     FamiliaDetalleSerializer(familia).data,
                     status=201
                 )
+            except PermissionDenied as e:
+                # Capturar errores de PermissionDenied del serializer
+                return JsonResponse(
+                    {'detail': [str(e.detail)] if hasattr(e, 'detail') else [str(e)]}, 
+                    status=400
+                )
             except Exception as e:
                 return JsonResponse(
                     {'error': str(e)}, 
                     status=500
                 )
         else:
-            return JsonResponse(
-                {'errors': serializer.errors}, 
-                status=400
-            )
+            # Manejar errores de validación incluyendo PermissionDenied
+            errors = serializer.errors
+            # Si hay un error no_field_errors o detail, extraerlo
+            if 'non_field_errors' in errors:
+                return JsonResponse(
+                    {'detail': errors['non_field_errors']}, 
+                    status=400
+                )
+            elif 'detail' in errors:
+                return JsonResponse(
+                    {'detail': errors['detail']}, 
+                    status=400
+                )
+            else:
+                return JsonResponse(
+                    {'errors': errors}, 
+                    status=400
+                )
     
     def put(self, request, familia_id=None):
         """Actualiza una familia existente y sus habitantes."""
@@ -170,16 +191,36 @@ class FamiliaAPIView(View):
                     FamiliaDetalleSerializer(familia).data,
                     status=200
                 )
+            except PermissionDenied as e:
+                # Capturar errores de PermissionDenied del serializer
+                return JsonResponse(
+                    {'detail': [str(e.detail)] if hasattr(e, 'detail') else [str(e)]}, 
+                    status=400
+                )
             except Exception as e:
                 return JsonResponse(
                     {'error': str(e)}, 
                     status=500
                 )
         else:
-            return JsonResponse(
-                {'errors': serializer.errors}, 
-                status=400
-            )
+            # Manejar errores de validación incluyendo PermissionDenied
+            errors = serializer.errors
+            # Si hay un error no_field_errors o detail, extraerlo
+            if 'non_field_errors' in errors:
+                return JsonResponse(
+                    {'detail': errors['non_field_errors']}, 
+                    status=400
+                )
+            elif 'detail' in errors:
+                return JsonResponse(
+                    {'detail': errors['detail']}, 
+                    status=400
+                )
+            else:
+                return JsonResponse(
+                    {'errors': errors}, 
+                    status=400
+                )
     
     def delete(self, request, familia_id=None):
         """Elimina (soft delete) una familia y sus habitantes."""
