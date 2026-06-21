@@ -144,23 +144,25 @@
 
   <hr class="divider">
 
-  <p class="title">Constancia de {{ motivo|upper }}</p>
+  <p class="title">Constancia de Residencia</p>
 
   <p class="oficio">Oficio/ N° CC-{{ constancia.id }}</p>
 
   <p class="paragraph">
     Nosotros voceros del <strong>Consejo Comunal Urbanización Manuel Pulido Méndez</strong>, abajo firmantes registrados por ante
-    la Oficina de Registro del Ministerio del Poder Popular para las Comunas y los Movimientos Sociales, en uso de las atribuciones legales que nos confiere la Ley Orgánica del Poder Popular y la Ley Orgánica de los Consejos Comunales.
+    la Oficina de Registro del Ministerio del Poder Popular para las Comunas y los Movimientos Sociales, en uso de las atribuciones
+    legales que nos confiere la Ley Orgánica del Poder Popular y la Ley Orgánica de los Consejos Comunales.
   </p>
 
   <p class="paragraph">
     Por medio del presente hacemos constar que el ciudadano(a): <strong>{{ solicitante.apellido|upper }}, {{ solicitante.nombre|upper }}</strong>,
     venezolano, mayor de edad, <strong>Titular de la Cédula de Identidad Nº V- {{ solicitante.cedula }},</strong> residenciado en la
-    <strong>{{ familia.direccion|default:"URBANIZACIÓN MANUEL PULIDO MÉNDEZ" }},</strong>, ubicada en la Av. Manuel Pulido Méndez, Municipio Junín del Estado Táchira. Damos fe que <strong><u>es habitante</u></strong> de nuestra comunidad.
+    <strong>{{ familia.direccion|default:"URBANIZACIÓN MANUEL PULIDO MÉNDEZ" }},</strong>, ubicada en la Av. Manuel Pulido Méndez, Municipio Junín del Estado Táchira. 
+    Damos fe que <strong><u>es habitante</u></strong> de nuestra comunidad.
   </p>
 
   <p class="paragraph">
-    Constancia que se expide a solicitud de la parte interesada en Rubio, en fecha <strong>{{ fecha_emision|date:"d/m/Y" }}</strong>.
+    Constancia que se expide a solicitud de la parte interesada en Rubio, con la finalidad de ser presentada para: <strong>{{ motivo }}</strong>, en fecha <strong>{{ fecha_emision|date:"d/m/Y" }}</strong>.
   </p>
 
   <p class="signatures-label">Por el Consejo Comunal</p>

@@ -3,6 +3,7 @@ from django import forms
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
+from django.utils.html import strip_tags
 from datetime import date
 import datetime
 import re
@@ -12,6 +13,30 @@ from .models import (
     ConstanciaResidencia, ActaReunion, CensoParticipante
 )
 
+ORGANISMOS_VENEZUELA_CHOICES = [
+    ('', '-- Seleccione el Destino del Trámite --'),
+    ('IVSS', 'Instituto Venezolano de los Seguros Sociales (IVSS)'),
+    ('SAIME', 'Servicio Administrativo de Identificación, Migración y Extranjería (SAIME)'),
+    ('INTT', 'Instituto Nacional de Transporte Terrestre (INTT)'),
+    ('BANCO_PUBLICO', 'Banca Pública (Banco de Venezuela, del Tesoro, Bicentenario)'),
+    ('BANCO_PRIVADO', 'Banca Privada (Banesco, Provincial, Mercantil, etc.)'),
+    ('UNIV_EDUCACION', 'Institución Educativa / Universidades (UPTAI, UPEL, etc.)'),
+    ('CORPOELEC', 'Corporación Eléctrica Nacional (CORPOELEC)'),
+    ('CANTV', 'Compañía Anónima Nacional Teléfonos de Venezuela (CANTV)'),
+    ('JUDICIAL_POLICIAL', 'Organismos Judiciales / Prefectura / Cuerpo Policial'),
+    ('TRAMITE_LABORAL', 'Fines Laborales / Empresa Contratante'),
+    ('MINISTERIO_PUBLICO', 'Ministerios u Órganos del Estado'),
+]
+
+FINALIDAD_RESIDENCIA_CHOICES = [
+    ('', '-- Seleccione el Motivo de la Solicitud --'),
+    ('APERTURA_CUENTA', 'APERTURA DE CUENTA BANCARIA'),
+    ('INSCRIPCION_EDUCATIVA', 'INSCRIPCION EN INSTITUCIÓN EDUCATIVA / UNIVERSIDAD'),
+    ('TRAMITES_LABORALES', 'TRÁMITES LABORALES / CONTRATACIÓN'),
+    ('SOLICITUD_BECA', 'SOLICITUD DE BECA O AYUDA ECONÓMICA'),
+    ('TRAMITES_SALUD', 'TRÁMITES DE SALUD / ASISTENCIA MÉDICA'),
+    ('PREFECTURA_CIVIL', 'TRÁMITES CIVILES Y PREFECTURA'),
+]
 # ============================================
 # 🏠 FORMULARIOS DE GESTIÓN HABITACIONAL
 # ============================================
@@ -404,106 +429,99 @@ class EgresoComunalForm(forms.ModelForm):
 
 
 class ConstanciaResidenciaForm(forms.ModelForm):
-    """
-    Formulario optimizado para generar constancias de residencia 
-    en la Urbanización Manuel Pulido Méndez.
-    """
+    """Formulario optimizado para el registro controlado de Constancias de Residencia"""
+    
     familia = forms.ModelChoiceField(
         queryset=Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
-        label="Familia / Núcleo Familiar",
-        widget=forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary', 'id': 'select_familia'}),
-        help_text="Seleccione la familia para filtrar u obtener apoyo visual si es necesario."
+        label="Seleccionar Grupo Familiar",
+        help_text="Seleccione la familia para filtrar los integrantes autorizados."
     )
     
-    fecha_documento = forms.DateField(
-        label="Fecha del Documento",
-        initial=timezone.now,
-        widget=forms.DateInput(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
-            'type': 'date'
-        }),
-        help_text="Fecha formal de emisión que aparecerá en el impreso."
+    # 🎯 CAMBIO A CHOICEFIELD: Motivos controlados de presentación en Venezuela
+    finalidad = forms.ChoiceField(
+        choices=FINALIDAD_RESIDENCIA_CHOICES,
+        label="Título / Finalidad de la Constancia"
     )
-    
-    finalidad = forms.CharField(
-        label="Finalidad o Motivo",
-        widget=forms.Textarea(attrs={
-            'class': 'form-control bg-dark text-white border-secondary',
-            'rows': 3,
-            'placeholder': 'Ej: PARA TRAMITAR APERTURA DE CUENTA BANCARIA / INSCRIPCIÓN UNIVERSITARIA...'
-        }),
-        help_text="Especifique el motivo de la solicitud."
-    )
-    
+
     class Meta:
         model = ConstanciaResidencia
-        fields = ['habitante', 'fecha_documento', 'finalidad']
+        fields = ['familia', 'habitante', 'fecha_documento', 'finalidad']
         widgets = {
-            'habitante': forms.Select(attrs={'class': 'form-select bg-dark text-white border-secondary select2'}),
+            'fecha_documento': forms.DateInput(attrs={'type': 'date'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        # Filtro de seguridad: Solo permitir emitir constancias a habitantes activos
-        self.fields['habitante'].queryset = Habitante.objects.filter(is_deleted=False).order_by('apellido', 'nombre')
-    
-    def clean_finalidad(self):
-        """Sanitiza el motivo a mayúsculas limpias para el documento legal"""
-        return self.cleaned_data.get('finalidad', '').strip().upper()
-    
+        
+        # Aplicamos los estilos visuales uniformes de Bootstrap
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs.update({'class': 'form-select text-black border-secondary', 'style': 'font-size: 14px;'})
+            else:
+                field.widget.attrs.update({'class': 'form-control text-black border-secondary', 'style': 'font-size: 14px;'})
+
+        # El queryset inicial de habitantes arranca vacío hasta que AJAX actúe
+        self.fields['habitante'].queryset = Habitante.objects.none()
+
+        if 'familia' in self.data:
+            try:
+                familia_id = int(self.data.get('familia'))
+                self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=familia_id, is_deleted=False).order_by('nombre')
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk and self.instance.familia:
+            self.fields['habitante'].queryset = self.instance.familia.habitante_set.filter(is_deleted=False).order_by('nombre')
+
     def clean_fecha_documento(self):
-        """Validar que la fecha no sea futura ni mayor a 6 meses en el pasado"""
+        """Candado de seguridad: No fechas futuras ni mayores a 3 días de antigüedad"""
         fecha_doc = self.cleaned_data.get('fecha_documento')
         if fecha_doc:
-            # Validar Futuro
             if fecha_doc > datetime.date.today():
                 raise ValidationError("La fecha formal de la constancia no puede ser una fecha futura.")
             
-            # 🎯 LÍMITE Antiguedad (3 días atrás)
             limite_pasado = datetime.date.today() - datetime.timedelta(days=3)
             if fecha_doc < limite_pasado:
-                raise ValidationError("La fecha de emisión no puede ser mayor a 3 días desde la solicitud de la constancia.")
-                
+                raise ValidationError("La fecha de emisión no puede ser mayor a 3 días desde la fecha de solicitud.")
         return fecha_doc
-    
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         if self.user:
             instance.generado_por = self.user
+            
+        # 🎯 TRADUCCIÓN DE LA FINALIDAD: Convertimos el código del Choice al String real legible para el PDF
+        finalidad_codigo = self.cleaned_data.get('finalidad')
+        finalidad_legible = dict(FINALIDAD_RESIDENCIA_CHOICES).get(finalidad_codigo, finalidad_codigo)
+        instance.finalidad = finalidad_legible.upper()
         
-        # 🔑 CORRECCIÓN DE MAPEO: El campo real en tu models.py es 'texto_constancia'
+        # Compilación del bloque HTML de la constancia antes de almacenar
         instance.texto_constancia = self.generar_contenido_constancia(instance)
         
         if commit:
             instance.save()
         return instance
-    
-    def generar_contenido_constancia(self, constancia):
-        """Generar el contenido HTML seguro con la semántica del modelo actual"""
-        # Accedemos a la familia a través de la relación del habitante solicitante
-        familia = constancia.habitante.familia 
-        solicitante = constancia.habitante
+
+    def generar_contenido_constancia(self, instance):
+        """Compila dinámicamente el cuerpo formal del reporte de residencia"""
+        habitante = instance.habitante
         
-        nombre_solicitante = f"{solicitante.nombre} {solicitante.apellido}".upper()
+        # 🎯 CORRECCIÓN: Extraemos la familia directamente desde el habitante relacionado
+        familia = getattr(habitante, 'familia', None)
         
-        # CORRECCIÓN: Si la cédula ya tiene el prefijo 'V-' o 'E-', lo dejamos intacto
-        cedula_raw = solicitante.cedula if solicitante.cedula else "S/C"
-        cedula_solicitante = cedula_raw if "-" in cedula_raw or len(cedula_raw) > 9 else f"V-{cedula_raw}"
+        nombre_solicitante = f"{habitante.nombre} {habitante.apellido}".upper()
+        cedula_solicitante = f"V-{habitante.cedula}" if habitante.cedula else "S/C"
         
-        total_integrantes = familia.habitantes.filter(is_deleted=False).count() if familia else 1
-        nombre_familia = familia.nombre_familia.upper() if familia else "S/D"
-        direccion_familia = getattr(familia, 'direccion', 'Comunidad Manuel Pulido Méndez').upper() if familia else "COMUNIDAD MANUEL PULIDO MÉNDEZ"
+        # Validación de seguridad por si el habitante no tiene asignada una familia todavía
+        nombre_familia = familia.nombre_familia.upper() if familia else "SIN NÚCLEO ASIGNADO"
+        direccion_familia = f"SECTOR MANUEL PULIDO MÉNDEZ, CALLE PRINCIPAL, CASA N° {familia.id}" if familia else "URBANIZACIÓN MANUEL PULIDO MÉNDEZ"
         
-        contenido = f"""
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1a1a1a;">
-            <div style="text-align: center; margin-bottom: 25px;">
-                <h3 style="margin-bottom: 5px; text-transform: uppercase;">CONSTANCIA DE RESIDENCIA</h3>
-                <p style="margin-top: 0; font-weight: bold;">Control N° {constancia.id or 'NUEVO'}</p>
-            </div>
-            
-            <p style="text-align: justify; margin-bottom: 15px;">
-                Quien suscribe, los Voceros y Voceras pertenecientes al <strong>CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ</strong>, 
+        total_integrantes = Habitante.objects.filter(familia=familia, is_deleted=False).count() if familia else 1
+        
+        contenido_html = f"""
+            <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
+                Quienes suscriben, miembros voceros de la Unidad de Contraloría Social y de la Unidad Ejecutiva 
+                pertenecientes al <strong>CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ</strong>, 
                 ubicado en el Municipio Junín del Estado Táchira, hacen constar por medio de la presente que el ciudadano(a):
             </p>
             
@@ -520,11 +538,10 @@ class ConstanciaResidenciaForm(forms.ModelForm):
             </p>
             
             <p style="text-align: justify; margin-bottom: 25px;">
-                <strong>FINALIDAD:</strong> Constancia que se expide a petición de la parte interesada para fines de: <em>{constancia.finalidad}</em>.
+                <strong>FINALIDAD:</strong> Constancia que se expide a petición de la parte interesada para: <strong>{instance.finalidad}</strong>.
             </p>
-        </div>
         """
-        return contenido
+        return contenido_html
 
 from django import forms
 from django.utils import timezone
@@ -610,15 +627,15 @@ class ActaReunionForm(forms.ModelForm):
         })
     )
     
-    # 🎯 LÍMITE DE INPUT HTML: maxlength="20" impide que el navegador escriba más dígitos
     cuenta_bancaria = forms.CharField(
         max_length=20,
         required=False,
         label="Cuenta Bancaria Comunal",
         widget=forms.TextInput(attrs={
-            'placeholder': '20 dígitos de la cuenta comunal',
+            'placeholder': 'Ingrese los 20 dígitos',
             'maxlength': '20',
-            'pattern': '[0-9]*' # Sugiere teclado numérico en móviles
+            'pattern': '\\d{20}', # Fuerza validación HTML5 de 20 dígitos numéricos
+            'class': 'form-control bg-dark text-white border-secondary'
         })
     )
     votos_favor = forms.IntegerField(
@@ -654,54 +671,64 @@ class ActaReunionForm(forms.ModelForm):
     # ==========================================================
     # 🔒 SECCIÓN DE CANDADOS DE VALIDACIÓN (CLEAN)
     # ==========================================================
-
     def clean_titulo(self):
-        titulo = self.cleaned_data.get('titulo', '').strip()
-        # Verificar que no contenga números utilizando expresiones regulares
-        if re.search(r'\d', titulo):
-            raise ValidationError("El título de la asamblea no puede contener caracteres numéricos.")
-        return titulo.upper()
-
-    def clean_banco_receptor(self):
-        banco = self.cleaned_data.get('banco_receptor', '').strip()
-        if banco:
-            # Denegar si se ingresan números en el nombre de la entidad bancaria
-            if re.search(r'\d', banco):
-                raise ValidationError("El nombre del banco receptor no puede contener números.")
-        return banco.upper()
-
-    def clean_cuenta_bancaria(self):
-        cuenta = self.cleaned_data.get('cuenta_bancaria', '').strip()
-        if cuenta:
-            cuenta = cuenta.replace('-', '').replace(' ', '')
-            if not cuenta.isdigit():
-                raise ValidationError("La cuenta bancaria debe contener únicamente números.")
-            if len(cuenta) != 20:
-                raise ValidationError(f"La cuenta bancaria en Venezuela debe tener exactamente 20 dígitos (introdujo {len(cuenta)}).")
-        return cuenta
-
-    def clean_problema_identificado(self):
-        texto = self.cleaned_data.get('problema_identificado', '').strip()
-        palabras = texto.split()
-        if len(palabras) > 150:
-            raise ValidationError(f"La descripción del problema excede el límite de 150 palabras (actualmente tiene {len(palabras)}). Por favor, resuma el planteamiento.")
-        return texto
-
-    def clean_propuesta_solucion(self):
-        texto = self.cleaned_data.get('propuesta_solucion', '').strip()
-        palabras = texto.split()
-        if len(palabras) > 150:
-            raise ValidationError(f"La propuesta de solución excede el límite de 150 palabras (actualmente tiene {len(palabras)}). Reduzca la explicación del proyecto.")
-        return texto
+        data = strip_tags(self.cleaned_data.get('titulo', '')).strip()
+        if len(data) < 10:
+            raise ValidationError("El título es demasiado corto. Debe ser descriptivo.")
+        return data
 
     def clean_lugar(self):
-        return self.cleaned_data.get('lugar', '').strip().upper()
+        data = self.cleaned_data.get('lugar', '').strip()
+        # Mínimo 5 caracteres y no puede ser solo números o símbolos
+        if len(data) < 5 or not re.search(r'[a-zA-Z]', data):
+            raise ValidationError("El lugar debe ser una ubicación válida (ej. Cancha Techada).")
+        return data.upper()
 
     def clean_director_debate(self):
-        director = self.cleaned_data.get('director_debate', '').strip()
-        if re.search(r'\d', director):
-            raise ValidationError("El nombre del director de debate no puede contener números.")
-        return director.upper()
+        data = strip_tags(self.cleaned_data.get('director_debate', '')).strip()
+        if re.search(r'\d', data):
+            raise ValidationError("El nombre no puede contener números.")
+        return data.upper()
+
+    def clean_problema_identificado(self):
+        data = self.cleaned_data.get('problema_identificado', '').strip()
+        # 1. Validación de longitud
+        if len(data) < 20:
+            raise ValidationError("La problemática es demasiado breve. Explique detalladamente.")
+        
+        # 2. Detector de basura: "asdf", "1234", repetición excesiva
+        # Si tiene menos de 6 caracteres únicos, es probablemente basura repetitiva
+        if len(set(data.lower())) < 6:
+            raise ValidationError("El contenido parece ser basura o texto repetitivo sin sentido.")
+            
+        return data
+
+    def clean_propuesta_solucion(self):
+        data = self.cleaned_data.get('propuesta_solucion', '').strip()
+        # Similar a la problemática
+        if len(data) < 20:
+            raise ValidationError("La propuesta debe ser detallada (mínimo 20 caracteres).")
+        
+        # Prohibir palabras que parecen generadas al azar (ej: "asdfg")
+        if len(set(data.lower())) < 6:
+            raise ValidationError("Por favor, describa el proyecto de forma coherente.")
+            
+        return data
+
+    def clean_cuenta_bancaria(self):
+        cuenta = self.cleaned_data.get('cuenta_bancaria', '')
+        if cuenta:
+            # Limpiamos cualquier carácter que no sea dígito
+            cuenta = re.sub(r'\D', '', cuenta)
+            if len(cuenta) != 20:
+                raise ValidationError("La cuenta bancaria debe tener exactamente 20 dígitos.")
+        return cuenta
+
+    def clean_asistentes(self):
+        data = strip_tags(self.cleaned_data.get('asistentes', '')).strip()
+        if len(data) < 10 or ',' not in data:
+            raise ValidationError("Formato inválido. Asegúrese de incluir nombres separados por comas.")
+        return data
 
     # ==========================================================
     # 💾 PROCESAMIENTO CORPORATIVO / S.I.N.C.O.
@@ -723,8 +750,12 @@ class ActaReunionForm(forms.ModelForm):
         
         monto_estimado = self.cleaned_data.get('monto_estimado') or '0,00'
         banco_receptor = self.cleaned_data.get('banco_receptor', 'NO ASIGNADO')
-        cuenta_comunal = self.cleaned_data.get('cuenta_bancaria') or 'NO ASIGNADA'
+        cuenta_comunal = self.cleaned_data.get('cuenta_bancaria')
+        # Si existe, lo convertimos a string; si es None, asignamos mensaje
+        cuenta_str = str(cuenta_comunal) if cuenta_comunal else "NO ASIGNADA"
         
+        # Guardamos en el modelo (asumiendo que el campo se llama cuenta_bancaria)
+        acta.cuenta_bancaria = cuenta_comunal
         meses = {
             1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
             7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
@@ -754,8 +785,12 @@ class ActaReunionForm(forms.ModelForm):
             acta.save()
         return acta
 
+# =========================================================================
+# 🪪 FORMULARIO: CARTA DE BUENA CONDUCTA
+# =========================================================================
 class BuenaConductaForm(forms.Form):
-    """Formulario unificado para la solicitud de Carta de Buena Conducta"""
+    """Formulario unificado y blindado para la solicitud de Carta de Buena Conducta"""
+    
     familia = forms.ModelChoiceField(
         queryset=Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
         label="Seleccionar Grupo Familiar",
@@ -767,36 +802,46 @@ class BuenaConductaForm(forms.Form):
         empty_label="Primero seleccione una familia..."
     )
     
-    # 🎯 CORRECCIÓN INTEGRADA: Campo de fecha explícito que faltaba en Python
     fecha_documento = forms.DateField(
         label="Fecha del Documento",
         initial=timezone.now,
         widget=forms.DateInput(attrs={'type': 'date'})
     )
     
-    tiempo_residencia = forms.CharField(
-        label="Tiempo de Residencia en el Sector",
-        max_length=100,
-        widget=forms.TextInput(attrs={'placeholder': 'Ej. Cinco (05) años / Desde su nacimiento'})
+    # 🎯 NUEVOS CAMPOS: Cuantificadores exactos numéricos
+    tiempo_residencia_anios = forms.IntegerField(
+        label="Años de Residencia en el Sector",
+        min_value=0,
+        max_value=120,
+        initial=1,
+        widget=forms.NumberInput(attrs={'placeholder': 'Ej. 5'})
     )
-    organismo_destino = forms.CharField(
-        label="Organismo o Destino del Trámite",
-        max_length=150,
-        widget=forms.TextInput(attrs={'placeholder': 'Ej. Trámites Laborales, Universidad, etc.'})
+    tiempo_residencia_meses = forms.IntegerField(
+        label="Meses Adicionales (Opcional)",
+        min_value=0,
+        max_value=11,
+        initial=0,
+        widget=forms.NumberInput(attrs={'placeholder': 'Ej. 0'})
+    )
+    
+    # 🎯 NUEVO CAMPO: Selector cerrado institucional
+    organismo_destino = forms.ChoiceField(
+        choices=ORGANISMOS_VENEZUELA_CHOICES,
+        label="Organismo o Destino del Trámite"
     )
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Aplicamos tus mismos estilos visuales de forma dinámica
+        # Inyección dinámica de clases Bootstrap
         for field_name, field in self.fields.items():
             if isinstance(field.widget, forms.Select):
                 field.widget.attrs.update({'class': 'form-select text-black border-secondary', 'style': 'font-size: 14px;'})
             else:
                 field.widget.attrs.update({'class': 'form-control text-black border-secondary', 'style': 'font-size: 14px;'})
                 
-        # Lógica AJAX para el encadenamiento dinámico de habitantes
+        # Lógica AJAX para el encadenamiento dinámico de integrantes
         if 'familia' in self.data:
             try:
                 familia_id = int(self.data.get('familia'))
@@ -806,28 +851,31 @@ class BuenaConductaForm(forms.Form):
         elif self.initial.get('familia'):
             familia_id = self.initial.get('familia')
             self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=familia_id, is_deleted=False).order_by('nombre')
-    
-    def clean_tiempo_residencia(self):
-        return self.cleaned_data.get('tiempo_residencia', '').strip().upper()
 
-    def clean_organismo_destino(self):
-        return self.cleaned_data.get('organismo_destino', '').strip().upper()
+    def clean(self):
+        cleaned_data = super().clean()
+        anios = cleaned_data.get('tiempo_residencia_anios')
+        meses = cleaned_data.get('tiempo_residencia_meses')
+
+        # Control para evitar registros vacíos en cero absoluto
+        if anios == 0 and meses == 0:
+            raise ValidationError("El tiempo de residencia ingresado en el sector no puede ser de 0 meses.")
+        return cleaned_data
 
     def clean_fecha_documento(self):
         """Validar que la fecha formal no sea futura ni exceda los 3 días de antigüedad"""
         fecha_doc = self.cleaned_data.get('fecha_documento')
         if fecha_doc:
-            if fecha_doc > date.today():
+            if fecha_doc > datetime.date.today():
                 raise ValidationError("La fecha formal de la constancia no puede ser una fecha futura.")
             
-            # 🎯 LÍMITE DE ANTIGUEDAD (3 días atrás)
-            limite_pasado = date.today() - datetime.timedelta(days=3)
+            limite_pasado = datetime.date.today() - datetime.timedelta(days=3)
             if fecha_doc < limite_pasado:
                 raise ValidationError("La fecha de emisión no puede ser mayor a 3 días desde la solicitud de la constancia.")
                 
         return fecha_doc
 class ConstanciaFallecidoForm(forms.Form):
-    """Formulario para la Constancia de Residencia Post-Mortem (Fallecidos)"""
+    """Formulario para la Constancia de Residencia Post-Mortem (Fallecidos) con Blindaje de Seguridad"""
     familia = forms.ModelChoiceField(
         queryset=Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
         label="Seleccionar Grupo Familiar",
@@ -878,29 +926,69 @@ class ConstanciaFallecidoForm(forms.Form):
             family_id = self.initial.get('familia')
             self.fields['habitante'].queryset = Habitante.objects.filter(familia_id=family_id, is_deleted=False).order_by('nombre')
     
+    # 🔒 BLINDAJE: Solicitante / Declarante
     def clean_solicitante_defuncion(self):
-        return self.cleaned_data.get('solicitante_defuncion', '').strip().upper()
+        nombre = self.cleaned_data.get('solicitante_defuncion', '').strip().upper()
+        
+        # 1. Validación de longitud mínima
+        if len(nombre) < 6:
+            raise ValidationError("El nombre del solicitante es demasiado corto. Introduzca nombre y apellido válidos.")
+            
+        # 2. Expresión regular para admitir solo letras, espacios y acentos venezolanos
+        if not re.match(r'^[A-ZÁÉÍÓÚÑ ]+$', nombre):
+            raise ValidationError("El nombre del solicitante solo debe contener caracteres alfabéticos.")
+            
+        # 3. Escudo anti-repeticiones (Evita trampas como "AAAAAA BBBBBB")
+        if re.search(r'(.)\1{3,}', nombre):
+            raise ValidationError("El nombre introducido contiene demasiados caracteres repetidos seguidos.")
+            
+        return nombre
 
+    # 🔒 BLINDAJE: Parentesco
     def clean_relacion_parentesco(self):
-        return self.cleaned_data.get('relacion_parentesco', '').strip().upper()
+        parentesco = self.cleaned_data.get('relacion_parentesco', '').strip().upper()
+        
+        if len(parentesco) < 3:
+            raise ValidationError("La relación de parentesco es demasiado corta (Ej: HIJO, CONYUGE, MADRE).")
+            
+        if not re.match(r'^[A-ZÁÉÍÓÚÑ /-]+$', parentesco):
+            raise ValidationError("El parentesco no debe contener números ni caracteres especiales.")
+            
+        return parentesco
 
+    # 🔒 BLINDAJE: Cédula de Identidad
     def clean_solicitante_cedula(self):
-        cedula = self.cleaned_data.get('solicitante_cedula', '').strip().replace('.', '')
-        if not cedula.isalnum():
-            raise ValidationError("La cédula del solicitante solo debe contener números o caracteres alfanuméricos válidos.")
+        # Limpiamos puntos, guiones y letras de origen (V-, E-) si el usuario las pone
+        cedula = self.cleaned_data.get('solicitante_cedula', '').strip().upper()
+        cedula = cedula.replace('.', '').replace('-', '').replace('V', '').replace('E', '').strip()
+        
+        # 1. Validar que sean solo dígitos numéricos
+        if not cedula.isdigit():
+            raise ValidationError("La cédula del solicitante debe contener únicamente números.")
+            
+        # 2. Rango lógico de cédulas en Venezuela (entre 500.000 y 45.000.000 para personas aptas para declarar)
+        num_cedula = int(cedula)
+        if num_cedula < 500000 or num_cedula > 45000000:
+            raise ValidationError("El número de cédula introducido no pertenece a un rango válido en el territorio nacional.")
+            
+        # 3. Evitar patrones basura como "12345678" o "1111111"
+        if cedula in ["12345678", "87654321"] or len(set(cedula)) == 1:
+            raise ValidationError("Número de cédula inválido o genérico detectado.")
+            
         return cedula
 
+    # 🔒 BLINDAJE: Consistencia Cronológica
     def clean_fecha_deceso(self):
-        """Validar consistencia cronológica del lamentable suceso"""
         fecha_dec = self.cleaned_data.get('fecha_deceso')
         if fecha_dec:
+            # 1. Evitar viajes en el tiempo
             if fecha_dec > date.today():
                 raise ValidationError("La fecha del deceso no puede ser una fecha en el futuro.")
             
-            # 🎯 LÍMITE DE ANTIGÜEDAD (60 días atrás)
+            # 2. Límite de antigüedad legal/comunal (60 días atrás)
             limite_pasado = date.today() - datetime.timedelta(days=60)
             if fecha_dec < limite_pasado:
-                raise ValidationError("La fecha del deceso no puede ser mayor a 60 días desde la solicitud de la constancia.")
+                raise ValidationError("La fecha del deceso no puede superar los 60 días de antigüedad desde la solicitud de esta constancia.")
                 
         return fecha_dec
 # ============================================
