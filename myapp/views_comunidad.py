@@ -17,6 +17,7 @@ from django.views import View
 from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.urls import reverse
+from django.core.exceptions import ValidationError as DjangoValidationError
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -157,27 +158,38 @@ class FamiliaAPIView(View):
                 status=400
             )
         
-        serializer = FamiliaConHabitantesSerializer(
-            familia, 
-            data=data, 
-            partial=False
-        )
-        
-        if serializer.is_valid():
-            try:
-                familia = serializer.save()
+        try:
+            serializer = FamiliaConHabitantesSerializer(
+                familia, 
+                data=data, 
+                partial=False
+            )
+            
+            if serializer.is_valid():
+                try:
+                    familia = serializer.save()
+                    return JsonResponse(
+                        FamiliaDetalleSerializer(familia).data,
+                        status=200
+                    )
+                except Exception as e:
+                    return JsonResponse(
+                        {'error': str(e)}, 
+                        status=500
+                    )
+            else:
+                # Manejar errores de validación del serializer (incluye ValidationError)
+                errors = serializer.errors
                 return JsonResponse(
-                    FamiliaDetalleSerializer(familia).data,
-                    status=200
+                    {'errors': errors}, 
+                    status=400
                 )
-            except Exception as e:
-                return JsonResponse(
-                    {'error': str(e)}, 
-                    status=500
-                )
-        else:
+        except DjangoValidationError as e:
+            # Capturar la excepción ValidationError lanzada desde el validate() del serializer
+            # El mensaje ya viene en formato JSON seguro desde el serializer
+            error_message = e.message_list[0] if hasattr(e, 'message_list') and len(e.message_list) > 0 else str(e)
             return JsonResponse(
-                {'errors': serializer.errors}, 
+                {'errors': {'detail': error_message}}, 
                 status=400
             )
     

@@ -627,20 +627,39 @@
 
       fetch(url, {
         method: method,
-        headers: { // 💡 Corregido typo 'headeSrs' anterior
+        headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': '{{ csrf_token }}'
         },
         body: JSON.stringify(payload)
       })
       .then(response => {
+        const contentType = response.headers.get('content-type');
+        
         if (!response.ok) {
-          return response.json().then(errData => {
-            throw { isValidationError: true, errors: errData };
-          }).catch(err => {
-            if (err.isValidationError) throw err;
-            throw new Error('Error crítico en el servidor');
-          });
+          // Intentar parsear como JSON si es posible
+          if (contentType && contentType.includes('application/json')) {
+            return response.json().then(errData => {
+              throw { isValidationError: true, errors: errData, status: response.status };
+            }).catch(parseErr => {
+              if (parseErr.isValidationError) throw parseErr;
+              // Si falla el parseo JSON, crear error con mensaje genérico
+              throw { isValidationError: true, errors: { detail: 'Error en el servidor' }, status: response.status };
+            });
+          } else {
+            // Si no es JSON, leer como texto
+            return response.text().then(errText => {
+              let errData = { detail: errText || 'Error en el servidor' };
+              // Intentar extraer mensaje de PermissionDenied del texto
+              if (errText && errText.includes('ya pertenece a un ciudadano censado')) {
+                const match = errText.match(/\["([^"]+)"\]/);
+                if (match && match[1]) {
+                  errData = { detail: match[1] };
+                }
+              }
+              throw { isValidationError: true, errors: errData, status: response.status };
+            });
+          }
         }
         return response.json();
       })
@@ -656,7 +675,7 @@
         });
       })
       .catch(error => {
-        // Verificar si es un error de permisos específico (cedula duplicada en otra vivienda)
+        // Verificar si es un error de validación del backend (status 400 o 403)
         if (error.isValidationError && error.errors) {
           let contenidoRaw = error.errors.detail || error.errors.non_field_errors || error.errors;
           
