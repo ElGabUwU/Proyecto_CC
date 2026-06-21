@@ -1395,5 +1395,13 @@ def panel_reportes(request):
             return redirect('panel_reportes')
 
     # Flujo normal GET...
-    reportes = ReporteDemografico.objects.all().order_by('-id')[:6]
-    return render(request, 'reportes/panel_reportes.html', {'reportes': reportes})
+    reportes_qs = ReporteDemografico.objects.all().order_by('-id')
+    paginator = Paginator(reportes_qs, 4)  # Mostrar 4 resultados por página
+    page_number = request.GET.get('page')
+    reportes_page = paginator.get_page(page_number)
+    
+    context = {
+        'reportes': reportes_page,
+        'paginator': paginator
+    }
+    return render(request, 'reportes/panel_reportes.html', context)
