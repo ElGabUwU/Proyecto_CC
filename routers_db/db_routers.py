@@ -35,12 +35,13 @@ class AuthRouter:
             return self._get_active_db()
         return None
 
+
     def db_for_write(self, model, **hints):
         """Redirige las escrituras a la base de datos activa"""
         if model._meta.app_label in self.project_app_labels:
             return self._get_active_db()
         return None
-
+    
     def allow_relation(self, obj1, obj2, **hints):
         """
         Permite relaciones únicamente si ambos objetos están 
@@ -49,7 +50,6 @@ class AuthRouter:
         if obj1._state.db == obj2._state.db:
             return True
         return False
-
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         """
         Controla de forma segura dónde se deben aplicar las migraciones.

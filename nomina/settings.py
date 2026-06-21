@@ -2,6 +2,7 @@ import os, dj_database_url
 from pathlib import Path
 from decouple import config, Csv
 import psycopg2
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent  # Ruta base del proyecto
 SECRET_KEY = config('SECRET_KEY')  # Clave secreta para cifrado (cámbiala en producción)

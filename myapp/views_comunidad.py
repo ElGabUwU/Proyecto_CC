@@ -103,110 +103,73 @@ class FamiliaAPIView(View):
                 'total_pages': paginator.num_pages
             }, safe=False, status=200)
     
-    def post(self, request, familia_id=None):
-        """Crea una nueva familia con habitantes."""
+    def post(self, request, *args, **kwargs):
         try:
             data = json.loads(request.body)
+            serializer = FamiliaConHabitantesSerializer(data=data)
+            
+            if serializer.is_valid():
+                with transaction.atomic():
+                    serializer.save()
+                return JsonResponse({'success': True}, status=201)
+            
+            # --- AQUÍ ESTÁ LA CLAVE ---
+            # En lugar de solo enviar serializer.errors, le damos un formato 
+            # que el frontend puede leer sin confusión.
+            return JsonResponse({'detail': serializer.errors}, status=400)
+            
         except json.JSONDecodeError:
-            return JsonResponse(
-                {'error': 'Datos JSON inválidos'}, 
-                status=400
-            )
-        
-        serializer = FamiliaConHabitantesSerializer(data=data)
-        
-        if serializer.is_valid():
-            try:
-                familia = serializer.save()
-                return JsonResponse(
-                    FamiliaDetalleSerializer(familia).data,
-                    status=201
-                )
-            except Exception as e:
-                return JsonResponse(
-                    {'error': str(e)}, 
-                    status=500
-                )
-        else:
-            return JsonResponse(
-                {'errors': serializer.errors}, 
-                status=400
-            )
+            return JsonResponse({'detail': 'Formato JSON inválido'}, status=400)
+        except Exception as e:
+            # Captura cualquier error inesperado y lo envía al frontend
+            return JsonResponse({'detail': str(e)}, status=500)
     
     def put(self, request, familia_id=None):
-        """Actualiza una familia existente y sus habitantes."""
         if not familia_id:
-            return JsonResponse(
-                {'error': 'ID de familia requerido'}, 
-                status=400
-            )
+            return JsonResponse({'detail': 'ID de familia requerido'}, status=400)
         
         try:
             familia = Familia.objects.get(pk=familia_id, is_deleted=False)
         except Familia.DoesNotExist:
-            return JsonResponse(
-                {'error': 'Familia no encontrada'}, 
-                status=404
-            )
+            return JsonResponse({'detail': 'Familia no encontrada'}, status=404)
         
         try:
             data = json.loads(request.body)
         except json.JSONDecodeError:
-            return JsonResponse(
-                {'error': 'Datos JSON inválidos'}, 
-                status=400
-            )
+            return JsonResponse({'detail': 'Datos JSON inválidos'}, status=400)
         
-        serializer = FamiliaConHabitantesSerializer(
-            familia, 
-            data=data, 
-            partial=False
-        )
+        serializer = FamiliaConHabitantesSerializer(familia, data=data, partial=False)
         
         if serializer.is_valid():
             try:
-                familia = serializer.save()
-                return JsonResponse(
-                    FamiliaDetalleSerializer(familia).data,
-                    status=200
-                )
+                with transaction.atomic():
+                    familia = serializer.save()
+                return JsonResponse(FamiliaDetalleSerializer(familia).data, status=200)
             except Exception as e:
-                return JsonResponse(
-                    {'error': str(e)}, 
-                    status=500
-                )
+                return JsonResponse({'detail': str(e)}, status=500)
         else:
-            return JsonResponse(
-                {'errors': serializer.errors}, 
-                status=400
-            )
+            # Estandarizado: Enviamos los errores bajo 'detail'
+            return JsonResponse({'detail': serializer.errors}, status=400)
     
-    def delete(self, request, familia_id=None):
-        """Elimina (soft delete) una familia y sus habitantes."""
+def delete(self, request, familia_id=None):
         if not familia_id:
-            return JsonResponse(
-                {'error': 'ID de familia requerido'}, 
-                status=400
-            )
+            return JsonResponse({'detail': 'ID de familia requerido'}, status=400)
         
         try:
             familia = Familia.objects.get(pk=familia_id, is_deleted=False)
+            
+            # Soft delete de la familia y sus habitantes
+            with transaction.atomic():
+                familia.is_deleted = True
+                familia.save()
+                familia.habitantes.filter(is_deleted=False).update(is_deleted=True)
+            
+            return JsonResponse({'message': 'Familia eliminada correctamente'}, status=200)
+            
         except Familia.DoesNotExist:
-            return JsonResponse(
-                {'error': 'Familia no encontrada'}, 
-                status=404
-            )
-        
-        # Soft delete de la familia y sus habitantes
-        with transaction.atomic():
-            familia.is_deleted = True
-            familia.save()
-            familia.habitantes.filter(is_deleted=False).update(is_deleted=True)
-        
-        return JsonResponse(
-            {'message': f'Familia {familia.nombre_familia} eliminada correctamente'},
-            status=200
-        )
+            return JsonResponse({'detail': 'Familia no encontrada'}, status=404)
+        except Exception as e:
+            return JsonResponse({'detail': f'Error al eliminar: {str(e)}'}, status=500)
 
 
 # ============================================
@@ -1045,40 +1008,6 @@ def obtener_logo_base64():
 # --------------------------------------------------------------
 # ---------------- Funciones ReporteDemográfico ----------------
 # --------------------------------------------------------------
-
-@login_required(login_url='login')
-def panel_reportes(request):
-    """
-    Vista controladora principal para el módulo de Reportes Demográficos.
-    Muestra el formulario de filtrado y el listado de reportes generados.
-    """
-    if request.method == 'POST':
-        # Capturamos los datos del formulario de la interfaz
-        titulo = request.POST.get('titulo_reporte')
-        genero = request.POST.get('filtro_genero')
-        edad = request.POST.get('filtro_edad')
-        
-        if titulo:
-            # Creamos el registro de configuración en la Base de Datos
-            nuevo_reporte = ReporteDemografico.objects.create(
-                titulo_reporte=titulo,
-                filtro_genero=genero,
-                filtro_edad=edad,
-                solicitado_por=request.user
-            )
-            messages.success(request, f"Filtro {titulo} creado con éxito. Ya puedes descargar los reportes.")
-            return redirect('panel_reportes')
-        else:
-            messages.error(request, "Debe indicarle un título descriptivo al reporte.")
-
-    # Recuperamos todos los reportes creados para listarlos en una tabla analítica
-    reportes = ReporteDemografico.objects.all()
-    
-    context = {
-        'reportes': reportes,
-    }
-    # Este es el template asociado al controlador:
-    return render(request, 'reportes/panel_reportes.html', context)
 
 def obtener_habitantes_filtrados(reporte):
     # Condición base: Solo habitantes activos (no eliminados)

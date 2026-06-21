@@ -1,4 +1,4 @@
-# nomina_estudiantes/settings.py
+
 import os, dj_database_url
 from pathlib import Path
 from decouple import config, Csv

@@ -418,21 +418,19 @@ class FamiliaConHabitantesSerializer(serializers.ModelSerializer):
         if errores_planos:
             lista_mensajes_seguros = []
             
-            # Prioridad 1: Problemas estructurales de la Vivienda o la Jefatura arriba
+            # Prioridad 1: Problemas estructurales
             for clave, mensaje in errores_planos.items():
-                if "Inmueble" in clave or "Vivienda" in clave or "Conflicto" in clave:
+                if any(x in clave for x in ["Inmueble", "Vivienda", "Conflicto"]):
                     lista_mensajes_seguros.append(mensaje)
             
-            # Prioridad 2: Inconsistencias demográficas de la carga familiar abajo
+            # Prioridad 2: Inconsistencias demográficas
             for clave, mensaje in errores_planos.items():
-                if not ("Inmueble" in clave or "Vivienda" in clave or "Conflicto" in clave):
+                if not any(x in clave for x in ["Inmueble", "Vivienda", "Conflicto"]):
                     lista_mensajes_seguros.append(mensaje)
 
-            # Ofuscamos los nombres de campos de la BD y variables internas serializando a un array simple
-            json_seguro = json.dumps(lista_mensajes_seguros)
-            
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied(json_seguro)
+            # CAMBIO CRÍTICO: Usar ValidationError de rest_framework
+            # Esto hará que DRF retorne un 400 Bad Request con tu lista de errores
+            raise serializers.ValidationError({"detail": lista_mensajes_seguros})
 
         return attrs
 

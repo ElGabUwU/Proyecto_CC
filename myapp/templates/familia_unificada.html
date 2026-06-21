@@ -655,89 +655,44 @@
           window.location.href = "{% url 'familias' %}";
         });
       })
-      .catch(error => {
-        if (error.isValidationError && error.errors) {
-          let errorHtml = '<div class="text-start mt-2" style="font-size: 0.95rem; max-height: 350px; overflow-y: auto;">';
-          
-          let contenidoRaw = error.errors.detail || error.errors.non_field_errors || error.errors;
-          
-          if (Array.isArray(contenidoRaw) && contenidoRaw.length > 0 && typeof contenidoRaw[0] !== 'string') {
-            contenidoRaw = contenidoRaw[0];
-          }
+        .catch(error => {
+            Swal.close(); 
 
-          let procesado = false;
+            // Obtenemos la respuesta cruda del servidor
+            // Si usas fetch(), el objeto 'error' a veces es la respuesta misma
+            const responseData = error.response ? error.response.data : error;
+            
+            let listaDeErrores = [];
 
-          // Si el backend envió la lista serializada de forma segura
-          if (typeof contenidoRaw === 'string' && contenidoRaw.trim().startsWith('[')) {
-            try {
-              let listaErrores = JSON.parse(contenidoRaw);
-              
-              // Al ser un Array de JS, se recorre garantizando el orden exacto del backend
-              if (listaErrores.length > 0) {
-                errorHtml += '<h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Se encontraron los siguientes problemas:</h6>';
-                listaErrores.forEach((mensaje, index) => {
-                  // Identificar el tipo de error para mostrar ícono específico
-                  let icono = 'fa-circle';
-                  let color = '#f59e0b';
-                  
-                  if (mensaje.includes('vivienda') || mensaje.includes('Inmueble') || mensaje.includes('registrada')) {
-                    icono = 'fa-home';
-                    color = '#ef4444';
-                  } else if (mensaje.includes('Cédula')) {
-                    icono = 'fa-id-card';
-                    color = '#f59e0b';
-                  } else if (mensaje.includes('edad') || mensaje.includes('años') || mensaje.includes('biológico')) {
-                    icono = 'fa-user-clock';
-                    color = '#3b82f6';
-                  } else if (mensaje.includes('Jefe') || mensaje.includes('jerarquía')) {
-                    icono = 'fa-user-shield';
-                    color = '#10b981';
-                  }
-                  
-                  errorHtml += `
-                    <div class="mb-2 p-3 rounded" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid ${color};">
-                      <div class="d-flex align-items-start">
-                        <i class="fas ${icono} me-2 mt-1" style="color: ${color};"></i>
-                        <span class="text-white">${mensaje}</span>
-                      </div>
-                    </div>`;
-                });
-                procesado = true;
-              }
-            } catch (e) {
-              console.error("Error al parsear el arreglo seguro:", e);
-            }
-          }
+            // Lógica para extraer el texto sin importar qué tan profundo esté anidado
+            const extraerMensajes = (obj) => {
+                if (typeof obj === 'string') return [obj];
+                if (Array.isArray(obj)) return obj;
+                if (typeof obj === 'object') {
+                    return Object.values(obj).flatMap(val => extraerMensajes(val));
+                }
+                return [];
+            };
 
-          // Respaldo genérico de seguridad si el formato varía
-          if (!procesado) {
-            errorHtml += `
-              <h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Error de validación:</h6>
-              <div class="mb-2 p-3 rounded" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #f59e0b;">
-                <span class="text-white">Se detectaron inconsistencias en los datos ingresados. Por favor, revise cuidadosamente las cédulas, edades y campos del formulario.</span>
-              </div>`;
-          }
-          
-          errorHtml += '</div>';
+            // Aplicamos la extracción sobre el campo 'detail' o sobre la data misma
+            const datosParaAnalizar = responseData.detail || responseData;
+            listaDeErrores = extraerMensajes(datosParaAnalizar);
 
-          Swal.fire({
-            icon: 'error',
-            title: 'Error en Validación',
-            html: errorHtml,
-            background: '#1e293b',
-            color: '#fff',
-            confirmButtonColor: '#3085d6'
-          });
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error de Comunicación',
-            text: 'Ocurrió un problema físico al intentar conectar con el servidor local o la base de datos.',
-            background: '#1e293b',
-            color: '#fff'
-          });
-        }
-      });
+            // Si al final no encontramos nada, ponemos un mensaje por defecto
+            if (listaDeErrores.length === 0) listaDeErrores = ["Ocurrió un error inesperado al procesar la solicitud."];
+
+            // Mostramos el SweetAlert
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Validación',
+                html: `<div style="text-align: left; max-height: 300px; overflow-y: auto;">
+                        ${listaDeErrores.map(m => `<div style="margin-bottom: 8px;">• ${m}</div>`).join('')}
+                      </div>`,
+                confirmButtonText: 'Entendido',
+                background: '#1e293b',
+                color: '#fff'
+            });
+        });
     });
   </script>
 </body>
