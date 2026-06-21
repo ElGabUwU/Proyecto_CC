@@ -249,7 +249,7 @@
             </div>
             <div class="row">
               <div class="col-md-12 mb-3">
-                <label for="id_descripcion" class="form-label">{{ censo_form.descripcion.label }}</label>
+                <label for="id_descripcion_censo" class="form-label">{{ censo_form.descripcion.label }}</label>
                 {{ censo_form.descripcion }}
                 <small class="text-muted d-block mt-1">{{ censo_form.descripcion.help_text }}</small>
                 <div class="text-end">
@@ -298,7 +298,7 @@
               document.getElementById('id_nombre_censo').value = data.nombre_censo || '';
               document.getElementById('id_fecha_inicio').value = data.fecha_inicio || '';
               document.getElementById('id_fecha_fin').value = data.fecha_fin || '';
-              document.getElementById('id_descripcion').value = data.descripcion || '';
+              document.getElementById('id_descripcion_censo').value = data.descripcion || '';
               document.getElementById('id_categoria_enfoque').value = data.categoria_enfoque || 'general';
               document.getElementById('id_estatus').value = data.estatus || 'activo';
             });
@@ -312,10 +312,17 @@
     
     // Función para limpiar errores
     function limpiarErrores() {
-      const fields = ['nombre_censo', 'fecha_inicio', 'fecha_fin', 'categoria_enfoque', 'estatus', 'descripcion'];
+      const fields = [
+        { name: 'nombre_censo', id: 'id_nombre_censo' },
+        { name: 'fecha_inicio', id: 'id_fecha_inicio' },
+        { name: 'fecha_fin', id: 'id_fecha_fin' },
+        { name: 'categoria_enfoque', id: 'id_categoria_enfoque' },
+        { name: 'estatus', id: 'id_estatus' },
+        { name: 'descripcion', id: 'id_descripcion_censo' }
+      ];
       fields.forEach(field => {
-        const input = document.getElementById('id_' + field);
-        const errorDiv = document.getElementById('error_' + field);
+        const input = document.getElementById(field.id);
+        const errorDiv = document.getElementById('error_' + field.name);
         if (input) input.classList.remove('is-invalid');
         if (errorDiv) errorDiv.textContent = '';
       });
