@@ -156,7 +156,7 @@
                         </li>
                       {% elif num >= reportes.number|add:-2 and num <= reportes.number|add:2 %}
                         <li class="page-item">
-                          <a class="page-link" href="?page={{ num }}" style="background-color: #922323; border-color: #922323; color: white;">{{ num }}</a>
+                          <a class="page-link" href="?page={{ num }}" style="color: #922323;">{{ num }}</a>
                         </li>
                       {% endif %}
                     {% endfor %}
