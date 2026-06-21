@@ -322,10 +322,18 @@
               document.getElementById('id_nombre').value = data.nombre || '';
               document.getElementById('id_fecha_inicio').value = data.fecha_inicio || '';
               document.getElementById('id_fecha_fin').value = data.fecha_fin || '';
-              document.getElementById('id_descripcion').value = data.descripcion || '';
+              document.getElementById('id_descripcion_proyecto').value = data.descripcion || '';
               document.getElementById('id_monto_estimado').value = data.monto_estimado || '';
               document.getElementById('id_estatus').value = data.estatus || 'planificacion';
               document.getElementById('id_comite').value = data.comite || '';
+            })
+            .catch(error => {
+              console.error('Error al cargar los datos del proyecto:', error);
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudieron cargar los datos del proyecto para edición.'
+              });
             });
         } else {
           title.textContent = 'Registrar Proyecto';
