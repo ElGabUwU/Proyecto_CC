@@ -11,6 +11,29 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())  # Lista de dominios permiti
 
 LOGIN_URL = '/login/'
 
+# Configuración de AWS S3 para almacenamiento de archivos media
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='')
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com' if AWS_STORAGE_BUCKET_NAME else ''
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+AWS_DEFAULT_ACL = 'public-read' if DEBUG else 'private'
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+# Configurar django-storages para usar S3
+if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/soportes/'
+    print("✅ AWS S3 configurado para almacenamiento de archivos")
+else:
+    # Fallback a almacenamiento local si no hay credenciales de AWS
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
+    print("⚠️  Usando almacenamiento local para archivos media (configura AWS S3 para producción)")
+
 # Application definition
 INSTALLED_APPS = [
     'jazzmin',  # Tema de administración (opcional)
@@ -20,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'storages',  # Django-storages para S3
     #aplicaciones personalizadas
     "myapp",
     'import_export', 
