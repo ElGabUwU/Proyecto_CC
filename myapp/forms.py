@@ -4,13 +4,13 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from django.utils.html import strip_tags
-from datetime import date
+from datetime import date, timedelta
 import datetime
 import re
 from .models import Comite, Proyecto, ProyectoIntegrante
 from .models import (
     Familia, Habitante, IngresoComunal, EgresoComunal, 
-    ConstanciaResidencia, ActaReunion, CensoParticipante
+    ConstanciaResidencia, ActaReunion, ActividadParticipante, Actividad
 )
 
 ORGANISMOS_VENEZUELA_CHOICES = [
@@ -875,7 +875,7 @@ class BuenaConductaForm(forms.Form):
                 
         return fecha_doc
 class ConstanciaFallecidoForm(forms.Form):
-    """Formulario para la Constancia de Residencia Post-Mortem (Fallecidos) con Blindaje de Seguridad"""
+    """Formulario para la Constancia del Fallecido (Fallecidos)"""
     familia = forms.ModelChoiceField(
         queryset=Familia.objects.filter(is_deleted=False).order_by('nombre_familia'),
         label="Seleccionar Grupo Familiar",
@@ -946,13 +946,17 @@ class ConstanciaFallecidoForm(forms.Form):
 
     # 🔒 BLINDAJE: Parentesco
     def clean_relacion_parentesco(self):
+        # Usamos .upper() pero aseguramos limpieza básica
         parentesco = self.cleaned_data.get('relacion_parentesco', '').strip().upper()
         
         if len(parentesco) < 3:
             raise ValidationError("La relación de parentesco es demasiado corta (Ej: HIJO, CONYUGE, MADRE).")
             
-        if not re.match(r'^[A-ZÁÉÍÓÚÑ /-]+$', parentesco):
-            raise ValidationError("El parentesco no debe contener números ni caracteres especiales.")
+        # ✅ CORRECCIÓN: Agregamos \(\) para permitir formatos tipo "HIJO(A)" o "TIO(A)"
+        if not re.match(r'^[A-ZÁÉÍÓÚÑ / \-\(\)]+$', parentesco):
+            raise ValidationError(
+                "El parentesco solo debe contener letras, espacios, acentos, barras (/) o paréntesis."
+            )
             
         return parentesco
 
@@ -1240,23 +1244,21 @@ class AsignarHabitanteForm(forms.ModelForm):
 
 
 # ============================================
-# 🆕 NUEVO: Formularios para Gestión de Censos
+# 🆕 NUEVO: Formularios para Gestión de Actividades
 # ============================================
 
-from .models import Censo, CensoParticipante
-
-class CensoForm(forms.ModelForm):
+class ActividadForm(forms.ModelForm):
     """
-    Formulario para crear y editar censos comunitarios.
+    Formulario para crear y editar actividades comunitarios.
     """
-    nombre_censo = forms.CharField(
-        label="Nombre del Censo",
+    nombre_actividad = forms.CharField(
+        label="Nombre de la actividad",
         max_length=200,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Ej: Censo Poblacional 2026'
         }),
-        help_text="Nombre identificativo de la campaña de censo"
+        help_text="Nombre identificativo de la campaña"
     )
     
     fecha_inicio = forms.DateField(
@@ -1265,7 +1267,7 @@ class CensoForm(forms.ModelForm):
             'class': 'form-control',
             'type': 'date'
         }),
-        help_text="Fecha de inicio del censo"
+        help_text="Fecha de inicio de la actividad"
     )
     
     fecha_fin = forms.DateField(
@@ -1283,42 +1285,42 @@ class CensoForm(forms.ModelForm):
         widget=forms.Textarea(attrs={
             'class': 'form-control',
             'rows': 4,
-            'placeholder': 'Describa el objetivo y alcance del censo...',
+            'placeholder': 'Describa el objetivo y alcance de la actividad...',
             'maxlength': '1000',
-            'id': 'id_descripcion_censo'
+            'id': 'id_descripcion_actividad'
         }),
-        help_text="Descripción detallada del censo (máximo 1000 caracteres)"
+        help_text="Descripción detallada de la actividad (máximo 1000 caracteres)"
     )
     
     categoria_enfoque = forms.ChoiceField(
-        choices=Censo.CATEGORIA_ENFOQUE_CHOICES,
+        choices=Actividad.CATEGORIA_ENFOQUE_CHOICES,
         label="Categoría de Enfoque",
         widget=forms.Select(attrs={'class': 'form-control'}),
-        help_text="Seleccione la categoría principal del censo"
+        help_text="Seleccione la categoría principal"
     )
     
     estatus = forms.ChoiceField(
-        choices=Censo.ESTATUS_CHOICES,
-        label="Estatus del Censo",
+        choices=Actividad.ESTATUS_CHOICES,
+        label="Estatus de la actividad",
         widget=forms.Select(attrs={'class': 'form-control'}),
-        help_text="Estado actual del censo"
+        help_text="Estado actual del actividad"
     )
     
     class Meta:
-        model = Censo
-        fields = ['nombre_censo', 'fecha_inicio', 'fecha_fin', 'descripcion', 'categoria_enfoque', 'estatus']
+        model = Actividad
+        fields = ['nombre_actividad', 'fecha_inicio', 'fecha_fin', 'descripcion', 'categoria_enfoque', 'estatus']
     
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Si es un nuevo censo, preestablecer la fecha de inicio
+        # Si es una nuevo actividad, preestablecer la fecha de inicio
         if not self.instance.pk:
             self.fields['fecha_inicio'].initial = date.today()
         
         # Asegurar que el campo descripcion tenga el id correcto en el widget
         if 'descripcion' in self.fields:
-            self.fields['descripcion'].widget.attrs['id'] = 'id_descripcion_censo'
+            self.fields['descripcion'].widget.attrs['id'] = 'id_descripcion_actividad'
         # Asegurar que el widget textarea tenga el valor correcto al renderizar
         if 'descripcion' in self.fields and self.instance.pk:
             # Forzar que el valor se establezca en el widget
@@ -1347,7 +1349,7 @@ class CensoForm(forms.ModelForm):
 
 class AsignarParticipanteForm(forms.ModelForm):
     """
-    Formulario para asignar un habitante a un censo.
+    Formulario para asignar un habitante a una actividad.
     """
     habitante = forms.ModelChoiceField(
         queryset=Habitante.objects.filter(is_deleted=False),
@@ -1356,7 +1358,7 @@ class AsignarParticipanteForm(forms.ModelForm):
             'class': 'form-control select2',
             'data-placeholder': 'Buscar por nombre o cédula...'
         }),
-        help_text="Seleccione el habitante a registrar en el censo"
+        help_text="Seleccione el habitante a registrar"
     )
     
     observaciones = forms.CharField(
@@ -1371,11 +1373,11 @@ class AsignarParticipanteForm(forms.ModelForm):
     )
     
     class Meta:
-        model = CensoParticipante
+        model = ActividadParticipante
         fields = ['habitante', 'observaciones']
     
     def __init__(self, *args, **kwargs):
-        self.censo = kwargs.pop('censo', None)
+        self.actividad = kwargs.pop('actividad', None)
         super().__init__(*args, **kwargs)
         
         # Optimizar queryset con select_related
@@ -1384,28 +1386,28 @@ class AsignarParticipanteForm(forms.ModelForm):
         ).order_by('nombre')
     
     def clean_habitante(self):
-        """Validar que el habitante no esté ya registrado en el censo"""
+        """Validar que el habitante no esté ya registrado"""
         habitante = self.cleaned_data.get('habitante')
         
-        if self.censo and habitante:
+        if self.actividad and habitante:
             # Verificar si ya está registrado
-            existe = CensoParticipante.objects.filter(
-                censo=self.censo,
+            existe = ActividadParticipante.objects.filter(
+                actividad=self.actividad,
                 habitante=habitante
             ).exists()
             
             if existe:
                 raise forms.ValidationError(
-                    f"Este habitante ya está registrado en este censo."
+                    f"Este habitante ya está registrado en la actividad."
                 )
         
         return habitante
     
     def save(self, commit=True):
-        """Guardar con el censo"""
+        """Guardar con la actividad"""
         instance = super().save(commit=False)
-        if self.censo:
-            instance.censo = self.censo
+        if self.actividad:
+            instance.actividad = self.actividad
         if commit:
             instance.save()
         return instance

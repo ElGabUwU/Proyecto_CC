@@ -670,35 +670,51 @@ def documentacion(request):
     """
     Vista principal para la gestión de documentación y actas.
     """
-    # 💡 CORRECCIÓN: Cambiado .ordering() por .order_by()
-    familias = Familia.objects.filter(is_deleted=False).order_by('nombre_familia')
-    
-    constancias_recientes = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:8]
-    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:5]
+    # Se eliminan los formularios de constancia estáticos del contexto, dejando la consulta intacta
+    constancias_recientes = ConstanciaResidencia.objects.all().order_by('-fecha_generacion')[:4]
+    actas_recientes = ActaReunion.objects.all().order_by('-fecha_reunion')[:4]
     
     context = {
-        'familias': familias,
         'constancias_recientes': constancias_recientes,
         'actas_recientes': actas_recientes,
-        'constancia_form': ConstanciaResidenciaForm(user=request.user),
         'acta_form': ActaReunionForm(user=request.user),
-        'buena_conducta_form': BuenaConductaForm(user=request.user),
-        'fallecido_form': ConstanciaFallecidoForm(user=request.user),
     }
     return render(request, 'documentacion.html', context)
 
+def cargar_formulario_dinamico(request, tipo_tramite):
+    if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        return HttpResponse("Acceso no autorizado", status=403)
+    
+    plantillas_validas = {
+        'residencia': 'partials/forms/residencia_partial.html',
+        'buena_conducta': 'partials/forms/buena_conducta_partial.html',
+        'post_mortem': 'partials/forms/post_mortem_partial.html',
+    }
+    
+    if tipo_tramite not in plantillas_validas:
+        raise Http404("El tipo de trámite solicitado no es válido.")
+        
+    # CORRECCIÓN AQUÍ: Solo familias NO eliminadas y sin duplicados visuales
+    familias = Familia.objects.filter(is_deleted=False).order_by('id').distinct()
+    
+    context = {
+        'familias': familias,
+    }
+    return render(request, plantillas_validas[tipo_tramite], context)
+
 def generar_constancia(request):
     """
-    Vista optimizada para AJAX: Procesa la constancia, retorna JSON de éxito 
-    para actualizar la tabla histórica sin abrir pestañas automáticas.
-    Muestra mensajes de error detallados basados en la validación del Form.
+    Vista optimizada para AJAX: Procesa la constancia de residencia.
     """
     if request.method == 'POST':
         form = ConstanciaResidenciaForm(request.POST, user=request.user)
         
         if form.is_valid():
-            # El save() del Form se encarga de traducir la finalidad y armar el HTML
-            constancia = form.save()
+            # Forzamos o aseguramos que el tipo_tramite sea RESIDENCIA antes de guardar
+            constancia = form.save(commit=False)
+            constancia.tipo_tramite = 'RESIDENCIA'
+            constancia.save()
+            
             nombre_ciudadano = f"{constancia.habitante.nombre} {constancia.habitante.apellido}".upper()
             
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -711,24 +727,19 @@ def generar_constancia(request):
             return redirect('documentacion')
             
         else:
-            # 🎯 EXTRACCIÓN Y FORMATEO AVANZADO DE ERRORES
             errores_visibles = []
             errores_dict = {}
-            
             for campo, lista_errores in form.errors.get_json_data().items():
                 mensaje_error = lista_errores[0]['message']
-                
                 if campo != '__all__' and campo in form.fields:
                     label_campo = form.fields[campo].label
                     texto_completo = f"<strong>{label_campo}:</strong> {mensaje_error}"
                 else:
                     texto_completo = mensaje_error
-                
                 errores_visibles.append(texto_completo)
                 errores_dict[campo] = mensaje_error
             
             mensaje_final_errores = "<br>".join(errores_visibles)
-            
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
@@ -741,22 +752,19 @@ def generar_constancia(request):
             
     return redirect('documentacion')
 
+
 def generar_buena_conducta(request):
     """
-    Vista Sincronizada con el Pipeline AJAX del Frontend:
-    - Si el formulario es inválido: Responde JSON (status 400) -> Activa CASO A (SweetAlert Rojo).
-    - Si el formulario es válido: Responde PDF directo (status 200) -> Activa CASO B (Descarga el Blob).
+    Vista Sincronizada con el Pipeline AJAX: Genera, PERSISTE en Base de Datos y descarga el PDF.
     """
     if request.method == 'POST':
         form = BuenaConductaForm(request.POST)
         
         if form.is_valid():
-            # 1. Extracción de datos validados y limpios
             habitante = form.cleaned_data.get('habitante')
-            familia = form.cleaned_data.get('familia')
             fecha_doc = form.cleaned_data.get('fecha_documento')
             
-            # 2. Reconstrucción formal de la frase del tiempo de residencia
+            # Reconstrucción del tiempo de residencia
             anios = int(form.cleaned_data.get('tiempo_residencia_anios', 0))
             meses = int(form.cleaned_data.get('tiempo_residencia_meses', 0))
             partes_tiempo = []
@@ -766,45 +774,50 @@ def generar_buena_conducta(request):
                 partes_tiempo.append(f"{meses} {'mes' if meses == 1 else 'meses'}")
             tiempo_residencia_texto = " y ".join(partes_tiempo) if partes_tiempo else "Menos de un mes"
             
-            # 3. Traducción de la denominación del organismo destino
             organismo_codigo = form.cleaned_data.get('organismo_destino')
             organismo_destino_legible = dict(ORGANISMOS_VENEZUELA_CHOICES).get(organismo_codigo, organismo_codigo)
             
-            # 4. Codificación e inyección segura del logotipo institucional
+            finalidad_texto = f"PRESENTAR ANTE: {organismo_destino_legible.upper()}. TIEMPO RESIDENCIA: {tiempo_residencia_texto}."
+
+            # 🛠️ PASO CLAVE: Guardar la constancia en el historial de la Base de Datos
+            constancia = ConstanciaResidencia.objects.create(
+                habitante=habitante,
+                fecha_documento=fecha_doc if fecha_doc else date.today(),
+                finalidad=finalidad_texto,
+                contenido=f"Constancia de Buena Conducta emitida para el ciudadano {habitante.get_full_name if hasattr(habitante, 'get_full_name') else habitante.nombre}.",
+                generado_por=request.user,
+                tipo_tramite='BUENA_CONDUCTA'  # 👈 Guardado explícito
+            )
+            
+            # Buscar logotipo
             logo_base64 = ""
             ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_logo.png')
             if os.path.exists(ruta_logo):
                 with open(ruta_logo, "rb") as image_file:
                     logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
             
-            # 5. Ensamble del contexto para la plantilla
             context = {
+                'constancia': constancia,
                 'habitante': habitante,
-                'familia': familia,
+                'familia': habitante.familia if hasattr(habitante, 'familia') else None,
                 'tiempo_residencia': tiempo_residencia_texto,
                 'organismo_destino': organismo_destino_legible.upper(),
-                'fecha_emision': fecha_doc,
+                'fecha_emision': constancia.fecha_documento,
                 'logo_pdf': logo_base64,
             }
             
-            # 6. Renderizado de la plantilla HTML a cadena de texto
             html_string = render_to_string('reportes/buena_conducta_pdf.html', context)
             
-            # 7. Generación de la respuesta HTTP binaria (MIME application/pdf)
             response = HttpResponse(content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="Carta_Buena_Conducta_{habitante.cedula}.pdf"'
+            response['Content-Disposition'] = f'attachment; filename=\"Carta_Buena_Conducta_{habitante.cedula}.pdf\"'
             
-            # Compilación directa del PDF en el cuerpo del Response
             pisa_status = pisa.CreatePDF(src=html_string, dest=response, encoding='utf-8')
-            
             if not pisa_status.err:
                 return response
                 
             return HttpResponse('Error interno al compilar la estructura del PDF con xhtml2pdf.', status=500)
             
         else:
-            # 🛑 FORMULARIO INVÁLIDO: Enviamos un JSON structured con código 400
-            # Esto caerá directo en el procesador JSON de tu script (resultado.esJson = true)
             errores_lista = [
                 f"• <b>{form.fields[campo].label if campo in form.fields else 'Global'}:</b> {msg[0]['message']}" 
                 for campo, msg in form.errors.get_json_data().items()
@@ -812,25 +825,34 @@ def generar_buena_conducta(request):
             errores_html = "<br>".join(errores_lista)
             return JsonResponse({'success': False, 'message': errores_html}, status=400)
 
-    # Si por alguna razón intentan entrar por GET directo a la URL, los devolvemos al panel
     return redirect('documentacion')
+
 
 def generar_post_mortem(request):
     """
-    Procesa y valida la Constancia Post-Mortem mediante AJAX/Nativo.
-    Aplica estrictamente el candado de los 60 días desde el deceso.
+    Vista: Genera, PERSISTE en Base de Datos y descarga el PDF Post-Mortem.
     """
     if request.method == 'POST':
-        # 🎯 CORREGIDO: Eliminamos 'user=' para evitar conflictos de firma en el __init__
         form = ConstanciaFallecidoForm(request.POST)
         
         if form.is_valid():
             fallecido = form.cleaned_data.get('habitante')
-            familia = fallecido.familia
             fecha_deceso = form.cleaned_data.get('fecha_deceso')
             solicitante_defuncion = form.cleaned_data.get('solicitante_defuncion')
             solicitante_cedula = form.cleaned_data.get('solicitante_cedula')
             relacion_parentesco = form.cleaned_data.get('relacion_parentesco')
+            
+            finalidad_texto = f"SOLICITANTE: {solicitante_defuncion} (C.I: {solicitante_cedula}). PARENTESCO: {relacion_parentesco}. FECHA DECESO: {fecha_deceso}."
+
+            # 🛠️ PASO CLAVE: Guardar la constancia en el historial de la Base de Datos
+            constancia = ConstanciaResidencia.objects.create(
+                habitante=fallecido,
+                fecha_documento=date.today(),
+                finalidad=finalidad_texto,
+                contenido=f"Constancia de Fallecimiento (Post-Mortem) del ciudadano {fallecido.nombre} {fallecido.apellido}.",
+                generado_por=request.user,
+                tipo_tramite='POST_MORTEM'  # 👈 Guardado explícito
+            )
             
             logo_base64 = ""
             ruta_logo = os.path.join(settings.BASE_DIR, 'static', 'assets', 'images', 'CC_logo.png')
@@ -839,19 +861,20 @@ def generar_post_mortem(request):
                     logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
             
             context = {
+                'constancia': constancia,
                 'fallecido': fallecido,
-                'familia': familia,
+                'familia': fallecido.familia if hasattr(fallecido, 'familia') else None,
                 'fecha_fallecimiento': fecha_deceso,
                 'solicitante_nombre': solicitante_defuncion,
                 'solicitante_cedula': solicitante_cedula,
                 'relacion_parentesco': relacion_parentesco,
-                'fecha_emision': date.today(), # La fecha de emisión de la carta sí es hoy
+                'fecha_emision': constancia.fecha_documento,
                 'logo_pdf': logo_base64,
             }
             
             html_string = render_to_string('reportes/post_mortem_pdf.html', context)
             response = HttpResponse(content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="Constancia_PostMortem_{fallecido.cedula}.pdf"'
+            response['Content-Disposition'] = f'attachment; filename=\"Constancia_PostMortem_{fallecido.cedula}.pdf\"'
             
             pisa_status = pisa.CreatePDF(src=html_string, dest=response, encoding='utf-8')
             if not pisa_status.err:
@@ -863,7 +886,6 @@ def generar_post_mortem(request):
             return redirect('documentacion')
             
         else:
-            # 🎯 EXTRACCIÓN AVANZADA DE ERRORES PARA SWEETALERT2
             errores_lista = []
             for campo, msg in form.errors.get_json_data().items():
                 label = form.fields[campo].label if campo in form.fields else "Global"
@@ -923,39 +945,63 @@ def generar_acta(request):
     return redirect('documentacion')
 
 def descargar_constancia(request, id):
+    """
+    Enrutador Dinámico de Descargas Históricas:
+    Detecta el tipo_tramite guardado y renderiza el reporte PDF correspondiente.
+    """
     try:
-        # 1. Recuperamos la constancia e inspeccionamos sus relaciones
         constancia = ConstanciaResidencia.objects.get(id=id)
         habitante = constancia.habitante
         familia_obj = getattr(habitante, 'familia', None)
         
-        # 2. Reconstruimos el contexto inyectando el logo convertido
-        context = {
-            'constancia': constancia,
-            # 'motivo' ahora va a tener siempre la string limpia y formal traducida por el ChoiceField
-            'motivo': constancia.finalidad.upper() if constancia.finalidad else "TRÁMITES PERSONALES",
-            'solicitante': habitante,   
-            'familia': familia_obj,     
-            'fecha_emision': constancia.fecha_documento,
-            'logo_pdf': obtener_logo_base64(), # 👈 Inyección Base64 segura
-        }
+        # 1. Enrutar dinámicamente según el tipo de trámite guardado
+        if constancia.tipo_tramite == 'BUENA_CONDUCTA':
+            template_name = 'reportes/buena_conducta_pdf.html'
+            filename_prefix = "Carta_Buena_Conducta"
+            # Parseamos de vuelta los valores simulados o guardados si fuesen necesarios en tu template
+            context = {
+                'constancia': constancia,
+                'habitante': habitante,
+                'familia': familia_obj,
+                'tiempo_residencia': "Verificar observaciones en la parte inferior",
+                'organismo_destino': "EL INTERESADO",
+                'fecha_emision': constancia.fecha_documento,
+                'logo_pdf': obtener_logo_base64(),
+            }
+        elif constancia.tipo_tramite == 'POST_MORTEM':
+            template_name = 'reportes/post_mortem_pdf.html'
+            filename_prefix = "Constancia_PostMortem"
+            context = {
+                'constancia': constancia,
+                'fallecido': habitante,
+                'familia': familia_obj,
+                'fecha_fallecimiento': "Ver observaciones",
+                'solicitante_nombre': "Familiar Directo",
+                'solicitante_cedula': "",
+                'relacion_parentesco': "Familiar",
+                'fecha_emision': constancia.fecha_documento,
+                'logo_pdf': obtener_logo_base64(),
+            }
+        else:
+            # Por defecto: RESIDENCIA
+            template_name = 'residence.html'
+            filename_prefix = "Constancia_Residencia"
+            context = {
+                'constancia': constancia,
+                'motivo': constancia.finalidad.upper() if constancia.finalidad else "TRÁMITES PERSONALES",
+                'solicitante': habitante,   
+                'familia': familia_obj,     
+                'fecha_emision': constancia.fecha_documento,
+                'logo_pdf': obtener_logo_base64(), 
+            }
         
-        # 3. Renderizamos el HTML corregido a cadena de texto
-        html = render_to_string('residence.html', context)
+        html = render_to_string(template_name, context)
         
-        # 4. Generamos el flujo de respuesta limpia
         response = HttpResponse(content_type='application/pdf')
-        # Añadimos la cédula al nombre del archivo para que sea más fácil de buscar para ti y los voceros
         cedula_str = habitante.cedula if habitante.cedula else id
-        response['Content-Disposition'] = f'attachment; filename="Constancia_Residencia_{cedula_str}.pdf"'
+        response['Content-Disposition'] = f'attachment; filename=\"{filename_prefix}_{cedula_str}.pdf\"'
         
-        # 5. Compilación sin depender de link_callback para imágenes (Usa codificación UTF-8)
-        pdf = pisa.CreatePDF(
-            src=html,
-            dest=response,
-            encoding='utf-8'
-        )
-        
+        pdf = pisa.CreatePDF(src=html, dest=response, encoding='utf-8')
         if not pdf.err:
             return response
             
@@ -963,7 +1009,7 @@ def descargar_constancia(request, id):
         
     except ConstanciaResidencia.DoesNotExist:
         return HttpResponse('La constancia especificada no existe en la base de datos.', status=404)
-    
+
 @require_GET
 def descargar_acta(request, id):
     # 1. Recuperamos el acta de la base de datos

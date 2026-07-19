@@ -1,5 +1,5 @@
 """
-Vistas para la gestión de censos comunitarios del Consejo Comunal.
+Vistas para la gestión de actividades comunitarios del Consejo Comunal.
 """
 from django.shortcuts import render, redirect, get_object_or_404, reverse
 from django.contrib import messages
@@ -19,83 +19,83 @@ from openpyxl.utils import get_column_letter
 
 # ✅ CORRECCIÓN: Eliminado 'Person' de las importaciones
 from .models import (
-    Censo, CensoParticipante, Habitante
+    Actividad, ActividadParticipante, Habitante
 )
 from .forms import (
-    CensoForm, AsignarParticipanteForm
+    ActividadForm, AsignarParticipanteForm
 )
 from .decorators import admin_required
 
 
 # ============================================
-# Vistas para Censos
+# Vistas para Actividades
 # ============================================
 
-def censos(request):
+def actividad(request):
     """
-    Vista para listar y buscar censos comunitarios.
+    Vista para listar y buscar actividades comunitarios.
     """
     query = request.GET.get('q', '')
     estatus = request.GET.get('estatus', '')
     categoria = request.GET.get('categoria', '')
     
-    censos_list = Censo.objects.filter(is_deleted=False).select_related('creado_por')
+    actividad_list = Actividad.objects.filter(is_deleted=False).select_related('creado_por')
     
     if query:
-        censos_list = censos_list.filter(
-            Q(nombre_censo__icontains=query) |
+        actividad_list = actividad_list.filter(
+            Q(nombre_actividad__icontains=query) |
             Q(descripcion__icontains=query)
         )
     
     if estatus:
-        censos_list = censos_list.filter(estatus=estatus)
+        actividad_list = actividad_list.filter(estatus=estatus)
     
     if categoria:
-        censos_list = censos_list.filter(categoria_enfoque=categoria)
+        actividad_list = actividad_list.filter(categoria_enfoque=categoria)
     
-    censos_list = censos_list.annotate(num_participantes=Count('participantes'))
-    censos_list = censos_list.order_by('-fecha_creacion')
+    actividad_list = actividad_list.annotate(num_participantes=Count('participantes'))
+    actividad_list = actividad_list.order_by('-fecha_creacion')
     
-    paginator = Paginator(censos_list, 15)
+    paginator = Paginator(actividad_list, 15)
     page_number = request.GET.get('page')
-    censos_page = paginator.get_page(page_number)
+    actividad_page = paginator.get_page(page_number)
 
-    conteos = censos_list.aggregate(
+    conteos = actividad_list.aggregate(
         activo=Count('pk', filter=Q(estatus='activo')),
         cerrado=Count('pk', filter=Q(estatus='cerrado')),
         archivado=Count('pk', filter=Q(estatus='archivado')),
     )
     
     context = {
-        'censos': censos_page,
+        'actividad': actividad_page,
         'query': query,
         'estatus': estatus,
         'categoria': categoria,
-        'censo_form': CensoForm(user=request.user),
-        'estatus_choices': Censo.ESTATUS_CHOICES,
-        'categoria_choices': Censo.CATEGORIA_ENFOQUE_CHOICES,
+        'actividad_form': ActividadForm(user=request.user),
+        'estatus_choices': Actividad.ESTATUS_CHOICES,
+        'categoria_choices': Actividad.CATEGORIA_ENFOQUE_CHOICES,
         'count_activo': conteos['activo'],
         'count_cerrado': conteos['cerrado'],
         'count_archivado': conteos['archivado'],
     }
     
-    return render(request, 'censos/censo_list.html', context)
+    return render(request, 'actividad/actividad_list.html', context)
 
 
-def crear_censo(request):
+def crear_actividad(request):
     if request.method == 'POST':
-        form = CensoForm(request.POST, user=request.user)
+        form = ActividadForm(request.POST, user=request.user)
         if form.is_valid():
-            censo = form.save()
-            messages.success(request, f'Censo "{censo.nombre_censo}" creado exitosamente.')
+            actividad = form.save()
+            messages.success(request, f'Actividad "{actividad.nombre_actividad}" creado exitosamente.')
             # Si es una petición AJAX, devolver respuesta JSON
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': True,
-                    'message': f'Censo "{censo.nombre_censo}" creado exitosamente.',
-                    'redirect_url': str(reverse('detalle_censo', kwargs={'pk': censo.pk}))
+                    'message': f'Actividad "{actividad.nombre_actividad}" creado exitosamente.',
+                    'redirect_url': str(reverse('detalle_actividad', kwargs={'pk': actividad.pk}))
                 })
-            return redirect('censos')
+            return redirect('actividad')
         else:
             # Si es una petición AJAX, devolver los errores del formulario en JSON
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -110,27 +110,27 @@ def crear_censo(request):
                 }, status=400)
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
-        form = CensoForm(user=request.user)
+        form = ActividadForm(user=request.user)
     
     context = {'form': form}
-    return render(request, 'censos/censo_list.html', context)
+    return render(request, 'actividad/actividad_list.html', context)
 
 
-def detalle_censo(request, pk):
+def detalle_actividad(request, pk):
     """
-    Vista para ver el detalle completo de un censo.
+    Vista para ver el detalle completo de un actividad.
     Incluye el listado de participantes registrados.
     """
     # ✅ CORRECCIÓN: Rutas adaptadas al modelo unificado
-    censo = get_object_or_404(
-        Censo.objects.filter(is_deleted=False).prefetch_related(
-            'participantes_censo__habitante',
-            'participantes_censo__habitante__familia'
+    actividad = get_object_or_404(
+        Actividad.objects.filter(is_deleted=False).prefetch_related(
+            'participantes_actividad__habitante',
+            'participantes_actividad__habitante__familia'
         ).select_related('creado_por'),
         pk=pk
     )
     
-    participantes = censo.participantes_censo.all()
+    participantes = actividad.participantes_actividad.all()
     stats_genero = {}
     stats_familias = {}
     
@@ -144,32 +144,32 @@ def detalle_censo(request, pk):
         stats_familias[familia_nombre] = stats_familias.get(familia_nombre, 0) + 1
     
     context = {
-        'censo': censo,
+        'actividad': actividad,
         'participantes': participantes,
-        'asignar_form': AsignarParticipanteForm(censo=censo),
+        'asignar_form': AsignarParticipanteForm(actividad=actividad),
         'stats_genero': stats_genero,
         'stats_familias': stats_familias,
     }
     
-    return render(request, 'censos/censo_detail.html', context)
+    return render(request, 'actividad/actividad_detail.html', context)
 
 
-def editar_censo(request, pk):
-    censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
+def editar_actividad(request, pk):
+    actividad = get_object_or_404(Actividad, pk=pk, is_deleted=False)
 
     if request.method == "POST":
-        form = CensoForm(request.POST, instance=censo, user=request.user)
+        form = ActividadForm(request.POST, instance=actividad, user=request.user)
         if form.is_valid():
-            censo = form.save()
-            messages.success(request, f'Censo "{censo.nombre_censo}" actualizado exitosamente.')
+            actividad = form.save()
+            messages.success(request, f'Actividad "{actividad.nombre_actividad}" actualizado exitosamente.')
             # Si es una petición AJAX, devolver respuesta JSON
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return JsonResponse({
                     "success": True,
-                    "message": f'Censo "{censo.nombre_censo}" actualizado exitosamente.',
-                    "redirect_url": str(reverse("detalle_censo", kwargs={"pk": censo.pk}))
+                    "message": f'Actividad "{actividad.nombre_actividad}" actualizado exitosamente.',
+                    "redirect_url": str(reverse("detalle_actividad", kwargs={"pk": actividad.pk}))
                 })
-            return redirect("detalle_censo", pk=censo.pk)
+            return redirect("detalle_actividad", pk=actividad.pk)
         else:
             # Si es una petición AJAX, devolver los errores del formulario en JSON
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -184,38 +184,38 @@ def editar_censo(request, pk):
                 }, status=400)
             messages.error(request, "Por favor corrija los errores en el formulario.")
     else:
-        form = CensoForm(instance=censo, user=request.user)
+        form = ActividadForm(instance=actividad, user=request.user)
 
-    context = {"form": form, "censo": censo}
-    return render(request, "censos/censo_form.html", context)
+    context = {"form": form, "actividad": actividad}
+    return render(request, "actividad/actividad_form.html", context)
 
 
 @require_POST
-def eliminar_censo(request, pk):
-    censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
-    nombre = censo.nombre_censo
-    censo.delete()
-    messages.success(request, f'Censo "{nombre}" eliminado exitosamente.')
-    return redirect('censos')
+def eliminar_actividad(request, pk):
+    actividad = get_object_or_404(Actividad, pk=pk, is_deleted=False)
+    nombre = actividad.nombre_actividad
+    actividad.delete()
+    messages.success(request, f'Actividad "{nombre}" eliminado exitosamente.')
+    return redirect('actividad')
 
 
 @require_GET
-def api_censo(request, pk):
-    censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
+def api_actividad(request, pk):
+    actividad = get_object_or_404(Actividad, pk=pk, is_deleted=False)
     
     data = {
-        'id': censo.id,
-        'nombre_censo': censo.nombre_censo,
-        'fecha_inicio': censo.fecha_inicio.strftime('%Y-%m-%d'),
-        'fecha_fin': censo.fecha_fin.strftime('%Y-%m-%d') if censo.fecha_fin else '',
-        'descripcion': censo.descripcion,
-        'categoria_enfoque': censo.categoria_enfoque,
-        'categoria_enfoque_display': censo.get_categoria_enfoque_display(),
-        'estatus': censo.estatus,
-        'estatus_display': censo.get_estatus_display(),
-        'fecha_creacion': censo.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
-        'creado_por': censo.creado_por.username if censo.creado_por else '',
-        'participantes_count': censo.cantidad_participantes(),
+        'id': actividad.id,
+        'nombre_actividad': actividad.nombre_actividad,
+        'fecha_inicio': actividad.fecha_inicio.strftime('%Y-%m-%d'),
+        'fecha_fin': actividad.fecha_fin.strftime('%Y-%m-%d') if actividad.fecha_fin else '',
+        'descripcion': actividad.descripcion,
+        'categoria_enfoque': actividad.categoria_enfoque,
+        'categoria_enfoque_display': actividad.get_categoria_enfoque_display(),
+        'estatus': actividad.estatus,
+        'estatus_display': actividad.get_estatus_display(),
+        'fecha_creacion': actividad.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+        'creado_por': actividad.creado_por.username if actividad.creado_por else '',
+        'participantes_count': actividad.cantidad_participantes(),
     }
     
     return JsonResponse(data)
@@ -225,12 +225,12 @@ def api_censo(request, pk):
 # Vistas para Gestión de Participantes
 # ============================================
 
-def buscar_habitantes_censo(request):
+def buscar_habitantes_actividad(request):
     """
-    API para buscar habitantes para registrar en un censo.
+    API para buscar habitantes para registrar en una actividad.
     """
     query = request.GET.get('q', '')
-    censo_id = request.GET.get('censo_id', '')
+    actividad_id = request.GET.get('actividad_id', '')
     
     if len(query) < 2:
         return JsonResponse({'habitantes': []})
@@ -244,9 +244,9 @@ def buscar_habitantes_censo(request):
         Q(cedula__icontains=query)
     ).select_related('familia').order_by('nombre')
     
-    if censo_id:
-        registrados = CensoParticipante.objects.filter(
-            censo_id=censo_id
+    if actividad_id:
+        registrados = ActividadParticipante.objects.filter(
+            actividad_id=actividad_id
         ).values_list('habitante_id', flat=True)
         habitantes = habitantes.exclude(id__in=registrados)
 
@@ -268,50 +268,50 @@ def buscar_habitantes_censo(request):
     return JsonResponse({'habitantes': resultados})
 
 def asignar_participante(request, pk):
-    censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
+    actividad = get_object_or_404(Actividad, pk=pk, is_deleted=False)
     
     if request.method == 'POST':
-        form = AsignarParticipanteForm(request.POST, censo=censo)
+        form = AsignarParticipanteForm(request.POST, actividad=actividad)
         if form.is_valid():
             participante = form.save()
             # ✅ CORRECCIÓN: Nombres directos del habitante
             nombre_completo = f"{participante.habitante.nombre} {participante.habitante.apellido}"
-            messages.success(request, f'{nombre_completo} registrado exitosamente en el censo.')
-            return redirect('detalle_censo', pk=censo.pk)
+            messages.success(request, f'{nombre_completo} ha sido registrado/a exitosamente en la actividad.')
+            return redirect('detalle_actividad', pk=actividad.pk)
         else:
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
-        form = AsignarParticipanteForm(censo=censo)
+        form = AsignarParticipanteForm(actividad=actividad)
     
-    return render(request, 'censos/censo_detail.html', {'form': form, 'censo': censo})
+    return render(request, 'actividad/actividad_detail.html', {'form': form, 'actividad': actividad})
 
 
 @require_POST
 def remover_participante(request, pk, habitante_id):
-    censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
+    actividad = get_object_or_404(Actividad, pk=pk, is_deleted=False)
     
     try:
-        participante = CensoParticipante.objects.get(
-            censo=censo,
+        participante = ActividadParticipante.objects.get(
+            actividad=actividad,
             habitante_id=habitante_id
         )
         nombre_completo = f"{participante.habitante.nombre} {participante.habitante.apellido}"
         participante.delete()
-        messages.success(request, f'{nombre_completo} removido del censo exitosamente.')
-    except CensoParticipante.DoesNotExist:
-        messages.error(request, 'El habitante no está registrado en este censo.')
+        messages.success(request, f'{nombre_completo} ha sido removido/a de la actividad exitosamente.')
+    except ActividadParticipante.DoesNotExist:
+        messages.error(request, 'El habitante no está registrado en esta actividad.')
     
-    return redirect('detalle_censo', pk=censo.pk)
+    return redirect('detalle_actividad', pk=actividad.pk)
 
 
 @require_GET
 def api_participante(request, participante_id):
-    participante = get_object_or_404(CensoParticipante, id=participante_id)
+    participante = get_object_or_404(ActividadParticipante, id=participante_id)
     
     data = {
         'id': participante.id,
-        'censo': participante.censo.id,
-        'censo_nombre': participante.censo.nombre_censo,
+        'actividad': participante.actividad.id,
+        'actividad_nombre': participante.actividad.nombre_actividad,
         'habitante': participante.habitante.id,
         'habitante_nombre': participante.nombre_habitante,
         'habitante_documento': participante.documento_habitante,
@@ -326,22 +326,22 @@ def api_participante(request, participante_id):
 # Vistas para Exportación
 # ============================================
 
-def exportar_participantes_censo(request, pk):
+def exportar_participantes_actividad(request, pk):
     """
-    Vista para exportar la lista de participantes de un censo a CSV.
+    Vista para exportar la lista de participantes de una actividad a CSV.
     """
-    censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
+    actividad = get_object_or_404(Actividad, pk=pk, is_deleted=False)
     
     # ✅ CORRECCIÓN: Rutas de relación corregidas
-    participantes = CensoParticipante.objects.filter(
-        censo=censo
+    participantes = ActividadParticipante.objects.filter(
+        actividad=actividad
     ).select_related(
         'habitante',
         'habitante__familia'
     ).order_by('habitante__nombre')
     
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="censo_{censo.id}_{datetime.now().strftime("%Y%m%d")}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="actividad_{actividad.id}_{datetime.now().strftime("%Y%m%d")}.csv"'
     
     writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_NONNUMERIC)
     writer.writerow([
@@ -369,16 +369,16 @@ def exportar_participantes_censo(request, pk):
     return response
 
 
-def exportar_participantes_censo_excel(request, pk):
+def exportar_participantes_actividad_excel(request, pk):
     """
     Genera un archivo Excel profesional (.xlsx) en memoria RAM con los 
-    participantes de un censo comunitario, usando el mismo estilizado 
+    participantes de una actividad comunitaria, usando el mismo estilizado 
     que los reportes demográficos.
     """
-    censo = get_object_or_404(Censo, pk=pk, is_deleted=False)
+    actividad = get_object_or_404(Actividad, pk=pk, is_deleted=False)
     
-    participantes = CensoParticipante.objects.filter(
-        censo=censo
+    participantes = ActividadParticipante.objects.filter(
+        actividad=actividad
     ).select_related(
         'habitante',
         'habitante__familia'
@@ -387,7 +387,7 @@ def exportar_participantes_censo_excel(request, pk):
     # 2. Inicializamos el libro de openpyxl
     wb = Workbook()
     ws = wb.active
-    ws.title = "Participantes Censo"
+    ws.title = "Participantes en la actividad"
     
     # Habilitar líneas de cuadrícula visibles
     ws.views.sheetView[0].showGridLines = True
@@ -411,11 +411,11 @@ def exportar_participantes_censo_excel(request, pk):
     # 4. Construcción del Encabezado del Formato
     ws['A1'] = "CONSEJO COMUNAL MANUEL PULIDO MÉNDEZ"
     ws['A1'].font = fuente_titulo
-    ws['A2'] = f"CENSO: {censo.nombre_censo.upper()}"
+    ws['A2'] = f"ACTIVIDAD: {actividad.nombre_actividad.upper()}"
     ws['A2'].font = Font(name='Arial', size=12, bold=True, color='1F4E78')
     
     # Detalle de las condiciones aplicadas
-    resumen_info = f"Categoría: {censo.get_categoria_enfoque_display()} | Estatus: {censo.get_estatus_display()}"
+    resumen_info = f"Categoría: {actividad.get_categoria_enfoque_display()} | Estatus: {actividad.get_estatus_display()}"
     ws['A3'] = resumen_info
     ws['A3'].font = fuente_subtitulo
     ws['A4'] = f"Fecha de exportación: {datetime.now().strftime('%d/%m/%Y')} | Total registros: {participantes.count()}"
@@ -508,52 +508,52 @@ def exportar_participantes_censo_excel(request, pk):
         buffer.getvalue(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = f'attachment; filename="Censo_{censo.id}_{datetime.now().strftime("%Y%m%d")}.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="Actividad_{actividad.id}_{datetime.now().strftime("%Y%m%d")}.xlsx"'
     
     return response
 
 
 # ============================================
-# Vistas para Dashboard de Censos
+# Vistas para Dashboard de Actividad
 # ============================================
 
-def dashboard_censos(request):
-    total_censos = Censo.objects.filter(is_deleted=False).count()
+def dashboard_actividad(request):
+    total_actividad = Actividad.objects.filter(is_deleted=False).count()
     
-    por_estatus = Censo.objects.filter(is_deleted=False).values('estatus').annotate(
+    por_estatus = Actividad.objects.filter(is_deleted=False).values('estatus').annotate(
         count=Count('id')
     ).order_by('estatus')
     
-    por_categoria = Censo.objects.filter(is_deleted=False).values('categoria_enfoque').annotate(
+    por_categoria = Actividad.objects.filter(is_deleted=False).values('categoria_enfoque').annotate(
         count=Count('id')
     ).order_by('-count')
     
-    activos = Censo.objects.filter(
+    activos = Actividad.objects.filter(
         is_deleted=False, 
         estatus='activo'
     ).annotate(
         num_participantes=Count('participantes')
     ).order_by('-fecha_creacion')[:10]
     
-    total_participaciones = CensoParticipante.objects.count()
-    ultimos_censos = Censo.objects.filter(is_deleted=False).order_by('-fecha_creacion')[:5]
+    total_participaciones = ActividadParticipante.objects.count()
+    ultimos_actividad = Actividad.objects.filter(is_deleted=False).order_by('-fecha_creacion')[:5]
     
     hoy = timezone.now().date()
     en_7_dias = hoy + timedelta(days=7)
-    proximos_cerrar = Censo.objects.filter(
+    proximos_cerrar = Actividad.objects.filter(
         is_deleted=False,
         estatus='activo',
         fecha_fin__range=[hoy, en_7_dias]
     ).order_by('fecha_fin')[:5]
     
     context = {
-        'total_censos': total_censos,
+        'total_actividad': total_actividad,
         'por_estatus': por_estatus,
         'por_categoria': por_categoria,
         'activos': activos,
         'total_participaciones': total_participaciones,
-        'ultimos_censos': ultimos_censos,
+        'ultimos_actividad': ultimos_actividad,
         'proximos_cerrar': proximos_cerrar,
     }
     
-    return render(request, 'censos/dashboard_censos.html', context)
+    return render(request, 'actividad/dashboard_actividad.html', context)

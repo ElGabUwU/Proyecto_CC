@@ -1,0 +1,61 @@
+<form id="formBuenaConducta" method="POST" action="{% url 'generar_buena_conducta' %}">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label for="select_familia_bc" class="form-label text-black fw-semibold">Seleccione el grupo Familiar</label>
+    <select class="form-select" id="select_familia_bc" name="familia" required>
+      <option value="">Seleccionar una familia...</option>
+      {% for familia in familias %}
+      <option value="{{ familia.id }}">
+        Familia: {{ familia.nombre_familia }} - {{ familia.direccion }}
+      </option>
+      {% empty %}
+      <option value="" disabled>No hay familias registradas</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="select_habitante_bc" class="form-label text-black fw-semibold">Seleccione el Ciudadano Ejemplar</label>
+    <select class="form-select" id="select_habitante_bc" name="habitante" disabled required>
+      <option value="">-- Seleccione primero una familia --</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <label for="tiempo_residencia_anios" class="form-label text-black">Años de Residencia</label>
+      <input type="number" name="tiempo_residencia_anios" id="tiempo_residencia_anios" class="form-control text-black" min="0" max="120" value="1" required>
+    </div>
+    <div class="col-md-6 mb-3">
+      <label for="tiempo_residencia_meses" class="form-label text-black fw-semibold">Meses Adicionales (Opcional)</label>
+      <input type="number" name="tiempo_residencia_meses" id="tiempo_residencia_meses" class="form-control text-black" min="0" max="11" value="0" required>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label for="organismo_destino" class="form-label text-black fw-semibold">Organismo o Destino del Trámite</label>
+    <select name="organismo_destino" id="organismo_destino" class="form-select text-black" required>
+      <option value="" selected disabled>-- Seleccione el Destino del Trámite --</option>
+      <option value="IVSS">Instituto Venezolano de los Seguros Sociales (IVSS)</option>
+      <option value="SAIME">Servicio Administrativo de Identificación, Migración y Extranjería (SAIME)</option>
+      <option value="INTT">Instituto Nacional de Transporte Terrestre (INTT)</option>
+      <option value="BANCO_PUBLICO">Banca Pública (Banco de Venezuela, del Tesoro, Bicentenario)</option>
+      <option value="BANCO_PRIVADO">Banca Privada (Banesco, Provincial, Mercantil, etc.)</option>
+      <option value="UNIV_EDUCACION">Institución Educativa / Universidades (UPTAI, UPEL, etc.)</option>
+      <option value="CORPOELEC">Corporación Eléctrica Nacional (CORPOELEC)</option>
+      <option value="CANTV">Compañía Anónima Nacional Teléfonos de Venezuela (CANTV)</option>
+      <option value="JUDICIAL_POLICIAL">Organismos Judiciales / Prefectura / Cuerpo Policial</option>
+      <option value="TRAMITE_LABORAL">Fines Laborales / Empresa Contratante</option>
+      <option value="MINISTERIO_PUBLICO">Ministerios u Órganos del Estado</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="fecha_buena_conducta" class="form-label text-black fw-semibold">Fecha de Emisión del Documento</label>
+    <input type="date" class="form-control" id="fecha_buena_conducta" name="fecha_documento" value="{% now 'Y-m-d' %}" required>
+  </div>
+  
+  <button type="submit" class="btn btn-success w-100 fw-bold">
+    <i class="fas fa-file-pdf me-2"></i>Generar Constancia
+  </button>
+</form>

@@ -4,7 +4,7 @@ from django.conf.urls.static import static
 from . import views
 from . import views_comunidad
 from . import views_proyectos
-from . import views_censos
+from . import views_actividad
 from .views import PersonApiView, DocenteApiView
 from .views import change_password
 
@@ -60,6 +60,7 @@ urlpatterns = [
     # ============================================
 # 📁 Módulo de Gestión Documental Principal
     path('comunidad/documentacion/', views_comunidad.documentacion, name='documentacion'),
+    path('documentacion/formulario/<str:tipo_tramite>/', views_comunidad.cargar_formulario_dinamico, name='cargar_formulario_dinamico'),
     # Procesamiento de Formularios (POST)
     path('comunidad/documentacion/constancia/generar/', views_comunidad.generar_constancia, name='generar_constancia'),
     path('comunidad/documentacion/acta/generar/', views_comunidad.generar_acta, name='generar_acta'),
@@ -98,29 +99,29 @@ urlpatterns = [
     path('proyectos/dashboard/', views_proyectos.dashboard_proyectos, name='dashboard_proyectos'),
 
     # ============================================
-    # 🆕 NUEVO: Gestión de Censos Comunitarios
+    # 🆕 NUEVO: Gestión de actividad Comunitarios
     # ============================================
     
-    # Censos
-    path('censos/', views_censos.censos, name='censos'),
-    path('censos/crear/', views_censos.crear_censo, name='crear_censo'),
-    path('censos/<int:pk>/', views_censos.detalle_censo, name='detalle_censo'),
-    path('censos/<int:pk>/editar/', views_censos.editar_censo, name='editar_censo'),
-    path('censos/<int:pk>/eliminar/', views_censos.eliminar_censo, name='eliminar_censo'),
-    path('censos/api/<int:pk>/', views_censos.api_censo, name='api_censo'),
+    # Actividades
+    path('actividad/', views_actividad.actividad, name='actividad'),
+    path('actividad/crear/', views_actividad.crear_actividad, name='crear_actividad'),
+    path('actividad/<int:pk>/', views_actividad.detalle_actividad, name='detalle_actividad'),
+    path('actividad/<int:pk>/editar/', views_actividad.editar_actividad, name='editar_actividad'),
+    path('actividad/<int:pk>/eliminar/', views_actividad.eliminar_actividad, name='eliminar_actividad'),
+    path('actividad/api/<int:pk>/', views_actividad.api_actividad, name='api_actividad'),
     
-    # Participantes de Censos
-    path('censos/<int:pk>/asignar-participante/', views_censos.asignar_participante, name='asignar_participante_censo'),
-    path('censos/<int:pk>/remover-participante/<int:habitante_id>/', views_censos.remover_participante, name='remover_participante_censo'),
-    path('censos/api/buscar-habitantes/', views_censos.buscar_habitantes_censo, name='buscar_habitantes_censo'),
-    path('censos/api/participante/<int:participante_id>/', views_censos.api_participante, name='api_participante_censo'),
+    # Participantes en la Actividad
+    path('actividad/<int:pk>/asignar-participante/', views_actividad.asignar_participante, name='asignar_participante_actividad'),
+    path('actividad/<int:pk>/remover-participante/<int:habitante_id>/', views_actividad.remover_participante, name='remover_participante_actividad'),
+    path('actividad/api/buscar-habitantes/', views_actividad.buscar_habitantes_actividad, name='buscar_habitantes_actividad'),
+    path('actividad/api/participante/<int:participante_id>/', views_actividad.api_participante, name='api_participante_actividad'),
     
-    # Exportación de Censos
-    path('censos/<int:pk>/exportar/', views_censos.exportar_participantes_censo, name='exportar_participantes_censo'),
-    path('censos/<int:pk>/exportar-excel/', views_censos.exportar_participantes_censo_excel, name='exportar_participantes_censo_excel'),
+    # Exportación de las actividades
+    path('actividad/<int:pk>/exportar/', views_actividad.exportar_participantes_actividad, name='exportar_participantes_actividad'),
+    path('actividad/<int:pk>/exportar-excel/', views_actividad.exportar_participantes_actividad_excel, name='exportar_participantes_actividad_excel'),
     
     # Dashboard de Censos
-    path('censos/dashboard/', views_censos.dashboard_censos, name='dashboard_censos'),
+    path('actividad/dashboard/', views_actividad.dashboard_actividad, name='dashboard_actividad'),
     
     # ReportesDemográficos
     path('documentacion/reportes/panel/', views_comunidad.panel_reportes, name='panel_reportes'),

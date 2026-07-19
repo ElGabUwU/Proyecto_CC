@@ -227,6 +227,13 @@ class ConstanciaResidencia(models.Model):
     Según tu nuevo diagrama, el modelo Constancias se vincula con un Habitante (id_habitante), 
     lo cual es correcto porque la constancia de residencia es nominal e individual.
     """
+    TIPO_CHOICES = [
+        ('RESIDENCIA', 'Constancia de Residencia'),
+        ('BUENA_CONDUCTA', 'Constancia de Buena Conducta'),
+        ('POST_MORTEM', 'Constancia Post-Mortem / Fallecimiento'),
+    ]
+    
+    
     habitante = models.ForeignKey(Habitante, on_delete=models.CASCADE, related_name='constancias', verbose_name="Habitante Solicitante")
     fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Generación")
     fecha_documento = models.DateField(verbose_name="Fecha del Documento")
@@ -234,7 +241,13 @@ class ConstanciaResidencia(models.Model):
     contenido = models.TextField(verbose_name="Contenido de la Constancia")
     generado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Generado por")
     archivo_pdf = models.FileField(upload_to='constancias/', blank=True, null=True, verbose_name="Archivo PDF")
-    
+    # Nuevo campo para identificar el trámite inequívocamente
+    tipo_tramite = models.CharField(
+        max_length=20, 
+        choices=TIPO_CHOICES, 
+        default='RESIDENCIA',
+        verbose_name="Tipo de Trámite"
+    )
     class Meta:
         db_table = 'constancias_residencia'
         verbose_name = 'Constancia de Residencia'
@@ -455,13 +468,13 @@ class ProyectoIntegrante(models.Model):
 
 
 # ============================================
-# 🆕 NUEVO: Modelos para Gestión de Censos Comunitarios
+# 🆕 NUEVO: Modelos para Gestión de Actividades Comunitarias
 # ============================================
 
-class Censo(SoftDeleteModel):
+class Actividad(SoftDeleteModel):
     """
-    Modelo que representa una campaña de censo comunitario.
-    Permite registrar habitantes participantes en cada censo.
+    Modelo que representa una campaña de actividad comunitario.
+    Permite registrar habitantes participantes en cada actividad.
     """
     CATEGORIA_ENFOQUE_CHOICES = [
         ('salud', 'Salud'),
@@ -481,10 +494,10 @@ class Censo(SoftDeleteModel):
         ('archivado', 'Archivado'),
     ]
     
-    nombre_censo = models.CharField(
+    nombre_actividad = models.CharField(
         max_length=200, 
-        verbose_name="Nombre del Censo",
-        help_text="Nombre identificativo de la campaña de censo"
+        verbose_name="Nombre de la actividad",
+        help_text="Nombre identificativo de la campaña de actividad"
     )
     fecha_inicio = models.DateField(verbose_name="Fecha de Inicio")
     fecha_fin = models.DateField(
@@ -494,7 +507,7 @@ class Censo(SoftDeleteModel):
     )
     descripcion = models.TextField(
         verbose_name="Descripción",
-        help_text="Descripción detallada del objetivo del censo"
+        help_text="Descripción detallada del objetivo del actividad"
     )
     categoria_enfoque = models.CharField(
         max_length=50,
@@ -506,7 +519,7 @@ class Censo(SoftDeleteModel):
         max_length=20,
         choices=ESTATUS_CHOICES,
         default='activo',
-        verbose_name="Estatus del Censo"
+        verbose_name="Estatus de la actividad"
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
     creado_por = models.ForeignKey(
@@ -514,26 +527,26 @@ class Censo(SoftDeleteModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='censos_creados',
+        related_name='actividades_creados',
         verbose_name="Creado por"
     )
-    # Relación ManyToMany con Habitante a través de CensoParticipante
+    # Relación ManyToMany con Habitante a través de ActividadParticipante
     participantes = models.ManyToManyField(
         'Habitante',
-        through='CensoParticipante',
-        related_name='censos_participados',
+        through='ActividadParticipante',
+        related_name='actividad_participados',
         blank=True,
         verbose_name="Participantes"
     )
     
     class Meta:
-        db_table = 'censos'
-        verbose_name = 'Censo'
-        verbose_name_plural = 'Censos'
+        db_table = 'actividad'
+        verbose_name = 'Actividad'
+        verbose_name_plural = 'Actividad'
         ordering = ['-fecha_creacion']
     
     def __str__(self):
-        return f"{self.nombre_censo} ({self.get_estatus_display()})"
+        return f"{self.nombre_actividad} ({self.get_estatus_display()})"
     
     def get_estatus_badge_class(self):
         """Retorna la clase CSS del badge según el estatus"""
@@ -560,35 +573,35 @@ class Censo(SoftDeleteModel):
         return clases.get(self.categoria_enfoque, 'bg-secondary')
     
     def cantidad_participantes(self):
-        """Retorna la cantidad de participantes en el censo"""
+        """Retorna la cantidad de participantes en la actividad"""
         return self.participantes.count()
     
     def duracion_dias(self):
-        """Calcula la duración del censo en días"""
+        """Calcula la duración de la actividad en días"""
         if self.fecha_inicio and self.fecha_fin:
             return (self.fecha_fin - self.fecha_inicio).days
         return None
     
     def esta_activo(self):
-        """Verifica si el censo está activo"""
+        """Verifica si la actividad está activo"""
         return self.estatus == 'activo'
 
 
-class CensoParticipante(models.Model):
+class ActividadParticipante(models.Model):
     """
-    Modelo intermedio para la relación Censo - Habitante.
-    Registra qué habitantes participan en cada censo con fecha y observaciones.
+    Modelo intermedio para la relación Actividad - Habitante.
+    Registra qué habitantes participan en cada actividad con fecha y observaciones.
     """
-    censo = models.ForeignKey(
-        Censo,
+    actividad = models.ForeignKey(
+        Actividad,
         on_delete=models.CASCADE,
-        related_name='participantes_censo',
-        verbose_name="Censo"
+        related_name='participantes_actividad',
+        verbose_name="Actividad"
     )
     habitante = models.ForeignKey(
         'Habitante',
         on_delete=models.CASCADE,
-        related_name='participaciones_censo',
+        related_name='participaciones_actividad',
         verbose_name="Habitante"
     )
     fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
@@ -599,14 +612,14 @@ class CensoParticipante(models.Model):
     )
     
     class Meta:
-        db_table = 'censo_participantes'
-        verbose_name = 'Participante de Censo'
-        verbose_name_plural = 'Participantes de Censo'
-        unique_together = ['censo', 'habitante']  # Un habitante solo puede registrarse una vez por censo
-        ordering = ['censo', 'fecha_registro', 'habitante__nombre']
+        db_table = 'actividad_participantes'
+        verbose_name = 'Participante de Actividad'
+        verbose_name_plural = 'Participantes de Actividad'
+        unique_together = ['actividad', 'habitante']  # Un habitante solo puede registrarse una vez por actividad
+        ordering = ['actividad', 'fecha_registro', 'habitante__nombre']
     
     def __str__(self):
-        return f"{self.habitante.nombre} {self.habitante.apellido} - {self.censo.nombre_censo}"
+        return f"{self.habitante.nombre} {self.habitante.apellido} - {self.actividad.nombre_actividad}"
     @property
     def nombre_habitante(self):
         return f"{self.habitante.nombre} {self.habitante.apellido}"

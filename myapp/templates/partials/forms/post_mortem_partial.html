@@ -1,0 +1,57 @@
+<form id="formPostMortem" method="POST" action="{% url 'generar_post_mortem' %}">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label for="select_familia_pm" class="form-label text-black fw-semibold">Última Residencia del Fallecido (Familia)</label>
+    <select class="form-select" id="select_familia_pm" name="familia" required>
+      <option value="">Seleccionar una familia...</option>
+      {% for familia in familias %}
+      <option value="{{ familia.id }}">
+        Familia: {{ familia.nombre_familia }} - {{ familia.direccion }}
+      </option>
+      {% empty %}
+      <option value="" disabled>No hay familias registradas</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="select_habitante_pm" class="form-label text-black fw-semibold">Ciudadano Fallecido (Difunto)</label>
+    <select class="form-select" id="select_habitante_pm" name="habitante" disabled required>
+      <option value="">-- Seleccione primero una familia --</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="fecha_deceso" class="form-label text-black fw-semibold">Fecha del Deceso</label>
+    <input type="date" class="form-control" id="fecha_deceso" name="fecha_deceso" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="solicitante_defuncion" class="form-label text-black fw-semibold">Nombre del Familiar Solicitante</label>
+    <input type="text" class="form-control" id="solicitante_defuncion" name="solicitante_defuncion" placeholder="Ej: María Alejandra Pérez" required maxlength="150">
+    <small class="text-muted">Máximo 150 caracteres</small>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <label for="solicitante_cedula" class="form-label text-black fw-semibold">Cédula del Solicitante</label>
+      <input type="text" class="form-control" id="solicitante_cedula" name="solicitante_cedula" placeholder="Ej: 12345678" required>
+    </div>
+
+    <div class="col-md-6 mb-3">
+      <label for="relacion_parentesco" class="form-label text-black fw-semibold">Parentesco</label>
+      <select class="form-select" id="relacion_parentesco" name="relacion_parentesco" required>
+        <option value="">-- Seleccione --</option>
+        <option value="Hijo(a)">Hijo(a)</option>
+        <option value="Esposo(a) / Cónyuge">Esposo(a) / Cónyuge</option>
+        <option value="Hermano(a)">Hermano(a)</option>
+        <option value="Padre / Madre">Padre / Madre</option>
+        <option value="Otros familiares directos">Otros familiares directos</option>
+      </select>
+    </div>
+  </div>
+  
+  <button type="submit" class="btn btn-danger w-100 fw-bold">
+    <i class="fas fa-file-pdf me-2"></i>Generar Constancia Post-Mortem
+  </button>
+</form>

@@ -1,0 +1,45 @@
+<form id="formConstancia" method="POST" action="{% url 'generar_constancia' %}">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label for="select_familia" class="form-label text-black fw-semibold">Seleccione el grupo Familiar</label>
+    <select class="form-select" id="select_familia" name="familia" required>
+      <option value="">Seleccionar una familia...</option>
+      {% for familia in familias %}
+      <option value="{{ familia.id }}">
+        Familia: {{ familia.nombre_familia }} - {{ familia.direccion }}
+      </option>
+      {% empty %}
+      <option value="" disabled>No hay familias registradas</option>
+      {% endfor %}
+    </select>
+  </div>
+  
+  <div class="mb-3">
+    <label for="select_habitante" class="form-label text-black fw-semibold">Seleccione el Ciudadano (Solicitante)</label>
+    <select class="form-select" id="select_habitante" name="habitante" disabled required>
+      <option value="">-- Seleccione primero una familia --</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="fecha_constancia" class="form-label text-black fw-semibold">Fecha del Documento</label>
+    <input type="date" class="form-control" id="fecha_constancia" name="fecha_documento" value="{% now 'Y-m-d' %}" required>
+  </div>
+  
+  <div class="mb-3">
+    <label for="finalidad" class="form-label text-black fw-semibold">Título / Finalidad de la Constancia</label>
+    <select name="finalidad" id="finalidad" class="form-select text-black" required>
+      <option value="" selected disabled>-- Seleccione el Motivo de la Solicitud --</option>
+      <option value="APERTURA_CUENTA">APERTURA DE CUENTA BANCARIA</option>
+      <option value="INSCRIPCION_EDUCATIVA">INSCRIPCION EN INSTITUCIÓN EDUCATIVA / UNIVERSIDAD</option>
+      <option value="TRAMITES_LABORALES">TRÁMITES LABORALES / CONTRATACIÓN</option>
+      <option value="SOLICITUD_BECA">SOLICITUD DE BECA O AYUDA ECONÓMICA</option>
+      <option value="TRAMITES_SALUD">TRÁMITES DE SALUD / ASISTENCIA MÉDICA</option>
+      <option value="PREFECTURA_CIVIL">TRÁMITES CIVILES Y PREFECTURA</option>
+    </select>
+  </div>
+  
+  <button type="submit" class="btn btn-primary w-100 fw-bold">
+    <i class="fas fa-file-pdf me-2"></i>Generar Constancia
+  </button>
+</form>

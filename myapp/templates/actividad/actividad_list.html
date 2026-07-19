@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Censos Comunitarios - Consejo Comunal</title>
+  <title>Actividad Comunitarios - Consejo Comunal</title>
   <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
   <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
@@ -23,17 +23,17 @@
       <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="{% url 'welcome' %}" class="text-decoration-none">Inicio</a></li>
-          <li class="breadcrumb-item active text-white" aria-current="page">Censos Comunitarios</li>
+          <li class="breadcrumb-item active text-white" aria-current="page">Actividades Comunitarios</li>
         </ol>
       </nav>
 
       <div class="card shadow">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h4 class="mb-0">
-            <i class="fas fa-clipboard-list me-2"></i>Gestión de Censos
+            <i class="fas fa-clipboard-list me-2"></i>Gestión de Actividades
           </h4>
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#censoModal">
-            <i class="fas fa-plus me-1"></i>Nuevo Censo
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#actividadModal">
+            <i class="fas fa-plus me-1"></i>Nueva actividad
           </button>
         </div>
         
@@ -59,7 +59,7 @@
               </select>
             </div>
             <div class="col-md-4">
-              <form method="get" action="{% url 'censos' %}" class="mt-4">
+              <form method="get" action="{% url 'actividad' %}" class="mt-4">
                 <div class="input-group">
                   <input type="text" name="q" class="form-control" placeholder="Buscar por nombre..." 
                          value="{{ query|default_if_none:'' }}">
@@ -70,7 +70,7 @@
               </form>
             </div>
             <div class="col-md-2 mt-4">
-              <a href="{% url 'censos' %}" class="btn btn-outline-secondary btn-sm">
+              <a href="{% url 'actividad' %}" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-redo me-1"></i>Limpiar
               </a>
             </div>
@@ -107,13 +107,13 @@
             </div>
           </div>
 
-          <!-- Tabla de Censos -->
+          <!-- Tabla de Actividad -->
           <div class="table-responsive">
             <table class="table table-bordered table-hover">
               <thead>
                 <tr>
                   <th style="width: 140px;">Acciones</th>
-                  <th>Nombre del Censo</th>
+                  <th>Nombre del Actividad</th>
                   <th>Categoría</th>
                   <th>Fecha Inicio</th>
                   <th>Fecha Cierre</th>
@@ -121,22 +121,22 @@
                   <th>Participantes</th>
                 </tr>
               </thead>
-              <tbody id="tabla-censos">
-                {% for censo in censos %}
-                <tr data-estatus="{{ censo.estatus }}" data-categoria="{{ censo.categoria_enfoque }}">
+              <tbody id="tabla-actividad">
+                {% for actividad in actividad %}
+                <tr data-estatus="{{ actividad.estatus }}" data-categoria="{{ actividad.categoria_enfoque }}">
                   <td>
-                    <a href="{% url 'detalle_censo' censo.pk %}" class="btn btn-sm btn-info mb-1" title="Ver detalle">
+                    <a href="{% url 'detalle_actividad' actividad.pk %}" class="btn btn-sm btn-info mb-1" title="Ver detalle">
                       <i class="fas fa-eye"></i>
                     </a>
                     <button type="button" class="btn btn-sm btn-warning mb-1" data-bs-toggle="modal" 
-                            data-bs-target="#censoModal" data-censo-id="{{ censo.pk }}" title="Editar">
+                            data-bs-target="#actividadModal" data-actividad-id="{{ actividad.pk }}" title="Editar">
                       <i class="fas fa-edit"></i>
                     </button>
-                    <form action="{% url 'eliminar_censo' censo.pk %}" method="post" style="display:inline;">
+                    <form action="{% url 'eliminar_actividad' actividad.pk %}" method="post" style="display:inline;">
                       {% csrf_token %}
-                      <button type="submit" class="btn btn-sm btn-danger mb-1 eliminar-censo-btn" 
-                              data-censo-nombre="{{ censo.nombre_censo }}" 
-                              data-delete-url="{% url 'eliminar_censo' censo.pk %}"
+                      <button type="submit" class="btn btn-sm btn-danger mb-1 eliminar-actividad-btn" 
+                              data-actividad-nombre="{{ actividad.nombre_actividad }}" 
+                              data-delete-url="{% url 'eliminar_actividad' actividad.pk %}"
                               title="Eliminar">
                         <i class="fas fa-trash"></i>
                       </button>
@@ -144,41 +144,41 @@
                   </td>
                   <td>
                     <a>
-                      <span>{{ censo.nombre_censo }}</span>
+                      <span>{{ actividad.nombre_actividad }}</span>
                     </a>
-                    {% if censo.descripcion %}
-                    <br><small class="text-muted">{{ censo.descripcion|truncatechars:50 }}</small>
+                    {% if actividad.descripcion %}
+                    <br><small class="text-muted">{{ actividad.descripcion|truncatechars:50 }}</small>
                     {% endif %}
                   </td>
                   <td>
-                    <span class="badge {{ censo.get_categoria_badge_class }}">
-                      {{ censo.get_categoria_enfoque_display }}
+                    <span class="badge {{ actividad.get_categoria_badge_class }}">
+                      {{ actividad.get_categoria_enfoque_display }}
                     </span>
                   </td>
-                  <td>{{ censo.fecha_inicio|date:"d/m/Y" }}</td>
+                  <td>{{ actividad.fecha_inicio|date:"d/m/Y" }}</td>
                   <td>
-                    {% if censo.fecha_fin %}
-                      {{ censo.fecha_fin|date:"d/m/Y" }}
+                    {% if actividad.fecha_fin %}
+                      {{ actividad.fecha_fin|date:"d/m/Y" }}
                     {% else %}
                       <span class="text-muted">Sin definir</span>
                     {% endif %}
                   </td>
                   <td>
-                    <span class="badge {{ censo.get_estatus_badge_class }}">
-                      {{ censo.get_estatus_display }}
+                    <span class="badge {{ actividad.get_estatus_badge_class }}">
+                      {{ actividad.get_estatus_display }}
                     </span>
                   </td>
                   <td>
-                    <span class="badge bg-primary">{{ censo.num_participantes }}</span>
+                    <span class="badge bg-primary">{{ actividad.num_participantes }}</span>
                   </td>
                 </tr>
                 {% empty %}
                 <tr>
                   <td colspan="7" class="text-center text-muted py-4">
                     <i class="fas fa-folder-open fa-3x mb-2 d-block"></i>
-                    No se encontraron censos registrados.
+                    No se encontraron actividades registrados.
                     <br>
-                    <small>Haga clic en "Nuevo Censo" para comenzar.</small>
+                    <small>Haga clic en "Nuevo Actividad" para comenzar.</small>
                   </td>
                 </tr>
                 {% endfor %}
@@ -187,15 +187,15 @@
           </div>
 
           <!-- Paginación -->
-          {% if censos.has_other_pages %}
+          {% if actividad.has_other_pages %}
           <div class="pagination-container d-flex justify-content-center align-items-center my-4">
-            <button id="prev-page" class="btn pagination-btn" {% if not censos.has_previous %}disabled{% endif %}>
+            <button id="prev-page" class="btn pagination-btn" {% if not actividad.has_previous %}disabled{% endif %}>
               <img src="{% static 'assets/images/flecha_izq.png' %}" alt="Anterior" width="40" height="30">
             </button>
             <span class="page-info text-white mx-3">
-              {{ censos.number }} / {{ censos.paginator.num_pages }}
+              {{ actividad.number }} / {{ actividad.paginator.num_pages }}
             </span>
-            <button id="next-page" class="btn pagination-btn" {% if not censos.has_next %}disabled{% endif %}>
+            <button id="next-page" class="btn pagination-btn" {% if not actividad.has_next %}disabled{% endif %}>
               <img src="{% static 'assets/images/flecha_der.png' %}" alt="Siguiente" width="40" height="30">
             </button>
           </div>
@@ -205,55 +205,55 @@
     </main>
   </div>
 
-  <!-- Modal para Censo -->
-  <div class="modal fade" id="censoModal" tabindex="-1" aria-labelledby="censoModalLabel" aria-hidden="true">
+  <!-- Modal para Actividad -->
+  <div class="modal fade" id="actividadModal" tabindex="-1" aria-labelledby="actividadModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="modalCensoTitle">Registrar Censo</h5>
+          <h5 class="modal-title" id="modalActividadTitle">Registrar Actividad</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="censoForm" method="POST" action="">
+          <form id="actividadForm" method="POST" action="">
             {% csrf_token %}
             <div class="row">
               <div class="col-md-12 mb-3">
-                <label for="id_nombre_censo" class="form-label">{{ censo_form.nombre_censo.label }}</label>
-                {{ censo_form.nombre_censo }}
-                <div class="invalid-feedback d-block" id="error_nombre_censo"></div>
+                <label for="id_nombre_actividad" class="form-label">{{ actividad_form.nombre_actividad.label }}</label>
+                {{ actividad_form.nombre_actividad }}
+                <div class="invalid-feedback d-block" id="error_nombre_actividad"></div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="id_fecha_inicio" class="form-label">{{ censo_form.fecha_inicio.label }}</label>
-                {{ censo_form.fecha_inicio }}
+                <label for="id_fecha_inicio" class="form-label">{{ actividad_form.fecha_inicio.label }}</label>
+                {{ actividad_form.fecha_inicio }}
                 <div class="invalid-feedback d-block" id="error_fecha_inicio"></div>
               </div>
               <div class="col-md-6 mb-3">
-                <label for="id_fecha_fin" class="form-label">{{ censo_form.fecha_fin.label }}</label>
-                {{ censo_form.fecha_fin }}
+                <label for="id_fecha_fin" class="form-label">{{ actividad_form.fecha_fin.label }}</label>
+                {{ actividad_form.fecha_fin }}
                 <div class="invalid-feedback d-block" id="error_fecha_fin"></div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="id_categoria_enfoque" class="form-label">{{ censo_form.categoria_enfoque.label }}</label>
-                {{ censo_form.categoria_enfoque }}
+                <label for="id_categoria_enfoque" class="form-label">{{ actividad_form.categoria_enfoque.label }}</label>
+                {{ actividad_form.categoria_enfoque }}
                 <div class="invalid-feedback d-block" id="error_categoria_enfoque"></div>
               </div>
               <div class="col-md-6 mb-3">
-                <label for="id_estatus" class="form-label">{{ censo_form.estatus.label }}</label>
-                {{ censo_form.estatus }}
+                <label for="id_estatus" class="form-label">{{ actividad_form.estatus.label }}</label>
+                {{ actividad_form.estatus }}
                 <div class="invalid-feedback d-block" id="error_estatus"></div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-12 mb-3">
-                <label for="id_descripcion_censo" class="form-label">{{ censo_form.descripcion.label }}</label>
-                {{ censo_form.descripcion }}
-                <small class="text-muted d-block mt-1">{{ censo_form.descripcion.help_text }}</small>
+                <label for="id_descripcion_actividad" class="form-label">{{ actividad_form.descripcion.label }}</label>
+                {{ actividad_form.descripcion }}
+                <small class="text-muted d-block mt-1">{{ actividad_form.descripcion.help_text }}</small>
                 <div class="text-end">
-                  <small class="text-muted" id="descripcion-censo-counter">0/1000</small>
+                  <small class="text-muted" id="descripcion-actividad-counter">0/1000</small>
                 </div>
                 <div class="invalid-feedback d-block" id="error_descripcion"></div>
               </div>
@@ -262,7 +262,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" form="censoForm" class="btn btn-primary">
+          <button type="submit" form="actividadForm" class="btn btn-primary">
             <i class="fas fa-save me-1"></i>Guardar
           </button>
         </div>
@@ -276,35 +276,35 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>  
-    // Lógica para modal de censo
-    const censoModal = document.getElementById('censoModal');
-    if (censoModal) {
-      censoModal.addEventListener('show.bs.modal', function(event) {
+    // Lógica para modal de actividad
+    const actividadModal = document.getElementById('actividadModal');
+    if (actividadModal) {
+      actividadModal.addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;
-        const censoId = button ? button.getAttribute('data-censo-id') : null;
-        const form = document.getElementById('censoForm');
-        const title = document.getElementById('modalCensoTitle');
+        const actividadId = button ? button.getAttribute('data-actividad-id') : null;
+        const form = document.getElementById('actividadForm');
+        const title = document.getElementById('modalActividadTitle');
         
         // Limpiar errores anteriores
         limpiarErrores();
         
-        if (censoId) {
-          title.textContent = 'Editar Censo';
-          form.action = `/censos/${censoId}/editar/`;
+        if (actividadId) {
+          title.textContent = 'Editar Actividad';
+          form.action = `/actividad/${actividadId}/editar/`;
           // AJAX para cargar datos
-          fetch(`/censos/api/${censoId}/`)
+          fetch(`/actividad/api/${actividadId}/`)
             .then(response => response.json())
             .then(data => {
-              document.getElementById('id_nombre_censo').value = data.nombre_censo || '';
+              document.getElementById('id_nombre_actividad').value = data.nombre_actividad || '';
               document.getElementById('id_fecha_inicio').value = data.fecha_inicio || '';
               document.getElementById('id_fecha_fin').value = data.fecha_fin || '';
-              document.getElementById('id_descripcion_censo').value = data.descripcion || '';
+              document.getElementById('id_descripcion_actividad').value = data.descripcion || '';
               document.getElementById('id_categoria_enfoque').value = data.categoria_enfoque || 'general';
               document.getElementById('id_estatus').value = data.estatus || 'activo';
             });
         } else {
-          title.textContent = 'Registrar Censo';
-          form.action = "{% url 'crear_censo' %}";
+          title.textContent = 'Registrar Actividad';
+          form.action = "{% url 'crear_actividad' %}";
           form.reset();
         }
       });
@@ -313,12 +313,12 @@
     // Función para limpiar errores
     function limpiarErrores() {
       const fields = [
-        { name: 'nombre_censo', id: 'id_nombre_censo' },
+        { name: 'nombre_actividad', id: 'id_nombre_actividad' },
         { name: 'fecha_inicio', id: 'id_fecha_inicio' },
         { name: 'fecha_fin', id: 'id_fecha_fin' },
         { name: 'categoria_enfoque', id: 'id_categoria_enfoque' },
         { name: 'estatus', id: 'id_estatus' },
-        { name: 'descripcion', id: 'id_descripcion_censo' }
+        { name: 'descripcion', id: 'id_descripcion_actividad' }
       ];
       fields.forEach(field => {
         const input = document.getElementById(field.id);
@@ -329,14 +329,14 @@
     }
     
     // Interceptar submit del formulario para manejar errores via AJAX
-    const censoForm = document.getElementById('censoForm');
-    if (censoForm) {
-      censoForm.addEventListener('submit', function(e) {
+    const actividadForm = document.getElementById('actividadForm');
+    if (actividadForm) {
+      actividadForm.addEventListener('submit', function(e) {
         e.preventDefault();
         limpiarErrores();
         
-        const formData = new FormData(censoForm);
-        const actionUrl = censoForm.action;
+        const formData = new FormData(actividadForm);
+        const actionUrl = actividadForm.action;
         
         fetch(actionUrl, {
           method: 'POST',
@@ -408,15 +408,15 @@
     }
     
     // Confirmar eliminación con SweetAlert2
-    document.querySelectorAll('.eliminar-censo-btn').forEach(function(button) {
+    document.querySelectorAll('.eliminar-actividad-btn').forEach(function(button) {
       button.addEventListener('click', function(event) {
         event.preventDefault();
-        const nombre = this.getAttribute('data-censo-nombre');
+        const nombre = this.getAttribute('data-actividad-nombre');
         const url = this.getAttribute('data-delete-url');
         
         Swal.fire({
           title: '¿Está seguro?',
-          html: `Va a eliminar el censo: <strong>${nombre}</strong><br><br>
+          html: `Va a eliminar la actividad: <strong>${nombre}</strong><br><br>
                  <span class="text-danger">Esta acción no se puede deshacer.</span>`,
           icon: 'warning',
           showCancelButton: true,
@@ -453,8 +453,8 @@
     document.addEventListener('DOMContentLoaded', function() {
       const prevButton = document.getElementById('prev-page');
       const nextButton = document.getElementById('next-page');
-      const currentPage = {{ censos.number|default:1 }};
-      const totalPages = {{ censos.paginator.num_pages|default:1 }};
+      const currentPage = {{ actividad.number|default:1 }};
+      const totalPages = {{ actividad.paginator.num_pages|default:1 }};
       const query = "{{ query|default:'' }}";
       const estatusFilter = "{{ estatus|default:'' }}";
       const categoriaFilter = "{{ categoria|default:'' }}";

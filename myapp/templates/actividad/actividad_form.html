@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% if censo %}Editar Censo{% else %}Nuevo Censo{% endif %} - Consejo Comunal</title>
+  <title>{% if actividad %}Editar Actividad{% else %}Nuevo Actividad{% endif %} - Consejo Comunal</title>
   <link href="{% static 'assets/styles/custom.css' %}" rel="stylesheet" />
   <link href="{% static 'assets/styles/main-style.css' %}" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.6.2/dist/sweetalert2.min.css" rel="stylesheet">
@@ -23,9 +23,9 @@
       <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="{% url 'welcome' %}" class="text-decoration-none">Inicio</a></li>
-          <li class="breadcrumb-item"><a href="{% url 'censos' %}" class="text-decoration-none">Censos</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'actividad' %}" class="text-decoration-none">Actividad</a></li>
           <li class="breadcrumb-item active text-white" aria-current="page">
-            {% if censo %}Editar Censo{% else %}Nuevo Censo{% endif %}
+            {% if actividad %}Editar Actividad{% else %}Nuevo Actividad{% endif %}
           </li>
         </ol>
       </nav>
@@ -36,8 +36,8 @@
             <div class="card shadow">
               <div class="card-header py-3">
                 <h4 class="mb-0">
-                  <i class="fas fa-{% if censo %}edit{% else %}plus-circle{% endif %} me-2"></i>
-                  {% if censo %}Editar Censo{% else %}Registrar Nuevo Censo{% endif %}
+                  <i class="fas fa-{% if actividad %}edit{% else %}plus-circle{% endif %} me-2"></i>
+                  {% if actividad %}Editar Actividad{% else %}Registrar Nuevo Actividad{% endif %}
                 </h4>
               </div>
               
@@ -45,20 +45,20 @@
                 <form method="POST" action="">
                   {% csrf_token %}
                   
-                  <!-- Nombre del Censo -->
+                  <!-- Nombre de la Actividad -->
                   <div class="row mb-3">
                     <div class="col-md-12">
-                      <label for="id_nombre_censo" class="form-label">
-                        <i class="fas fa-tag me-1"></i>Nombre del Censo <span class="text-danger">*</span>
+                      <label for="id_nombre_actividad" class="form-label">
+                        <i class="fas fa-tag me-1"></i>Nombre de la Actividad <span class="text-danger">*</span>
                       </label>
-                      <input type="text" name="nombre_censo" id="id_nombre_censo" 
-                             class="form-control {% if form.nombre_censo.errors %}is-invalid{% endif %}"
-                             value="{{ form.nombre_censo.value|default:'' }}"
+                      <input type="text" name="nombre_actividad" id="id_nombre_actividad" 
+                             class="form-control {% if form.nombre_actividad.errors %}is-invalid{% endif %}"
+                             value="{{ form.nombre_actividad.value|default:'' }}"
                              placeholder="Ej: Censo Poblacional 2026"
                              required maxlength="200">
-                      {% if form.nombre_censo.errors %}
+                      {% if form.nombre_actividad.errors %}
                         <div class="invalid-feedback">
-                          {% for error in form.nombre_censo.errors %}{{ error }}{% endfor %}
+                          {% for error in form.nombre_actividad.errors %}{{ error }}{% endfor %}
                         </div>
                       {% endif %}
                     </div>
@@ -141,16 +141,16 @@
                   <!-- Descripción -->
                   <div class="row mb-4">
                     <div class="col-md-12">
-                      <label for="id_descripcion_censo" class="form-label">
+                      <label for="id_descripcion_actividad" class="form-label">
                         <i class="fas fa-align-left me-1"></i>Descripción <span class="text-danger">*</span>
                       </label>
-                      <textarea name="descripcion" id="id_descripcion_censo" rows="5"
+                      <textarea name="descripcion" id="id_descripcion_actividad" rows="5"
                                 class="form-control {% if form.descripcion.errors %}is-invalid{% endif %}"
-                                placeholder="Describa el objetivo y alcance del censo..." 
+                                placeholder="Describa el objetivo y alcance de la actividad..." 
                                 required maxlength="1000">{{ form.descripcion.value|default:"" }}</textarea>
                       <div class="d-flex justify-content-between align-items-center mt-1">
-                        <small class="text-muted">Descripción detallada del censo (máximo 1000 caracteres)</small>
-                        <small class="text-muted" id="contador_descripcion_censo">
+                        <small class="text-muted">Descripción detallada de la actividad (máximo 1000 caracteres)</small>
+                        <small class="text-muted" id="contador_descripcion_actividad">
                           <span class="current-count">0</span>/<span class="max-count">1000</span> caracteres
                         </small>
                       </div>
@@ -165,12 +165,12 @@
                   <!-- Botones de acción -->
                   <div class="row">
                     <div class="col-md-12 d-flex justify-content-between">
-                      <a href="{% url 'censos' %}" class="btn btn-secondary">
+                      <a href="{% url 'actividad' %}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-1"></i> Cancelar
                       </a>
                       <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save me-1"></i> 
-                        {% if censo %}Guardar Cambios{% else %}Registrar Censo{% endif %}
+                        {% if actividad %}Guardar Cambios{% else %}Registrar Actividad{% endif %}
                       </button>
                     </div>
                   </div>
@@ -226,9 +226,9 @@
       }
     }
     
-    // Inicializar contador para descripción del censo
+    // Inicializar contador para descripción de la actividad
     document.addEventListener('DOMContentLoaded', function() {
-      initCharacterCounter('id_descripcion_censo', 'contador_descripcion_censo', 1000);
+      initCharacterCounter('id_descripcion_actividad', 'contador_descripcion_actividad', 1000);
     });
 
     // Validación de fechas
